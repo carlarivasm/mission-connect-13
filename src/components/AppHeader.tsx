@@ -1,5 +1,6 @@
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import logo from "@/assets/logo-jfm.png";
+import NotificationBell from "@/components/NotificationBell";
 
 interface AppHeaderProps {
   title?: string;
@@ -15,9 +16,7 @@ const AppHeader = ({ title = "JFM", onLogout }: AppHeaderProps) => {
           <h1 className="text-lg font-bold text-primary-foreground font-display">{title}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           {onLogout && (
             <button
               onClick={onLogout}

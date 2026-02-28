@@ -98,8 +98,28 @@ const ManageLocations = () => {
       else { toast({ title: "Local atualizado!" }); resetForm(); fetchLocations(); }
     } else {
       const { error } = await supabase.from("mission_locations").insert(payload as any);
-      if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Local adicionado!" }); resetForm(); fetchLocations(); }
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Local adicionado!" });
+        // Send notifications to all missionaries
+        const { data: allUsers } = await supabase.from("user_roles").select("user_id");
+        if (allUsers) {
+          const notifs = allUsers
+            .filter((u: any) => u.user_id !== user?.id)
+            .map((u: any) => ({
+              user_id: u.user_id,
+              title: "Novo local de missão",
+              message: `"${name.trim()}" foi adicionado ao mapa.`,
+              type: "new_location",
+            }));
+          if (notifs.length > 0) {
+            await supabase.from("notifications").insert(notifs as any);
+          }
+        }
+        resetForm();
+        fetchLocations();
+      }
     }
     setSubmitting(false);
   };

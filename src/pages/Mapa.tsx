@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Navigation, ExternalLink, Save } from "lucide-react";
+import { MapPin, ExternalLink, Save, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -42,6 +42,7 @@ const Mapa = () => {
   const [locations, setLocations] = useState<MissionLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
   const [userNotes, setUserNotes] = useState<Record<string, UserNote>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -52,9 +53,12 @@ const Mapa = () => {
         .select("id, name, address, status, google_maps_url")
         .order("created_at", { ascending: false });
 
-      if (locs) setLocations(locs as MissionLocation[]);
+      if (locs) {
+        const typedLocs = locs as MissionLocation[];
+        setLocations(typedLocs);
+        if (typedLocs.length > 0) setSelectedLocation(typedLocs[0]);
+      }
 
-      // Fetch user's own notes
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
@@ -117,22 +121,67 @@ const Mapa = () => {
     : locations;
 
   const stats = {
-    total: locations.length,
     visitado: locations.filter((l) => l.status === "visitado").length,
     pendente: locations.filter((l) => l.status === "pendente").length,
     emAndamento: locations.filter((l) => l.status === "em andamento").length,
   };
 
+  // Build Google Maps embed URL
+  const getEmbedUrl = (loc: MissionLocation | null) => {
+    if (!loc) return null;
+    // If admin set a google_maps_url with directions, try to extract and use it
+    // Otherwise embed the address
+    const encodedAddress = encodeURIComponent(loc.address);
+    return `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  };
+
+  const embedUrl = getEmbedUrl(selectedLocation);
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Mapa de Missão" onLogout={handleLogout} />
       <main className="px-4 py-5 space-y-5">
-        {/* Map Placeholder */}
-        <div className="w-full h-48 rounded-2xl bg-muted flex flex-col items-center justify-center shadow-card animate-fade-in">
-          <Navigation size={40} className="text-muted-foreground/30 mb-2" />
-          <p className="text-sm font-semibold text-muted-foreground">Mapa interativo</p>
-          <p className="text-xs text-muted-foreground/60">Em breve com Google Maps</p>
+        {/* Interactive Map */}
+        <div className="w-full rounded-2xl overflow-hidden shadow-card animate-fade-in bg-muted">
+          {embedUrl ? (
+            <div className="relative">
+              <iframe
+                src={embedUrl}
+                width="100%"
+                height="220"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title={`Mapa: ${selectedLocation?.name || "Local"}`}
+                className="w-full"
+              />
+              {selectedLocation && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                  <p className="text-primary-foreground text-sm font-semibold">{selectedLocation.name}</p>
+                  <p className="text-primary-foreground/80 text-xs">{selectedLocation.address}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-48 flex flex-col items-center justify-center">
+              <Navigation size={40} className="text-muted-foreground/30 mb-2" />
+              <p className="text-sm font-semibold text-muted-foreground">Nenhum local selecionado</p>
+            </div>
+          )}
         </div>
+
+        {/* Direction link */}
+        {selectedLocation?.google_maps_url && (
+          <a
+            href={selectedLocation.google_maps_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-card transition-all hover:opacity-90 animate-fade-in"
+          >
+            <Navigation size={16} /> Abrir direção no Google Maps
+          </a>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 animate-fade-in">
@@ -175,8 +224,13 @@ const Mapa = () => {
             <div className="space-y-3">
               {filteredLocations.map((loc) => {
                 const note = userNotes[loc.id] || { needs: "", notes: "" };
+                const isSelected = selectedLocation?.id === loc.id;
                 return (
-                  <div key={loc.id} className="p-4 bg-card rounded-xl shadow-card space-y-3">
+                  <div
+                    key={loc.id}
+                    className={`p-4 bg-card rounded-xl shadow-card space-y-3 transition-all cursor-pointer ${isSelected ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => setSelectedLocation(loc)}
+                  >
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5">
                         <MapPin size={16} />
@@ -195,6 +249,7 @@ const Mapa = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <ExternalLink size={10} /> Abrir direção no Maps
                           </a>
@@ -203,7 +258,7 @@ const Mapa = () => {
                     </div>
 
                     {/* User input fields */}
-                    <div className="space-y-2 pt-2 border-t border-border">
+                    <div className="space-y-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
                         <Textarea
