@@ -24,12 +24,15 @@ interface Survey {
 
 interface QuestionDraft {
   text: string;
+  type: "multiple_choice" | "open_ended";
   options: string[];
 }
 
 interface ResponseRow {
   question_text: string;
+  question_type: string;
   option_text: string;
+  response_text: string | null;
   user_id: string;
   user_email: string;
 }
@@ -44,7 +47,7 @@ const ManageSurveys = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", options: ["", ""] }]);
+  const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: ["", ""] }]);
   const [submitting, setSubmitting] = useState(false);
 
   // Results
@@ -63,7 +66,7 @@ const ManageSurveys = () => {
 
   useEffect(() => { fetchSurveys(); }, []);
 
-  const addQuestion = () => setQuestions([...questions, { text: "", options: ["", ""] }]);
+  const addQuestion = () => setQuestions([...questions, { text: "", type: "multiple_choice", options: ["", ""] }]);
 
   const removeQuestion = (qi: number) => setQuestions(questions.filter((_, i) => i !== qi));
 
@@ -94,7 +97,7 @@ const ManageSurveys = () => {
   const handleCreate = async () => {
     if (!title.trim()) return;
     const validQuestions = questions.filter(
-      (q) => q.text.trim() && q.options.filter((o) => o.trim()).length >= 2
+      (q) => q.text.trim() && (q.type === "open_ended" || q.options.filter((o) => o.trim()).length >= 2)
     );
     if (validQuestions.length === 0) {
       toast({ title: "Erro", description: "Adicione ao menos uma pergunta com 2 opções.", variant: "destructive" });
@@ -115,18 +118,20 @@ const ManageSurveys = () => {
         const q = validQuestions[qi];
         const { data: question, error: qErr } = await supabase
           .from("survey_questions")
-          .insert({ survey_id: survey.id, question_text: q.text.trim(), sort_order: qi } as any)
+          .insert({ survey_id: survey.id, question_text: q.text.trim(), sort_order: qi, question_type: q.type } as any)
           .select("id")
           .single();
 
         if (qErr || !question) throw qErr;
 
-        const optionsToInsert = q.options
-          .filter((o) => o.trim())
-          .map((o, oi) => ({ question_id: question.id, option_text: o.trim(), sort_order: oi }));
+        if (q.type === "multiple_choice") {
+          const optionsToInsert = q.options
+            .filter((o) => o.trim())
+            .map((o, oi) => ({ question_id: question.id, option_text: o.trim(), sort_order: oi }));
 
-        const { error: oErr } = await supabase.from("survey_options").insert(optionsToInsert as any);
-        if (oErr) throw oErr;
+          const { error: oErr } = await supabase.from("survey_options").insert(optionsToInsert as any);
+          if (oErr) throw oErr;
+        }
       }
 
       toast({ title: "Pesquisa criada!", description: `"${title}" está disponível para os missionários.` });
@@ -142,7 +147,7 @@ const ManageSurveys = () => {
     setShowCreate(false);
     setTitle("");
     setDescription("");
-    setQuestions([{ text: "", options: ["", ""] }]);
+    setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
   };
 
   const toggleActive = async (survey: Survey) => {
@@ -161,7 +166,7 @@ const ManageSurveys = () => {
 
     const { data: qs } = await supabase
       .from("survey_questions")
-      .select("id, question_text")
+      .select("id, question_text, question_type")
       .eq("survey_id", survey.id)
       .order("sort_order");
 
@@ -171,7 +176,7 @@ const ManageSurveys = () => {
 
     const { data: resps } = await supabase
       .from("survey_responses")
-      .select("question_id, option_id, user_id")
+      .select("question_id, option_id, user_id, response_text")
       .eq("survey_id", survey.id);
 
     if (qs && opts && resps) {
@@ -180,7 +185,9 @@ const ManageSurveys = () => {
         const o = opts.find((o: any) => o.id === r.option_id);
         return {
           question_text: q?.question_text || "",
+          question_type: (q as any)?.question_type || "multiple_choice",
           option_text: o?.option_text || "",
+          response_text: r.response_text || null,
           user_id: r.user_id,
           user_email: r.user_id,
         };
@@ -192,14 +199,20 @@ const ManageSurveys = () => {
 
   // Group responses by question for display
   const groupedResponses = () => {
-    const map: Record<string, { option: string; count: number }[]> = {};
+    const mcMap: Record<string, { option: string; count: number }[]> = {};
+    const openMap: Record<string, string[]> = {};
     responses.forEach((r) => {
-      if (!map[r.question_text]) map[r.question_text] = [];
-      const existing = map[r.question_text].find((x) => x.option === r.option_text);
-      if (existing) existing.count++;
-      else map[r.question_text].push({ option: r.option_text, count: 1 });
+      if (r.question_type === "open_ended") {
+        if (!openMap[r.question_text]) openMap[r.question_text] = [];
+        if (r.response_text) openMap[r.question_text].push(r.response_text);
+      } else {
+        if (!mcMap[r.question_text]) mcMap[r.question_text] = [];
+        const existing = mcMap[r.question_text].find((x) => x.option === r.option_text);
+        if (existing) existing.count++;
+        else mcMap[r.question_text].push({ option: r.option_text, count: 1 });
+      }
     });
-    return map;
+    return { mcMap, openMap };
   };
 
   const totalRespondents = new Set(responses.map((r) => r.user_id)).size;
@@ -250,26 +263,48 @@ const ManageSurveys = () => {
                       </button>
                     )}
                   </div>
-                  <div className="pl-5 space-y-1.5">
-                    {q.options.map((opt, oi) => (
-                      <div key={oi} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40 shrink-0" />
-                        <Input
-                          value={opt}
-                          onChange={(e) => updateOption(qi, oi, e.target.value)}
-                          placeholder={`Opção ${oi + 1}`}
-                          className="flex-1 h-8 text-sm"
-                        />
-                        {q.options.length > 2 && (
-                          <button onClick={() => removeOption(qi, oi)} className="p-0.5 text-destructive/70 hover:text-destructive">
-                            <Trash2 size={12} />
-                          </button>
-                        )}
+                  <div className="pl-5">
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => { const u = [...questions]; u[qi].type = "multiple_choice"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "multiple_choice" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                      >
+                        Múltipla escolha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { const u = [...questions]; u[qi].type = "open_ended"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "open_ended" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                      >
+                        Aberta
+                      </button>
+                    </div>
+                    {q.type === "multiple_choice" ? (
+                      <div className="space-y-1.5">
+                        {q.options.map((opt, oi) => (
+                          <div key={oi} className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                            <Input
+                              value={opt}
+                              onChange={(e) => updateOption(qi, oi, e.target.value)}
+                              placeholder={`Opção ${oi + 1}`}
+                              className="flex-1 h-8 text-sm"
+                            />
+                            {q.options.length > 2 && (
+                              <button onClick={() => removeOption(qi, oi)} className="p-0.5 text-destructive/70 hover:text-destructive">
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={() => addOption(qi)} className="text-xs text-primary hover:underline ml-5">
+                          + Adicionar opção
+                        </button>
                       </div>
-                    ))}
-                    <button onClick={() => addOption(qi)} className="text-xs text-primary hover:underline ml-5">
-                      + Adicionar opção
-                    </button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">O missionário poderá escrever uma resposta livre.</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -298,24 +333,39 @@ const ManageSurveys = () => {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{totalRespondents} respondente(s)</p>
-              {Object.entries(groupedResponses()).map(([question, options]) => (
-                <div key={question} className="space-y-2">
-                  <p className="font-medium text-sm text-foreground">{question}</p>
-                  {options.map((opt) => (
-                    <div key={opt.option} className="flex items-center gap-2">
-                      <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
-                        <div
-                          className="h-full gradient-mission rounded-full flex items-center px-2"
-                          style={{ width: `${Math.max(10, (opt.count / totalRespondents) * 100)}%` }}
-                        >
-                          <span className="text-[10px] text-primary-foreground font-bold whitespace-nowrap">{opt.count}</span>
-                        </div>
+              {(() => {
+                const { mcMap, openMap } = groupedResponses();
+                return (
+                  <>
+                    {Object.entries(mcMap).map(([question, options]) => (
+                      <div key={question} className="space-y-2">
+                        <p className="font-medium text-sm text-foreground">{question}</p>
+                        {options.map((opt) => (
+                          <div key={opt.option} className="flex items-center gap-2">
+                            <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+                              <div
+                                className="h-full gradient-mission rounded-full flex items-center px-2"
+                                style={{ width: `${Math.max(10, (opt.count / totalRespondents) * 100)}%` }}
+                              >
+                                <span className="text-[10px] text-primary-foreground font-bold whitespace-nowrap">{opt.count}</span>
+                              </div>
+                            </div>
+                            <span className="text-xs text-muted-foreground w-28 truncate">{opt.option}</span>
+                          </div>
+                        ))}
                       </div>
-                      <span className="text-xs text-muted-foreground w-28 truncate">{opt.option}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
+                    ))}
+                    {Object.entries(openMap).map(([question, texts]) => (
+                      <div key={question} className="space-y-2">
+                        <p className="font-medium text-sm text-foreground">{question} <span className="text-xs text-muted-foreground">(aberta)</span></p>
+                        {texts.map((t, i) => (
+                          <p key={i} className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">"{t}"</p>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
         </DialogContent>

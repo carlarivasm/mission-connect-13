@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ClipboardList, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -17,6 +18,7 @@ interface Survey {
 interface Question {
   id: string;
   question_text: string;
+  question_type: string;
   sort_order: number;
 }
 
@@ -40,7 +42,8 @@ const Pesquisas = () => {
   const [activeSurvey, setActiveSurvey] = useState<Survey | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<Option[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({}); // question_id -> option_id
+  const [answers, setAnswers] = useState<Record<string, string>>({}); // question_id -> option_id or text
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({}); // question_id -> text
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -68,8 +71,8 @@ const Pesquisas = () => {
   }, [user]);
 
   const openSurvey = async (survey: Survey) => {
-    setActiveSurvey(survey);
     setAnswers({});
+    setTextAnswers({});
 
     const { data: qs } = await supabase
       .from("survey_questions")
@@ -92,9 +95,12 @@ const Pesquisas = () => {
   const handleSubmit = async () => {
     if (!user || !activeSurvey) return;
 
-    const unanswered = questions.filter((q) => !answers[q.id]);
+    const unanswered = questions.filter((q) => {
+      if ((q as any).question_type === "open_ended") return !textAnswers[q.id]?.trim();
+      return !answers[q.id];
+    });
     if (unanswered.length > 0) {
-      toast({ title: "Responda todas", description: "Selecione uma opção para cada pergunta.", variant: "destructive" });
+      toast({ title: "Responda todas", description: "Preencha todas as perguntas.", variant: "destructive" });
       return;
     }
 
@@ -102,7 +108,8 @@ const Pesquisas = () => {
     const rows = questions.map((q) => ({
       survey_id: activeSurvey.id,
       question_id: q.id,
-      option_id: answers[q.id],
+      option_id: (q as any).question_type === "open_ended" ? null : answers[q.id],
+      response_text: (q as any).question_type === "open_ended" ? textAnswers[q.id].trim() : null,
       user_id: user.id,
     }));
 
@@ -183,40 +190,51 @@ const Pesquisas = () => {
 
             {questions.map((q, qi) => {
               const qOptions = options.filter((o) => o.question_id === q.id);
+              const isOpen = (q as any).question_type === "open_ended";
               return (
                 <div key={q.id} className="bg-card rounded-xl shadow-card p-4 space-y-3">
                   <p className="font-medium text-foreground text-sm">
                     {qi + 1}. {q.question_text}
                   </p>
-                  <div className="space-y-2">
-                    {qOptions.map((opt) => (
-                      <label
-                        key={opt.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          answers[q.id] === opt.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/40"
-                        }`}
-                      >
-                        <div
-                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            answers[q.id] === opt.id ? "border-primary" : "border-muted-foreground/40"
+                  {isOpen ? (
+                    <Textarea
+                      value={textAnswers[q.id] || ""}
+                      onChange={(e) => setTextAnswers({ ...textAnswers, [q.id]: e.target.value })}
+                      placeholder="Escreva sua resposta..."
+                      rows={3}
+                      className="text-sm"
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {qOptions.map((opt) => (
+                        <label
+                          key={opt.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            answers[q.id] === opt.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/40"
                           }`}
                         >
-                          {answers[q.id] === opt.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                        </div>
-                        <span className="text-sm text-foreground">{opt.option_text}</span>
-                        <input
-                          type="radio"
-                          name={q.id}
-                          value={opt.id}
-                          checked={answers[q.id] === opt.id}
-                          onChange={() => setAnswers({ ...answers, [q.id]: opt.id })}
-                          className="hidden"
-                        />
-                      </label>
-                    ))}
-                  </div>
+                          <div
+                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                              answers[q.id] === opt.id ? "border-primary" : "border-muted-foreground/40"
+                            }`}
+                          >
+                            {answers[q.id] === opt.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                          </div>
+                          <span className="text-sm text-foreground">{opt.option_text}</span>
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={opt.id}
+                            checked={answers[q.id] === opt.id}
+                            onChange={() => setAnswers({ ...answers, [q.id]: opt.id })}
+                            className="hidden"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
