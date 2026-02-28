@@ -14,6 +14,7 @@ import Mapa from "./pages/Mapa";
 import Admin from "./pages/Admin";
 import Loja from "./pages/Loja";
 import Familia from "./pages/Familia";
+import Pesquisas from "./pages/Pesquisas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/loja" element={<ProtectedRoute><Loja /></ProtectedRoute>} />
             <Route path="/familia" element={<ProtectedRoute><Familia /></ProtectedRoute>} />
+            <Route path="/pesquisas" element={<ProtectedRoute><Pesquisas /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
