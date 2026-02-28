@@ -363,6 +363,53 @@ export type Database = {
         }
         Relationships: []
       }
+      org_positions: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          function_name: string | null
+          id: string
+          parent_id: string | null
+          profile_id: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          function_name?: string | null
+          id?: string
+          parent_id?: string | null
+          profile_id?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          function_name?: string | null
+          id?: string
+          parent_id?: string | null
+          profile_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_positions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "org_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

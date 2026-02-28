@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, GraduationCap, Settings, FileText } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, GraduationCap, Settings, FileText, Network } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
@@ -15,6 +15,7 @@ import ManageFamilies from "@/components/admin/ManageFamilies";
 import ManageFormations from "@/components/admin/ManageFormations";
 import ManageAppSettings from "@/components/admin/ManageAppSettings";
 import ManageLocationNotes from "@/components/admin/ManageLocationNotes";
+import ManageOrgChart from "@/components/admin/ManageOrgChart";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -81,10 +82,14 @@ const Admin = () => {
               <span>Pesquisas</span>
             </TabsTrigger>
           </TabsList>
-          <TabsList className="w-full grid grid-cols-2 mb-4">
+          <TabsList className="w-full grid grid-cols-3 mb-4">
             <TabsTrigger value="formations" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <GraduationCap size={16} />
               <span>Formação</span>
+            </TabsTrigger>
+            <TabsTrigger value="orgchart" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <Network size={16} />
+              <span>Organograma</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Settings size={16} />
@@ -101,6 +106,7 @@ const Admin = () => {
           <TabsContent value="store"><ManageStore /></TabsContent>
           <TabsContent value="surveys"><ManageSurveys /></TabsContent>
           <TabsContent value="formations"><ManageFormations /></TabsContent>
+          <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
         </Tabs>
       </main>
