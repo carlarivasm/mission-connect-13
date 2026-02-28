@@ -1,6 +1,6 @@
-import { LogOut } from "lucide-react";
 import logo from "@/assets/logo-jfm.png";
 import NotificationBell from "@/components/NotificationBell";
+import UserAvatarMenu from "@/components/UserAvatarMenu";
 
 interface AppHeaderProps {
   title?: string;
@@ -8,6 +8,8 @@ interface AppHeaderProps {
 }
 
 const AppHeader = ({ title = "JFM", onLogout }: AppHeaderProps) => {
+  const handleLogout = onLogout || (() => {});
+
   return (
     <header className="sticky top-0 z-40 gradient-mission safe-top">
       <div className="flex items-center justify-between px-4 py-3">
@@ -17,14 +19,7 @@ const AppHeader = ({ title = "JFM", onLogout }: AppHeaderProps) => {
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell />
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="p-2 rounded-full text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
-            >
-              <LogOut size={20} />
-            </button>
-          )}
+          <UserAvatarMenu onLogout={handleLogout} />
         </div>
       </div>
     </header>
