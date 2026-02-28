@@ -15,6 +15,7 @@ const ManageAppSettings = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [appName, setAppName] = useState(settings.app_name);
+  const [loginSubtitle, setLoginSubtitle] = useState(settings.login_subtitle);
   const [primaryColor, setPrimaryColor] = useState(settings.primary_color);
   const [secondaryColor, setSecondaryColor] = useState(settings.secondary_color);
   const [logoUrl, setLogoUrl] = useState(settings.logo_url);
@@ -61,6 +62,7 @@ const ManageAppSettings = () => {
     setSaving(true);
     const updates = [
       { setting_key: "app_name", setting_value: appName.trim(), updated_by: user.id, updated_at: new Date().toISOString() },
+      { setting_key: "login_subtitle", setting_value: loginSubtitle.trim(), updated_by: user.id, updated_at: new Date().toISOString() },
       { setting_key: "primary_color", setting_value: primaryColor, updated_by: user.id, updated_at: new Date().toISOString() },
       { setting_key: "secondary_color", setting_value: secondaryColor, updated_by: user.id, updated_at: new Date().toISOString() },
       { setting_key: "logo_url", setting_value: logoUrl, updated_by: user.id, updated_at: new Date().toISOString() },
@@ -96,6 +98,13 @@ const ManageAppSettings = () => {
       <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
         <Label>Nome do Aplicativo</Label>
         <Input value={appName} onChange={(e) => setAppName(e.target.value)} placeholder="Nome do app" />
+      </div>
+
+      {/* Login Subtitle */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <Label>Subtítulo da Página de Login</Label>
+        <Input value={loginSubtitle} onChange={(e) => setLoginSubtitle(e.target.value)} placeholder="Ex: Unidos na fé, servindo com amor" />
+        <p className="text-[10px] text-muted-foreground">Aparece abaixo do nome na tela de login.</p>
       </div>
 
       {/* Logo */}

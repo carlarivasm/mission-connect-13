@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppSettings } from "@/contexts/AppSettingsContext";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo-jfm.png";
 
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, signUp, user } = useAuth();
+  const { settings } = useAppSettings();
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -59,7 +61,7 @@ const Login = () => {
           Juventude e Família<br />Missionária
         </h1>
         <p className="text-primary-foreground/70 text-sm mt-2 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          Unidos na fé, servindo com amor
+          {settings.login_subtitle}
         </p>
       </div>
 
