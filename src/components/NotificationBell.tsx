@@ -20,6 +20,7 @@ interface Notification {
 const typeLabels: Record<string, { label: string; icon: typeof MapPin }> = {
   new_location: { label: "Locais", icon: MapPin },
   new_event: { label: "Eventos", icon: Calendar },
+  event_reminder: { label: "Lembretes", icon: Bell },
   info: { label: "Geral", icon: Info },
 };
 
