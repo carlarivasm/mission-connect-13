@@ -113,6 +113,44 @@ export type Database = {
         }
         Relationships: []
       }
+      location_user_notes: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          needs: string | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          needs?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          needs?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_user_notes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mission_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           category: string
@@ -151,6 +189,7 @@ export type Database = {
           address: string
           created_at: string
           created_by: string | null
+          google_maps_url: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -164,6 +203,7 @@ export type Database = {
           address: string
           created_at?: string
           created_by?: string | null
+          google_maps_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -177,6 +217,7 @@ export type Database = {
           address?: string
           created_at?: string
           created_by?: string | null
+          google_maps_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
