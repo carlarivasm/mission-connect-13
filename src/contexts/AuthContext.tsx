@@ -68,16 +68,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Check if email is authorized
-    const { data: authorized } = await supabase
-      .from("authorized_missionaries")
-      .select("id")
-      .eq("email", email)
-      .eq("used", false)
-      .maybeSingle();
+    // Check if there are any users yet (first user becomes admin)
+    const { count } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true });
 
-    if (!authorized) {
-      return { error: "Este e-mail não está autorizado. Peça ao administrador para adicioná-lo à lista." };
+    const isFirstUser = (count ?? 0) === 0;
+
+    if (!isFirstUser) {
+      // Check if email is authorized
+      const { data: authorized } = await supabase
+        .from("authorized_missionaries")
+        .select("id")
+        .eq("email", email)
+        .eq("used", false)
+        .maybeSingle();
+
+      if (!authorized) {
+        return { error: "Este e-mail não está autorizado. Peça ao administrador para adicioná-lo à lista." };
+      }
     }
 
     const { error } = await supabase.auth.signUp({
