@@ -37,7 +37,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Juventude e Família Missionária" onLogout={handleLogout} />
+      <AppHeader onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-6">
         {/* Welcome */}
