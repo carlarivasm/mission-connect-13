@@ -16,7 +16,6 @@ import Loja from "./pages/Loja";
 import Familia from "./pages/Familia";
 import Pesquisas from "./pages/Pesquisas";
 import Perfil from "./pages/Perfil";
-import Formacao from "./pages/Formacao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +39,6 @@ const App = () => (
             <Route path="/familia" element={<ProtectedRoute><Familia /></ProtectedRoute>} />
             <Route path="/pesquisas" element={<ProtectedRoute><Pesquisas /></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
-            <Route path="/formacao" element={<ProtectedRoute><Formacao /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
