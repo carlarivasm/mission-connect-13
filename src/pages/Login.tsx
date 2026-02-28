@@ -3,18 +3,51 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo-jfm.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { signIn, signUp, user } = useAuth();
+  const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  if (user) {
+    navigate("/dashboard", { replace: true });
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: integrate with auth
-    navigate("/dashboard");
+    setLoading(true);
+
+    if (isLogin) {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast({ title: "Erro ao entrar", description: error, variant: "destructive" });
+      } else {
+        navigate("/dashboard");
+      }
+    } else {
+      const { error } = await signUp(email, password, fullName);
+      if (error) {
+        toast({ title: "Erro ao cadastrar", description: error, variant: "destructive" });
+      } else {
+        toast({
+          title: "Conta criada!",
+          description: "Verifique seu e-mail para confirmar o cadastro.",
+        });
+        setIsLogin(true);
+      }
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -41,6 +74,19 @@ const Login = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Nome Completo</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -61,10 +107,15 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
-            <Button type="submit" className="w-full gradient-mission text-primary-foreground font-semibold h-12 text-base">
-              {isLogin ? "Entrar" : "Criar Conta"}
+            <Button
+              type="submit"
+              className="w-full gradient-mission text-primary-foreground font-semibold h-12 text-base"
+              disabled={loading}
+            >
+              {loading ? "Aguarde..." : isLogin ? "Entrar" : "Criar Conta"}
             </Button>
           </form>
 

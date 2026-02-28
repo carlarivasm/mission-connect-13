@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import QuickAction from "@/components/QuickAction";
+import { useAuth } from "@/contexts/AuthContext";
 
 const upcomingEvents = [
   { title: "Reunião de Planejamento", date: "05 Mar", time: "19:00", type: "reunião" },
@@ -12,15 +13,28 @@ const upcomingEvents = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { signOut, user, role } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Juventude e Família Missionária" onLogout={() => navigate("/")} />
+      <AppHeader title="Juventude e Família Missionária" onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-6">
         {/* Welcome */}
         <div className="animate-fade-in">
-          <h2 className="text-2xl font-display font-bold text-foreground">Olá, Missionário! 👋</h2>
+          <h2 className="text-2xl font-display font-bold text-foreground">
+            Olá{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ""}! 👋
+          </h2>
+          {role && (
+            <span className="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-accent text-accent-foreground">
+              {role === "admin" ? "Administrador" : "Missionário"}
+            </span>
+          )}
           <p className="text-muted-foreground text-sm mt-1">Que bom ter você aqui. Veja o que temos para hoje.</p>
         </div>
 
