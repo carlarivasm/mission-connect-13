@@ -264,6 +264,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           email: string
           family_ages: string[] | null
@@ -271,9 +272,14 @@ export type Database = {
           family_names: string[] | null
           full_name: string
           id: string
+          notify_events: boolean
+          notify_locations: boolean
+          notify_reminders: boolean
+          phone: string | null
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           email: string
           family_ages?: string[] | null
@@ -281,9 +287,14 @@ export type Database = {
           family_names?: string[] | null
           full_name: string
           id: string
+          notify_events?: boolean
+          notify_locations?: boolean
+          notify_reminders?: boolean
+          phone?: string | null
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           email?: string
           family_ages?: string[] | null
@@ -291,6 +302,10 @@ export type Database = {
           family_names?: string[] | null
           full_name?: string
           id?: string
+          notify_events?: boolean
+          notify_locations?: boolean
+          notify_reminders?: boolean
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
