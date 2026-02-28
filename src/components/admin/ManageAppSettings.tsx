@@ -28,6 +28,9 @@ const ManageAppSettings = () => {
     { label: "Roxo Fé", primary: "270 50% 30%", secondary: "38 80% 55%" },
     { label: "Vermelho Caridade", primary: "0 60% 35%", secondary: "38 80% 55%" },
     { label: "Marrom Terra", primary: "30 40% 25%", secondary: "45 80% 55%" },
+    { label: "Laranja Missão", primary: "25 80% 45%", secondary: "38 80% 55%" },
+    { label: "Amarelo Luz", primary: "45 85% 45%", secondary: "220 60% 25%" },
+    { label: "Vermelho Fogo", primary: "0 75% 45%", secondary: "45 90% 55%" },
   ];
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
