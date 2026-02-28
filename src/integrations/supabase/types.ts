@@ -269,6 +269,7 @@ export type Database = {
           email: string
           family_ages: string[] | null
           family_members_count: number | null
+          family_name: string | null
           family_names: string[] | null
           full_name: string
           id: string
@@ -284,6 +285,7 @@ export type Database = {
           email: string
           family_ages?: string[] | null
           family_members_count?: number | null
+          family_name?: string | null
           family_names?: string[] | null
           full_name: string
           id: string
@@ -299,6 +301,7 @@ export type Database = {
           email?: string
           family_ages?: string[] | null
           family_members_count?: number | null
+          family_name?: string | null
           family_names?: string[] | null
           full_name?: string
           id?: string

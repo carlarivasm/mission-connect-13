@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
 import ManageLocations from "@/components/admin/ManageLocations";
 import ManageStore from "@/components/admin/ManageStore";
 import ManageSurveys from "@/components/admin/ManageSurveys";
+import ManageFamilies from "@/components/admin/ManageFamilies";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -41,10 +42,14 @@ const Admin = () => {
 
       <main className="px-4 py-5">
         <Tabs defaultValue="missionaries" className="w-full">
-          <TabsList className="w-full grid grid-cols-6 mb-4">
+          <TabsList className="w-full grid grid-cols-7 mb-4">
             <TabsTrigger value="missionaries" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Users size={16} />
               <span>Missionários</span>
+            </TabsTrigger>
+            <TabsTrigger value="families" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <Heart size={16} />
+              <span>Famílias</span>
             </TabsTrigger>
             <TabsTrigger value="events" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Calendar size={16} />
@@ -69,6 +74,7 @@ const Admin = () => {
           </TabsList>
 
           <TabsContent value="missionaries"><ManageMissionaries /></TabsContent>
+          <TabsContent value="families"><ManageFamilies /></TabsContent>
           <TabsContent value="events"><ManageEvents /></TabsContent>
           <TabsContent value="materials"><ManageMaterials /></TabsContent>
           <TabsContent value="locations"><ManageLocations /></TabsContent>
