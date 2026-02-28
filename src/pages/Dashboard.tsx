@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Link2, Users, Shield, ClipboardList } from "lucide-react";
+import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Link2, Users, Shield, ClipboardList, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -62,15 +62,18 @@ const Dashboard = () => {
             <QuickAction icon={Camera} label="Fotos" onClick={() => navigate("/galeria")} />
             <QuickAction icon={MapPin} label="Mapa" onClick={() => navigate("/mapa")} variant="accent" />
           </div>
-          <div className={`grid ${role === "admin" ? "grid-cols-5" : "grid-cols-4"} gap-3 mt-3`}>
+          <div className={`grid ${role === "admin" ? "grid-cols-5" : "grid-cols-5"} gap-3 mt-3`}>
             <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} variant="accent" />
             <QuickAction icon={Link2} label="Reuniões" onClick={() => navigate("/reunioes")} />
             <QuickAction icon={Users} label="Minha Família" onClick={() => navigate("/familia")} variant="accent" />
             <QuickAction icon={ClipboardList} label="Pesquisas" onClick={() => navigate("/pesquisas")} />
-            {role === "admin" && (
-              <QuickAction icon={Shield} label="Admin" onClick={() => navigate("/admin")} />
-            )}
+            <QuickAction icon={UserCircle} label="Meu Perfil" onClick={() => navigate("/perfil")} variant="accent" />
           </div>
+          {role === "admin" && (
+            <div className="grid grid-cols-1 gap-3 mt-3">
+              <QuickAction icon={Shield} label="Admin" onClick={() => navigate("/admin")} />
+            </div>
+          )}
         </section>
 
         {/* Upcoming Events */}
