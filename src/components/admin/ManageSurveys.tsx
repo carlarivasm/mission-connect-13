@@ -9,6 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -51,6 +61,10 @@ const ManageSurveys = () => {
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: ["", ""] }]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Confirmations
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   // Results
   const [resultsFor, setResultsFor] = useState<Survey | null>(null);
@@ -212,6 +226,7 @@ const ManageSurveys = () => {
 
   const deleteSurvey = async (id: string) => {
     await supabase.from("surveys").delete().eq("id", id);
+    setDeleteConfirm(null);
     fetchSurveys();
   };
 
@@ -411,7 +426,11 @@ const ManageSurveys = () => {
               </Button>
             </div>
 
-            <Button onClick={handleSave} disabled={submitting} className="w-full gradient-mission text-primary-foreground">
+            <Button
+              onClick={() => editingSurveyId ? setShowSaveConfirm(true) : handleSave()}
+              disabled={submitting}
+              className="w-full gradient-mission text-primary-foreground"
+            >
               {submitting ? "Salvando..." : editingSurveyId ? "Salvar Alterações" : "Criar Pesquisa"}
             </Button>
           </div>
@@ -499,13 +518,49 @@ const ManageSurveys = () => {
               <button onClick={() => toggleActive(s)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent transition-colors" title={s.active ? "Desativar" : "Ativar"}>
                 {s.active ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
               </button>
-              <button onClick={() => deleteSurvey(s.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+              <button onClick={() => setDeleteConfirm(s.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors" title="Excluir">
                 <Trash2 size={16} />
               </button>
             </div>
           ))}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir pesquisa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todas as perguntas e respostas serão excluídas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirm && deleteSurvey(deleteConfirm)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Save edit confirmation */}
+      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As perguntas anteriores serão substituídas pelas novas. Respostas já registradas serão mantidas, mas podem ficar desvinculadas das novas perguntas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowSaveConfirm(false); handleSave(); }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
