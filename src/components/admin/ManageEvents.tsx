@@ -78,16 +78,16 @@ const ManageEvents = () => {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Evento criado!" });
-        // Notify all users about the new event
-        const { data: allUsers } = await supabase.from("user_roles").select("user_id");
-        if (allUsers) {
+        // Notify users with events enabled
+        const { data: allProfiles } = await supabase.from("profiles").select("id, notify_events");
+        if (allProfiles) {
           const dateStr = new Date(eventDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
           const timeStr = eventTime ? ` às ${eventTime.slice(0, 5)}` : "";
-          const notifs = allUsers
-            .filter((u: any) => u.user_id !== user?.id)
-            .map((u: any) => ({
-              user_id: u.user_id,
-              title: eventType === "reunião" ? "Nova reunião agendada" : "Novo evento",
+          const notifs = allProfiles
+            .filter((p: any) => p.id !== user?.id && p.notify_events !== false)
+            .map((p: any) => ({
+              user_id: p.id,
+              title: eventType === "reunião" ? "🤝 Nova reunião agendada" : "📅 Novo evento",
               message: `"${title.trim()}" em ${dateStr}${timeStr}.`,
               type: "new_event",
             }));

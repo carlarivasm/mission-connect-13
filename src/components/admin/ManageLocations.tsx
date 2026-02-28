@@ -102,14 +102,14 @@ const ManageLocations = () => {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Local adicionado!" });
-        // Send notifications to all missionaries
-        const { data: allUsers } = await supabase.from("user_roles").select("user_id");
-        if (allUsers) {
-          const notifs = allUsers
-            .filter((u: any) => u.user_id !== user?.id)
-            .map((u: any) => ({
-              user_id: u.user_id,
-              title: "Novo local de missão",
+        // Send notifications to users with locations enabled
+        const { data: allProfiles } = await supabase.from("profiles").select("id, notify_locations");
+        if (allProfiles) {
+          const notifs = allProfiles
+            .filter((p: any) => p.id !== user?.id && p.notify_locations !== false)
+            .map((p: any) => ({
+              user_id: p.id,
+              title: "📍 Novo local de missão",
               message: `"${name.trim()}" foi adicionado ao mapa.`,
               type: "new_location",
             }));
