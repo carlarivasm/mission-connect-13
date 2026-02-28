@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -308,16 +309,37 @@ const ManageMissionaries = () => {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                   {p.is_admin ? "Admin" : "Missionário"}
                 </span>
-                <Button
-                  size="sm"
-                  variant={p.is_admin ? "outline" : "default"}
-                  disabled={togglingRole === p.id}
-                  onClick={() => handleToggleAdmin(p.id, p.is_admin)}
-                  className="text-xs gap-1"
-                >
-                  {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
-                  {p.is_admin ? "Remover Admin" : "Tornar Admin"}
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant={p.is_admin ? "outline" : "default"}
+                      disabled={togglingRole === p.id}
+                      className="text-xs gap-1"
+                    >
+                      {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+                      {p.is_admin ? "Remover Admin" : "Tornar Admin"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {p.is_admin ? "Remover administrador?" : "Tornar administrador?"}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {p.is_admin
+                          ? `${p.full_name} perderá acesso ao painel administrativo e voltará a ser missionário.`
+                          : `${p.full_name} terá acesso total ao painel administrativo do aplicativo.`}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleToggleAdmin(p.id, p.is_admin)}>
+                        Confirmar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ))
           )}
