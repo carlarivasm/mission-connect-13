@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet } from "lucide-react";
+import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface AuthorizedMissionary {
@@ -15,14 +15,23 @@ interface AuthorizedMissionary {
   created_at: string;
 }
 
+interface ProfileWithRole {
+  id: string;
+  full_name: string;
+  email: string;
+  is_admin: boolean;
+}
+
 const ManageMissionaries = () => {
   const { toast } = useToast();
   const [missionaries, setMissionaries] = useState<AuthorizedMissionary[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [togglingRole, setTogglingRole] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMissionaries = async () => {
@@ -35,7 +44,30 @@ const ManageMissionaries = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchMissionaries(); }, []);
+  const fetchProfiles = async () => {
+    const { data: allProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .order("full_name");
+
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id, role");
+
+    if (allProfiles) {
+      const adminIds = new Set(
+        (adminRoles || []).filter((r) => r.role === "admin").map((r) => r.user_id)
+      );
+      setProfiles(
+        allProfiles.map((p) => ({
+          ...p,
+          is_admin: adminIds.has(p.id),
+        }))
+      );
+    }
+  };
+
+  useEffect(() => { fetchMissionaries(); fetchProfiles(); }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +96,39 @@ const ManageMissionaries = () => {
     } else {
       fetchMissionaries();
     }
+  };
+
+  const handleToggleAdmin = async (profileId: string, currentlyAdmin: boolean) => {
+    setTogglingRole(profileId);
+    try {
+      if (currentlyAdmin) {
+        const { error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", profileId)
+          .eq("role", "admin");
+        if (error) throw error;
+        await supabase
+          .from("user_roles")
+          .upsert({ user_id: profileId, role: "missionary" as any }, { onConflict: "user_id,role" });
+        toast({ title: "Papel alterado", description: "Usuário agora é missionário." });
+      } else {
+        await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", profileId)
+          .eq("role", "missionary");
+        const { error } = await supabase
+          .from("user_roles")
+          .upsert({ user_id: profileId, role: "admin" as any }, { onConflict: "user_id,role" });
+        if (error) throw error;
+        toast({ title: "Papel alterado", description: "Usuário agora é administrador." });
+      }
+      fetchProfiles();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+    setTogglingRole(null);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,6 +285,43 @@ const ManageMissionaries = () => {
             </div>
           ))
         )}
+      </div>
+
+      {/* Gerenciar Papéis */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
+          <ShieldCheck size={18} /> Gerenciar Administradores
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Promova ou remova o papel de administrador dos usuários cadastrados.
+        </p>
+        <div className="space-y-2">
+          {profiles.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário cadastrado.</p>
+          ) : (
+            profiles.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{p.email}</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {p.is_admin ? "Admin" : "Missionário"}
+                </span>
+                <Button
+                  size="sm"
+                  variant={p.is_admin ? "outline" : "default"}
+                  disabled={togglingRole === p.id}
+                  onClick={() => handleToggleAdmin(p.id, p.is_admin)}
+                  className="text-xs gap-1"
+                >
+                  {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+                  {p.is_admin ? "Remover Admin" : "Tornar Admin"}
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
