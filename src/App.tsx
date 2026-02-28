@@ -11,6 +11,7 @@ import Calendario from "./pages/Calendario";
 import Materiais from "./pages/Materiais";
 import Galeria from "./pages/Galeria";
 import Mapa from "./pages/Mapa";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/materiais" element={<ProtectedRoute><Materiais /></ProtectedRoute>} />
             <Route path="/galeria" element={<ProtectedRoute><Galeria /></ProtectedRoute>} />
             <Route path="/mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
