@@ -21,17 +21,19 @@ const Familia = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [familyName, setFamilyName] = useState("");
   const [members, setMembers] = useState<FamilyMember[]>([]);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("family_members_count, family_ages, family_names")
+      .select("family_members_count, family_ages, family_names, family_name")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
+          setFamilyName((data as any).family_name ?? "");
           const names: string[] = (data as any).family_names ?? [];
           const ages: string[] = data.family_ages ?? [];
           const count = Math.max(names.length, ages.length, data.family_members_count ?? 0);
@@ -46,9 +48,7 @@ const Familia = () => {
   }, [user]);
 
   const handleAdd = () => setMembers([...members, { name: "", age: "" }]);
-
   const handleRemove = (index: number) => setMembers(members.filter((_, i) => i !== index));
-
   const handleChange = (index: number, field: keyof FamilyMember, value: string) => {
     const updated = [...members];
     updated[index] = { ...updated[index], [field]: value };
@@ -58,7 +58,6 @@ const Familia = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-
     const valid = members.filter((m) => m.name.trim() || m.age.trim());
 
     const { error } = await supabase
@@ -67,6 +66,7 @@ const Familia = () => {
         family_members_count: valid.length,
         family_ages: valid.map((m) => m.age.trim()),
         family_names: valid.map((m) => m.name.trim()),
+        family_name: familyName.trim() || null,
       } as any)
       .eq("id", user.id);
 
@@ -95,7 +95,7 @@ const Familia = () => {
           </div>
           <div>
             <h2 className="text-xl font-display font-bold text-foreground">Dados da Família</h2>
-            <p className="text-sm text-muted-foreground">Informe o nome e idade de cada membro.</p>
+            <p className="text-sm text-muted-foreground">Informe os dados da sua família.</p>
           </div>
         </div>
 
@@ -103,6 +103,17 @@ const Familia = () => {
           <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>
         ) : (
           <div className="space-y-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+              <div className="space-y-1">
+                <Label>Nome da Família</Label>
+                <Input
+                  placeholder="Ex: Família Silva"
+                  value={familyName}
+                  onChange={(e) => setFamilyName(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Membros da família ({members.length})</Label>
@@ -120,23 +131,9 @@ const Familia = () => {
                   {members.map((member, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{index + 1}.</span>
-                      <Input
-                        placeholder="Nome"
-                        value={member.name}
-                        onChange={(e) => handleChange(index, "name", e.target.value)}
-                        className="flex-1"
-                      />
-                      <Input
-                        placeholder="Idade"
-                        value={member.age}
-                        onChange={(e) => handleChange(index, "age", e.target.value)}
-                        className="w-20"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(index)}
-                        className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                      >
+                      <Input placeholder="Nome" value={member.name} onChange={(e) => handleChange(index, "name", e.target.value)} className="flex-1" />
+                      <Input placeholder="Idade" value={member.age} onChange={(e) => handleChange(index, "age", e.target.value)} className="w-20" />
+                      <button type="button" onClick={() => handleRemove(index)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
                         <Trash2 size={16} />
                       </button>
                     </div>

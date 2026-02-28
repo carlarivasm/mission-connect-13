@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Image as ImageIcon, Trash2, X, Upload, MapPin } from "lucide-react";
+import { Plus, Image as ImageIcon, Trash2, X, Upload, MapPin, Download, CheckSquare, Square } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,8 +42,12 @@ const Galeria = () => {
   // Upload form state
   const [caption, setCaption] = useState("");
   const [location, setLocation] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  // Selection mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchPhotos = async () => {
     const { data, error } = await supabase
@@ -58,64 +62,73 @@ const Galeria = () => {
   useEffect(() => { fetchPhotos(); }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Arquivo inválido", description: "Selecione uma imagem (JPG, PNG, etc).", variant: "destructive" });
-      return;
+    const files = Array.from(e.target.files || []);
+    const validFiles: File[] = [];
+    
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "Arquivo inválido", description: `${file.name} não é uma imagem.`, variant: "destructive" });
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Arquivo muito grande", description: `${file.name} excede 10MB.`, variant: "destructive" });
+        continue;
+      }
+      validFiles.push(file);
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Arquivo muito grande", description: "O tamanho máximo é 10MB.", variant: "destructive" });
-      return;
-    }
 
-    setSelectedFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPreviews((prev) => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !user) return;
+    if (selectedFiles.length === 0 || !user) return;
     setUploading(true);
 
     try {
-      const ext = selectedFile.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("mission-photos")
-        .upload(path, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("mission-photos")
-        .getPublicUrl(path);
-
       const userName = user.user_metadata?.full_name || user.email || "";
 
-      const { error: insertError } = await supabase
-        .from("gallery_photos")
-        .insert({
-          image_url: publicUrl,
-          storage_path: path,
-          uploaded_by: user.id,
-          uploaded_by_name: userName,
-          caption: caption.trim() || null,
-          mission_location: location.trim() || null,
-        } as any);
+      for (const file of selectedFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      if (insertError) throw insertError;
+        const { error: uploadError } = await supabase.storage
+          .from("mission-photos")
+          .upload(path, file);
+        if (uploadError) throw uploadError;
 
-      toast({ title: "Foto enviada!", description: "A foto foi adicionada à galeria." });
+        const { data: { publicUrl } } = supabase.storage
+          .from("mission-photos")
+          .getPublicUrl(path);
+
+        const { error: insertError } = await supabase
+          .from("gallery_photos")
+          .insert({
+            image_url: publicUrl,
+            storage_path: path,
+            uploaded_by: user.id,
+            uploaded_by_name: userName,
+            caption: caption.trim() || null,
+            mission_location: location.trim() || null,
+          } as any);
+        if (insertError) throw insertError;
+      }
+
+      toast({ title: "Fotos enviadas!", description: `${selectedFiles.length} foto(s) adicionada(s) à galeria.` });
       resetUploadForm();
       fetchPhotos();
     } catch (err: any) {
       toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
     }
-
     setUploading(false);
   };
 
@@ -123,12 +136,10 @@ const Galeria = () => {
     const { error: storageErr } = await supabase.storage
       .from("mission-photos")
       .remove([photo.storage_path]);
-
     const { error: dbErr } = await supabase
       .from("gallery_photos")
       .delete()
       .eq("id", photo.id);
-
     if (storageErr || dbErr) {
       toast({ title: "Erro ao excluir", description: (storageErr || dbErr)?.message, variant: "destructive" });
     } else {
@@ -138,12 +149,53 @@ const Galeria = () => {
     }
   };
 
+  const downloadPhoto = async (photo: GalleryPhoto) => {
+    try {
+      const response = await fetch(photo.image_url);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = photo.caption || `foto-${photo.id.slice(0, 8)}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Erro ao baixar", variant: "destructive" });
+    }
+  };
+
+  const downloadSelected = async () => {
+    const selected = photos.filter((p) => selectedIds.has(p.id));
+    for (const photo of selected) {
+      await downloadPhoto(photo);
+    }
+    toast({ title: `${selected.length} foto(s) baixada(s)` });
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === photos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(photos.map((p) => p.id)));
+    }
+  };
+
   const resetUploadForm = () => {
     setShowUpload(false);
     setCaption("");
     setLocation("");
-    setSelectedFile(null);
-    setPreview(null);
+    setSelectedFiles([]);
+    setPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -166,42 +218,75 @@ const Galeria = () => {
             <h2 className="text-xl font-display font-bold text-foreground">Galeria</h2>
             <p className="text-sm text-muted-foreground mt-0.5">Fotos das nossas missões</p>
           </div>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-mission text-primary-foreground text-sm font-semibold shadow-card"
-          >
-            <Plus size={16} />
-            Upload
-          </button>
+          <div className="flex gap-2">
+            {photos.length > 0 && (
+              <button
+                onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-sm font-semibold text-foreground"
+              >
+                {selectMode ? <X size={16} /> : <CheckSquare size={16} />}
+                {selectMode ? "Cancelar" : "Selecionar"}
+              </button>
+            )}
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-mission text-primary-foreground text-sm font-semibold shadow-card"
+            >
+              <Plus size={16} />
+              Upload
+            </button>
+          </div>
         </div>
+
+        {/* Selection Actions Bar */}
+        {selectMode && selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card animate-fade-in">
+            <span className="text-sm text-foreground font-medium">{selectedIds.size} selecionada(s)</span>
+            <Button size="sm" variant="outline" onClick={selectAll} className="gap-1 ml-auto">
+              {selectedIds.size === photos.length ? "Desmarcar tudo" : "Selecionar tudo"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={downloadSelected} className="gap-1">
+              <Download size={14} /> Baixar
+            </Button>
+          </div>
+        )}
 
         {/* Upload Dialog */}
         <Dialog open={showUpload} onOpenChange={(open) => { if (!open) resetUploadForm(); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Upload size={18} /> Enviar Foto
+                <Upload size={18} /> Enviar Fotos
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              {preview ? (
-                <div className="relative">
-                  <img src={preview} alt="Preview" className="w-full rounded-xl max-h-56 object-cover" />
-                  <button
-                    onClick={() => { setSelectedFile(null); setPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="absolute top-2 right-2 p-1 rounded-full bg-background/80 text-foreground"
-                  >
-                    <X size={16} />
-                  </button>
+              {previews.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {previews.map((preview, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                      <img src={preview} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeFile(i)}
+                        className="absolute top-1 right-1 p-0.5 rounded-full bg-background/80 text-foreground"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="flex items-center justify-center aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors">
+                    <Plus size={20} className="text-muted-foreground" />
+                    <input type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
+                  </label>
                 </div>
               ) : (
                 <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
                   <ImageIcon size={32} className="text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Clique para selecionar uma foto</span>
+                  <span className="text-sm text-muted-foreground">Clique para selecionar fotos (múltiplas)</span>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -210,9 +295,8 @@ const Galeria = () => {
 
               <div className="space-y-1">
                 <Label>Legenda (opcional)</Label>
-                <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Descreva a foto..." />
+                <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Descreva as fotos..." />
               </div>
-
               <div className="space-y-1">
                 <Label>Local da missão (opcional)</Label>
                 <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ex: Comunidade São José" />
@@ -220,10 +304,10 @@ const Galeria = () => {
 
               <Button
                 onClick={handleUpload}
-                disabled={!selectedFile || uploading}
+                disabled={selectedFiles.length === 0 || uploading}
                 className="w-full gradient-mission text-primary-foreground"
               >
-                {uploading ? "Enviando..." : "Enviar Foto"}
+                {uploading ? "Enviando..." : `Enviar ${selectedFiles.length} foto(s)`}
               </Button>
             </div>
           </DialogContent>
@@ -242,8 +326,8 @@ const Galeria = () => {
             {photos.map((photo) => (
               <button
                 key={photo.id}
-                onClick={() => setSelectedPhoto(photo)}
-                className="aspect-square rounded-xl overflow-hidden shadow-card focus:outline-none focus:ring-2 focus:ring-primary"
+                onClick={() => selectMode ? toggleSelect(photo.id) : setSelectedPhoto(photo)}
+                className={`relative aspect-square rounded-xl overflow-hidden shadow-card focus:outline-none focus:ring-2 focus:ring-primary ${selectMode && selectedIds.has(photo.id) ? "ring-2 ring-primary" : ""}`}
               >
                 <img
                   src={photo.image_url}
@@ -251,6 +335,15 @@ const Galeria = () => {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
+                {selectMode && (
+                  <div className="absolute top-1 right-1">
+                    {selectedIds.has(photo.id) ? (
+                      <CheckSquare size={20} className="text-primary drop-shadow" />
+                    ) : (
+                      <Square size={20} className="text-primary-foreground drop-shadow" />
+                    )}
+                  </div>
+                )}
               </button>
             ))}
           </div>
@@ -278,16 +371,21 @@ const Galeria = () => {
                   <p className="text-xs text-muted-foreground">
                     Por {selectedPhoto.uploaded_by_name} • {new Date(selectedPhoto.created_at).toLocaleDateString("pt-BR")}
                   </p>
-                  {canDelete(selectedPhoto) && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(selectedPhoto)}
-                      className="gap-1 mt-2"
-                    >
-                      <Trash2 size={14} /> Excluir
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" variant="outline" onClick={() => downloadPhoto(selectedPhoto)} className="gap-1">
+                      <Download size={14} /> Baixar
                     </Button>
-                  )}
+                    {canDelete(selectedPhoto) && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(selectedPhoto)}
+                        className="gap-1"
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </>
             )}
