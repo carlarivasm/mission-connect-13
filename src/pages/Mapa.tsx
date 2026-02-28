@@ -1,18 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, ExternalLink, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface MissionLocation {
   id: string;
   name: string;
   address: string;
   status: string;
-  needs: string | null;
-  notes: string | null;
+  google_maps_url: string | null;
+}
+
+interface UserNote {
+  location_id: string;
+  needs: string;
+  notes: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -29,23 +37,80 @@ const statusLabels: Record<string, string> = {
 
 const Mapa = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
   const [locations, setLocations] = useState<MissionLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [userNotes, setUserNotes] = useState<Record<string, UserNote>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("mission_locations")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setLocations(data);
-        setLoading(false);
-      });
-  }, []);
+    const fetchData = async () => {
+      const { data: locs } = await supabase
+        .from("mission_locations")
+        .select("id, name, address, status, google_maps_url")
+        .order("created_at", { ascending: false });
+
+      if (locs) setLocations(locs as MissionLocation[]);
+
+      // Fetch user's own notes
+      if (user) {
+        const { data: notes } = await supabase
+          .from("location_user_notes")
+          .select("location_id, needs, notes")
+          .eq("user_id", user.id);
+
+        if (notes) {
+          const map: Record<string, UserNote> = {};
+          (notes as any[]).forEach((n) => {
+            map[n.location_id] = { location_id: n.location_id, needs: n.needs || "", notes: n.notes || "" };
+          });
+          setUserNotes(map);
+        }
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [user]);
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
+
+  const updateLocalNote = (locationId: string, field: "needs" | "notes", value: string) => {
+    setUserNotes((prev) => ({
+      ...prev,
+      [locationId]: {
+        ...(prev[locationId] || { location_id: locationId, needs: "", notes: "" }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveNote = async (locationId: string) => {
+    if (!user) return;
+    setSavingId(locationId);
+    const note = userNotes[locationId] || { needs: "", notes: "" };
+
+    const { error } = await supabase
+      .from("location_user_notes")
+      .upsert(
+        {
+          location_id: locationId,
+          user_id: user.id,
+          needs: note.needs.trim() || null,
+          notes: note.notes.trim() || null,
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: "location_id,user_id" }
+      );
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Salvo!", description: "Suas observações foram registradas." });
+    }
+    setSavingId(null);
+  };
 
   const filteredLocations = selectedStatus
     ? locations.filter((l) => l.status === selectedStatus)
@@ -108,32 +173,70 @@ const Mapa = () => {
             <p className="text-muted-foreground text-sm text-center py-4">Nenhum local cadastrado.</p>
           ) : (
             <div className="space-y-3">
-              {filteredLocations.map((loc) => (
-                <div key={loc.id} className="p-4 bg-card rounded-xl shadow-card">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5">
-                      <MapPin size={16} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-foreground">{loc.name}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}>
-                          {statusLabels[loc.status] || loc.status}
-                        </span>
+              {filteredLocations.map((loc) => {
+                const note = userNotes[loc.id] || { needs: "", notes: "" };
+                return (
+                  <div key={loc.id} className="p-4 bg-card rounded-xl shadow-card space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5">
+                        <MapPin size={16} />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
-                      {loc.needs && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <span className="font-semibold">Necessidades:</span> {loc.needs}
-                        </p>
-                      )}
-                      {loc.notes && (
-                        <p className="text-xs text-muted-foreground mt-0.5 italic">{loc.notes}</p>
-                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm text-foreground">{loc.name}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}>
+                            {statusLabels[loc.status] || loc.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
+                        {loc.google_maps_url && (
+                          <a
+                            href={loc.google_maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
+                          >
+                            <ExternalLink size={10} /> Abrir direção no Maps
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* User input fields */}
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
+                        <Textarea
+                          value={note.needs}
+                          onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
+                          placeholder="Descreva as necessidades deste local..."
+                          rows={2}
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Observações</label>
+                        <Textarea
+                          value={note.notes}
+                          onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
+                          placeholder="Anotações adicionais..."
+                          rows={2}
+                          className="text-xs"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => saveNote(loc.id)}
+                        disabled={savingId === loc.id}
+                        className="gap-1 gradient-mission text-primary-foreground"
+                      >
+                        <Save size={12} />
+                        {savingId === loc.id ? "Salvando..." : "Salvar"}
+                      </Button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
