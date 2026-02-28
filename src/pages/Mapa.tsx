@@ -21,6 +21,7 @@ interface UserNote {
   location_id: string;
   needs: string;
   notes: string;
+  user_address: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -62,13 +63,13 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("location_id, needs, notes")
+          .select("location_id, needs, notes, user_address")
           .eq("user_id", user.id);
 
         if (notes) {
           const map: Record<string, UserNote> = {};
           (notes as any[]).forEach((n) => {
-            map[n.location_id] = { location_id: n.location_id, needs: n.needs || "", notes: n.notes || "" };
+            map[n.location_id] = { location_id: n.location_id, needs: n.needs || "", notes: n.notes || "", user_address: n.user_address || "" };
           });
           setUserNotes(map);
         }
@@ -80,11 +81,11 @@ const Mapa = () => {
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
-  const updateLocalNote = (locationId: string, field: "needs" | "notes", value: string) => {
+  const updateLocalNote = (locationId: string, field: "needs" | "notes" | "user_address", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, needs: "", notes: "" }),
+        ...(prev[locationId] || { location_id: locationId, needs: "", notes: "", user_address: "" }),
         [field]: value,
       },
     }));
@@ -93,7 +94,7 @@ const Mapa = () => {
   const saveNote = async (locationId: string) => {
     if (!user) return;
     setSavingId(locationId);
-    const note = userNotes[locationId] || { needs: "", notes: "" };
+    const note = userNotes[locationId] || { needs: "", notes: "", user_address: "" };
 
     const { error } = await supabase
       .from("location_user_notes")
@@ -103,6 +104,7 @@ const Mapa = () => {
           user_id: user.id,
           needs: note.needs.trim() || null,
           notes: note.notes.trim() || null,
+          user_address: (note.user_address || "").trim() || null,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: "location_id,user_id" }
@@ -223,7 +225,7 @@ const Mapa = () => {
           ) : (
             <div className="space-y-3">
               {filteredLocations.map((loc) => {
-                const note = userNotes[loc.id] || { needs: "", notes: "" };
+                const note = userNotes[loc.id] || { needs: "", notes: "", user_address: "" };
                 const isSelected = selectedLocation?.id === loc.id;
                 return (
                   <div
@@ -259,6 +261,16 @@ const Mapa = () => {
 
                     {/* User input fields */}
                     <div className="space-y-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Seu endereço</label>
+                        <Textarea
+                          value={note.user_address || ""}
+                          onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
+                          placeholder="Informe seu endereço..."
+                          rows={1}
+                          className="text-xs"
+                        />
+                      </div>
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
                         <Textarea

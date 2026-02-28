@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       authorized_missionaries: {
         Row: {
           created_at: string
@@ -195,6 +219,7 @@ export type Database = {
           needs: string | null
           notes: string | null
           updated_at: string
+          user_address: string | null
           user_id: string
         }
         Insert: {
@@ -204,6 +229,7 @@ export type Database = {
           needs?: string | null
           notes?: string | null
           updated_at?: string
+          user_address?: string | null
           user_id: string
         }
         Update: {
@@ -213,6 +239,7 @@ export type Database = {
           needs?: string | null
           notes?: string | null
           updated_at?: string
+          user_address?: string | null
           user_id?: string
         }
         Relationships: [
