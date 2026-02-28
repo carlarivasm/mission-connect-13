@@ -24,7 +24,7 @@ interface Survey {
 
 interface QuestionDraft {
   text: string;
-  type: "multiple_choice" | "open_ended";
+  type: "multiple_choice" | "open_ended" | "scale";
   options: string[];
 }
 
@@ -97,7 +97,7 @@ const ManageSurveys = () => {
   const handleCreate = async () => {
     if (!title.trim()) return;
     const validQuestions = questions.filter(
-      (q) => q.text.trim() && (q.type === "open_ended" || q.options.filter((o) => o.trim()).length >= 2)
+      (q) => q.text.trim() && (q.type === "open_ended" || q.type === "scale" || q.options.filter((o) => o.trim()).length >= 2)
     );
     if (validQuestions.length === 0) {
       toast({ title: "Erro", description: "Adicione ao menos uma pergunta com 2 opções.", variant: "destructive" });
@@ -205,6 +205,12 @@ const ManageSurveys = () => {
       if (r.question_type === "open_ended") {
         if (!openMap[r.question_text]) openMap[r.question_text] = [];
         if (r.response_text) openMap[r.question_text].push(r.response_text);
+      } else if (r.question_type === "scale") {
+        if (!mcMap[r.question_text]) mcMap[r.question_text] = [];
+        const label = r.response_text || "?";
+        const existing = mcMap[r.question_text].find((x) => x.option === label);
+        if (existing) existing.count++;
+        else mcMap[r.question_text].push({ option: label, count: 1 });
       } else {
         if (!mcMap[r.question_text]) mcMap[r.question_text] = [];
         const existing = mcMap[r.question_text].find((x) => x.option === r.option_text);
@@ -264,7 +270,7 @@ const ManageSurveys = () => {
                     )}
                   </div>
                   <div className="pl-5">
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex gap-2 mb-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => { const u = [...questions]; u[qi].type = "multiple_choice"; setQuestions(u); }}
@@ -278,6 +284,13 @@ const ManageSurveys = () => {
                         className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "open_ended" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
                       >
                         Aberta
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { const u = [...questions]; u[qi].type = "scale"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "scale" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                      >
+                        Escala 1-5
                       </button>
                     </div>
                     {q.type === "multiple_choice" ? (
@@ -301,6 +314,13 @@ const ManageSurveys = () => {
                         <button onClick={() => addOption(qi)} className="text-xs text-primary hover:underline ml-5">
                           + Adicionar opção
                         </button>
+                      </div>
+                    ) : q.type === "scale" ? (
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <div key={n} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">{n}</div>
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-2 italic">Pré-visualização</span>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground italic">O missionário poderá escrever uma resposta livre.</p>
