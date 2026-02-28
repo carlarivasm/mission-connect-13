@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download } from "lucide-react";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   Dialog,
@@ -44,8 +44,9 @@ const ManageSurveys = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create form
+  // Create/Edit form
   const [showCreate, setShowCreate] = useState(false);
+  const [editingSurveyId, setEditingSurveyId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: ["", ""] }]);
@@ -95,7 +96,40 @@ const ManageSurveys = () => {
     setQuestions(updated);
   };
 
-  const handleCreate = async () => {
+  const startEdit = async (survey: Survey) => {
+    setEditingSurveyId(survey.id);
+    setTitle(survey.title);
+    setDescription(survey.description || "");
+
+    const { data: qs } = await supabase
+      .from("survey_questions")
+      .select("id, question_text, question_type, sort_order")
+      .eq("survey_id", survey.id)
+      .order("sort_order");
+
+    if (qs && qs.length > 0) {
+      const drafts: QuestionDraft[] = [];
+      for (const q of qs) {
+        let options: string[] = ["", ""];
+        if (q.question_type === "multiple_choice") {
+          const { data: opts } = await supabase
+            .from("survey_options")
+            .select("option_text")
+            .eq("question_id", q.id)
+            .order("sort_order");
+          if (opts && opts.length > 0) options = opts.map((o: any) => o.option_text);
+        }
+        drafts.push({ text: q.question_text, type: q.question_type as QuestionDraft["type"], options });
+      }
+      setQuestions(drafts);
+    } else {
+      setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
+    }
+
+    setShowCreate(true);
+  };
+
+  const handleSave = async () => {
     if (!title.trim()) return;
     const validQuestions = questions.filter(
       (q) => q.text.trim() && (q.type === "open_ended" || q.type === "scale" || q.options.filter((o) => o.trim()).length >= 2)
@@ -107,19 +141,35 @@ const ManageSurveys = () => {
 
     setSubmitting(true);
     try {
-      const { data: survey, error: surveyErr } = await supabase
-        .from("surveys")
-        .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id } as any)
-        .select("id")
-        .single();
+      let surveyId = editingSurveyId;
 
-      if (surveyErr || !survey) throw surveyErr;
+      if (editingSurveyId) {
+        // Update survey metadata
+        const { error: surveyErr } = await supabase
+          .from("surveys")
+          .update({ title: title.trim(), description: description.trim() || null } as any)
+          .eq("id", editingSurveyId);
+        if (surveyErr) throw surveyErr;
 
+        // Delete old questions (cascade deletes options via FK)
+        await supabase.from("survey_questions").delete().eq("survey_id", editingSurveyId);
+      } else {
+        // Create new survey
+        const { data: survey, error: surveyErr } = await supabase
+          .from("surveys")
+          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id } as any)
+          .select("id")
+          .single();
+        if (surveyErr || !survey) throw surveyErr;
+        surveyId = survey.id;
+      }
+
+      // Insert questions
       for (let qi = 0; qi < validQuestions.length; qi++) {
         const q = validQuestions[qi];
         const { data: question, error: qErr } = await supabase
           .from("survey_questions")
-          .insert({ survey_id: survey.id, question_text: q.text.trim(), sort_order: qi, question_type: q.type } as any)
+          .insert({ survey_id: surveyId, question_text: q.text.trim(), sort_order: qi, question_type: q.type } as any)
           .select("id")
           .single();
 
@@ -135,17 +185,21 @@ const ManageSurveys = () => {
         }
       }
 
-      toast({ title: "Pesquisa criada!", description: `"${title}" está disponível para os missionários.` });
+      toast({
+        title: editingSurveyId ? "Pesquisa atualizada!" : "Pesquisa criada!",
+        description: `"${title}" ${editingSurveyId ? "foi atualizada" : "está disponível para os missionários"}.`,
+      });
       resetForm();
       fetchSurveys();
     } catch (err: any) {
-      toast({ title: "Erro", description: err?.message || "Erro ao criar pesquisa.", variant: "destructive" });
+      toast({ title: "Erro", description: err?.message || "Erro ao salvar pesquisa.", variant: "destructive" });
     }
     setSubmitting(false);
   };
 
   const resetForm = () => {
     setShowCreate(false);
+    setEditingSurveyId(null);
     setTitle("");
     setDescription("");
     setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
@@ -263,7 +317,7 @@ const ManageSurveys = () => {
       <Dialog open={showCreate} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Criar Pesquisa</DialogTitle>
+            <DialogTitle>{editingSurveyId ? "Editar Pesquisa" : "Criar Pesquisa"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
@@ -357,8 +411,8 @@ const ManageSurveys = () => {
               </Button>
             </div>
 
-            <Button onClick={handleCreate} disabled={submitting} className="w-full gradient-mission text-primary-foreground">
-              {submitting ? "Criando..." : "Criar Pesquisa"}
+            <Button onClick={handleSave} disabled={submitting} className="w-full gradient-mission text-primary-foreground">
+              {submitting ? "Salvando..." : editingSurveyId ? "Salvar Alterações" : "Criar Pesquisa"}
             </Button>
           </div>
         </DialogContent>
@@ -436,6 +490,9 @@ const ManageSurveys = () => {
                   {new Date(s.created_at).toLocaleDateString("pt-BR")} • {s.active ? "Ativa" : "Inativa"}
                 </p>
               </div>
+              <button onClick={() => startEdit(s)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent transition-colors" title="Editar">
+                <Pencil size={16} />
+              </button>
               <button onClick={() => viewResults(s)} className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Ver resultados">
                 <Eye size={16} />
               </button>
