@@ -71,6 +71,7 @@ const Pesquisas = () => {
   }, [user]);
 
   const openSurvey = async (survey: Survey) => {
+    setActiveSurvey(survey);
     setAnswers({});
     setTextAnswers({});
 
@@ -96,7 +97,8 @@ const Pesquisas = () => {
     if (!user || !activeSurvey) return;
 
     const unanswered = questions.filter((q) => {
-      if ((q as any).question_type === "open_ended") return !textAnswers[q.id]?.trim();
+      if (q.question_type === "open_ended") return !textAnswers[q.id]?.trim();
+      if (q.question_type === "scale") return !answers[q.id];
       return !answers[q.id];
     });
     if (unanswered.length > 0) {
@@ -108,8 +110,8 @@ const Pesquisas = () => {
     const rows = questions.map((q) => ({
       survey_id: activeSurvey.id,
       question_id: q.id,
-      option_id: (q as any).question_type === "open_ended" ? null : answers[q.id],
-      response_text: (q as any).question_type === "open_ended" ? textAnswers[q.id].trim() : null,
+      option_id: q.question_type === "open_ended" || q.question_type === "scale" ? null : answers[q.id],
+      response_text: q.question_type === "open_ended" ? textAnswers[q.id].trim() : q.question_type === "scale" ? answers[q.id] : null,
       user_id: user.id,
     }));
 
@@ -190,7 +192,8 @@ const Pesquisas = () => {
 
             {questions.map((q, qi) => {
               const qOptions = options.filter((o) => o.question_id === q.id);
-              const isOpen = (q as any).question_type === "open_ended";
+              const isOpen = q.question_type === "open_ended";
+              const isScale = q.question_type === "scale";
               return (
                 <div key={q.id} className="bg-card rounded-xl shadow-card p-4 space-y-3">
                   <p className="font-medium text-foreground text-sm">
@@ -204,6 +207,29 @@ const Pesquisas = () => {
                       rows={3}
                       className="text-sm"
                     />
+                  ) : isScale ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setAnswers({ ...answers, [q.id]: String(n) })}
+                            className={`flex-1 h-12 rounded-xl border-2 font-bold text-lg transition-all ${
+                              answers[q.id] === String(n)
+                                ? "border-primary bg-primary text-primary-foreground scale-110"
+                                : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-between px-1">
+                        <span className="text-[10px] text-muted-foreground">Muito ruim</span>
+                        <span className="text-[10px] text-muted-foreground">Excelente</span>
+                      </div>
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       {qOptions.map((opt) => (
