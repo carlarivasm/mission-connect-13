@@ -303,6 +303,7 @@ export type Database = {
           created_at: string
           id: string
           question_text: string
+          question_type: string
           sort_order: number
           survey_id: string
         }
@@ -310,6 +311,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_text: string
+          question_type?: string
           sort_order?: number
           survey_id: string
         }
@@ -317,6 +319,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_text?: string
+          question_type?: string
           sort_order?: number
           survey_id?: string
         }
@@ -334,24 +337,27 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          option_id: string
+          option_id: string | null
           question_id: string
+          response_text: string | null
           survey_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          option_id: string
+          option_id?: string | null
           question_id: string
+          response_text?: string | null
           survey_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          option_id?: string
+          option_id?: string | null
           question_id?: string
+          response_text?: string | null
           survey_id?: string
           user_id?: string
         }
