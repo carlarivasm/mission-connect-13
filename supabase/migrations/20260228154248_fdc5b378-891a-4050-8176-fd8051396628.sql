@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN family_names text[] DEFAULT '{}'::text[];
