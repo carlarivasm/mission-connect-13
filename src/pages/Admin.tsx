@@ -4,11 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
 import ManageLocations from "@/components/admin/ManageLocations";
+import ManageStore from "@/components/admin/ManageStore";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const Admin = () => {
 
       <main className="px-4 py-5">
         <Tabs defaultValue="missionaries" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-4">
+          <TabsList className="w-full grid grid-cols-5 mb-4">
             <TabsTrigger value="missionaries" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Users size={16} />
               <span>Missionários</span>
@@ -56,12 +57,17 @@ const Admin = () => {
               <MapPin size={16} />
               <span>Locais</span>
             </TabsTrigger>
+            <TabsTrigger value="store" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <ShoppingBag size={16} />
+              <span>Loja</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="missionaries"><ManageMissionaries /></TabsContent>
           <TabsContent value="events"><ManageEvents /></TabsContent>
           <TabsContent value="materials"><ManageMaterials /></TabsContent>
           <TabsContent value="locations"><ManageLocations /></TabsContent>
+          <TabsContent value="store"><ManageStore /></TabsContent>
         </Tabs>
       </main>
 
