@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye } from "lucide-react";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   Dialog,
   DialogContent,
@@ -223,6 +224,29 @@ const ManageSurveys = () => {
 
   const totalRespondents = new Set(responses.map((r) => r.user_id)).size;
 
+  const exportResults = () => {
+    if (!resultsFor || responses.length === 0) return;
+    const { mcMap, openMap } = groupedResponses();
+    const rows: Record<string, string | number>[] = [];
+
+    Object.entries(mcMap).forEach(([question, options]) => {
+      options.forEach((opt) => {
+        rows.push({ Pergunta: question, Tipo: "Escolha/Escala", Resposta: opt.option, Quantidade: opt.count });
+      });
+    });
+
+    Object.entries(openMap).forEach(([question, texts]) => {
+      texts.forEach((t) => {
+        rows.push({ Pergunta: question, Tipo: "Aberta", Resposta: t, Quantidade: 1 });
+      });
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+    XLSX.writeFile(wb, `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Create button */}
@@ -352,7 +376,12 @@ const ManageSurveys = () => {
             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma resposta ainda.</p>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{totalRespondents} respondente(s)</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{totalRespondents} respondente(s)</p>
+                <Button size="sm" variant="outline" onClick={exportResults} className="gap-1">
+                  <Download size={14} /> Exportar Excel
+                </Button>
+              </div>
               {(() => {
                 const { mcMap, openMap } = groupedResponses();
                 return (
