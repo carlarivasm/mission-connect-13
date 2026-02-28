@@ -80,12 +80,84 @@ export type Database = {
         }
         Relationships: []
       }
+      formation_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      formation_videos: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          storage_path: string
+          thumbnail_url: string | null
+          title: string
+          video_url: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          storage_path: string
+          thumbnail_url?: string | null
+          title: string
+          video_url: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          storage_path?: string
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formation_videos_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "formation_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gallery_photos: {
         Row: {
           caption: string | null
           created_at: string
           id: string
           image_url: string
+          media_type: string
           mission_location: string | null
           storage_path: string
           uploaded_by: string | null
@@ -96,6 +168,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url: string
+          media_type?: string
           mission_location?: string | null
           storage_path: string
           uploaded_by?: string | null
@@ -106,6 +179,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string
+          media_type?: string
           mission_location?: string | null
           storage_path?: string
           uploaded_by?: string | null
