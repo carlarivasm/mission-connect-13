@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
-import { User, Phone, ChevronDown, ChevronRight, Church } from "lucide-react";
+import { Phone, ChevronDown, ChevronRight, Church } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface OrgPosition {
@@ -24,44 +24,38 @@ interface Profile {
   phone: string | null;
 }
 
-const categoryLabels: Record<string, string> = {
-  coordenador_geral_nacional: "Coordenadores Gerais Nacionais",
-  coordenador_local: "Coordenadores Locais",
-  coordenador_funcao: "Coordenadores por Função",
-  responsavel: "Responsáveis",
-  responsavel_equipe: "Responsáveis de Equipe",
-  equipe: "Equipe",
-  padre: "Padres",
-  consagrada: "Consagradas",
-};
+interface CategoryOption {
+  value: string;
+  label: string;
+}
 
-const categoryOrder = [
-  "coordenador_geral_nacional",
-  "coordenador_local",
-  "coordenador_funcao",
-  "responsavel",
-  "responsavel_equipe",
-  "equipe",
+const DEFAULT_CATEGORIES: CategoryOption[] = [
+  { value: "coordenador_geral_nacional", label: "Coordenador Geral Nacional" },
+  { value: "coordenador_local", label: "Coordenador Local" },
+  { value: "coordenador_funcao", label: "Coordenador por Função" },
+  { value: "responsavel", label: "Responsável" },
+  { value: "responsavel_equipe", label: "Responsável de Equipe" },
+  { value: "equipe", label: "Equipe" },
+  { value: "padre", label: "Padre" },
+  { value: "consagrada", label: "Consagrada" },
 ];
 
-const MemberCard = ({ position, profile }: { position: OrgPosition; profile?: Profile }) => {
+const SPECIAL_CATEGORIES = ["padre", "consagrada"];
+
+const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; profile?: Profile; catLabel: string }) => {
   const name = profile?.full_name || position.title;
   const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
       <Avatar className="h-11 w-11 border-2 border-primary/20">
-        {profile?.avatar_url ? (
-          <AvatarImage src={profile.avatar_url} alt={name} />
-        ) : null}
+        {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={name} /> : null}
         <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{name}</p>
-        {position.function_name && (
-          <p className="text-[10px] text-muted-foreground">{position.function_name}</p>
-        )}
-        <p className="text-[10px] text-muted-foreground">{categoryLabels[position.category] || position.category}</p>
+        {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
+        <p className="text-[10px] text-muted-foreground">{catLabel}</p>
       </div>
       {profile?.phone && (
         <a href={`tel:${profile.phone}`} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
@@ -72,19 +66,10 @@ const MemberCard = ({ position, profile }: { position: OrgPosition; profile?: Pr
   );
 };
 
-const CategorySection = ({
-  label,
-  positions,
-  profiles,
-  defaultOpen = true,
-}: {
-  label: string;
-  positions: OrgPosition[];
-  profiles: Map<string, Profile>;
-  defaultOpen?: boolean;
+const CategorySection = ({ label, positions, profiles, catLabels, defaultOpen = true }: {
+  label: string; positions: OrgPosition[]; profiles: Map<string, Profile>; catLabels: Record<string, string>; defaultOpen?: boolean;
 }) => {
   const [open, setOpen] = useState(defaultOpen);
-
   if (positions.length === 0) return null;
 
   return (
@@ -97,7 +82,7 @@ const CategorySection = ({
       {open && (
         <div className="space-y-2 ml-2">
           {positions.map(p => (
-            <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
+            <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
           ))}
         </div>
       )}
@@ -110,17 +95,25 @@ const Organograma = () => {
   const { signOut } = useAuth();
   const [positions, setPositions] = useState<OrgPosition[]>([]);
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data: posData } = await supabase
-        .from("org_positions")
-        .select("*")
-        .order("sort_order", { ascending: true });
+    const fetchAll = async () => {
+      const [posRes, catRes] = await Promise.all([
+        supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
+        supabase.from("app_settings").select("setting_value").eq("setting_key", "org_categories").maybeSingle(),
+      ]);
 
-      if (posData) {
-        const typed = posData as any[] as OrgPosition[];
+      if (catRes.data?.setting_value) {
+        try {
+          const parsed = JSON.parse(catRes.data.setting_value);
+          if (Array.isArray(parsed) && parsed.length > 0) setCategories(parsed);
+        } catch { /* keep defaults */ }
+      }
+
+      if (posRes.data) {
+        const typed = posRes.data as any[] as OrgPosition[];
         setPositions(typed);
 
         const profileIds = typed.filter(p => p.profile_id).map(p => p.profile_id!);
@@ -138,12 +131,16 @@ const Organograma = () => {
       }
       setLoading(false);
     };
-    fetch();
+    fetchAll();
   }, []);
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
-  const mainPositions = positions.filter(p => !["padre", "consagrada"].includes(p.category));
+  const catLabels: Record<string, string> = {};
+  categories.forEach(c => { catLabels[c.value] = c.label; });
+
+  const mainCategoryOrder = categories.filter(c => !SPECIAL_CATEGORIES.includes(c.value)).map(c => c.value);
+  const mainPositions = positions.filter(p => !SPECIAL_CATEGORIES.includes(p.category));
   const padres = positions.filter(p => p.category === "padre");
   const consagradas = positions.filter(p => p.category === "consagrada");
 
@@ -160,19 +157,18 @@ const Organograma = () => {
           <p className="text-center text-muted-foreground py-12">Organograma ainda não configurado.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main hierarchy */}
             <div className="lg:col-span-2 space-y-5">
-              {categoryOrder.map(cat => (
+              {mainCategoryOrder.map(cat => (
                 <CategorySection
                   key={cat}
-                  label={categoryLabels[cat]}
+                  label={catLabels[cat] || cat}
                   positions={mainPositions.filter(p => p.category === cat)}
                   profiles={profiles}
+                  catLabels={catLabels}
                 />
               ))}
             </div>
 
-            {/* Padres & Consagradas sidebar */}
             {(padres.length > 0 || consagradas.length > 0) && (
               <div className="space-y-5">
                 <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
@@ -184,7 +180,7 @@ const Organograma = () => {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">Padres</p>
                       {padres.map(p => (
-                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
+                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
                       ))}
                     </div>
                   )}
@@ -192,7 +188,7 @@ const Organograma = () => {
                     <div className="space-y-2">
                       <p className="text-xs font-semibold text-muted-foreground">Consagradas</p>
                       {consagradas.map(p => (
-                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
+                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
                       ))}
                     </div>
                   )}
