@@ -71,8 +71,10 @@ const ManageAppSettings = () => {
     for (const u of updates) {
       const { error } = await supabase
         .from("app_settings")
-        .update({ setting_value: u.setting_value, updated_by: u.updated_by, updated_at: u.updated_at } as any)
-        .eq("setting_key", u.setting_key);
+        .upsert(
+          { setting_key: u.setting_key, setting_value: u.setting_value, updated_by: u.updated_by, updated_at: u.updated_at } as any,
+          { onConflict: "setting_key" }
+        );
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
         setSaving(false);
