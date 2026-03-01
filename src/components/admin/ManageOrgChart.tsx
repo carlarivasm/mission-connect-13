@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Users, Save, Pencil, X, Check } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Trash2, Users, Pencil, X, Check, Tag } from "lucide-react";
 
 interface OrgPosition {
   id: string;
@@ -23,7 +24,12 @@ interface ProfileOption {
   full_name: string;
 }
 
-const categoryOptions = [
+interface CategoryOption {
+  value: string;
+  label: string;
+}
+
+const DEFAULT_CATEGORIES: CategoryOption[] = [
   { value: "coordenador_geral_nacional", label: "Coordenador Geral Nacional" },
   { value: "coordenador_local", label: "Coordenador Local" },
   { value: "coordenador_funcao", label: "Coordenador por Função" },
@@ -34,11 +40,14 @@ const categoryOptions = [
   { value: "consagrada", label: "Consagrada" },
 ];
 
+const SETTINGS_KEY = "org_categories";
+
 const ManageOrgChart = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [positions, setPositions] = useState<OrgPosition[]>([]);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
 
   // New position form
@@ -49,17 +58,66 @@ const ManageOrgChart = () => {
   const [sortOrder, setSortOrder] = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // Category management
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [newCatValue, setNewCatValue] = useState("");
+  const [newCatLabel, setNewCatLabel] = useState("");
+
   const fetchData = async () => {
-    const [posRes, profRes] = await Promise.all([
+    const [posRes, profRes, catRes] = await Promise.all([
       supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
       supabase.from("profiles").select("id, full_name").order("full_name"),
+      supabase.from("app_settings").select("setting_value").eq("setting_key", SETTINGS_KEY).maybeSingle(),
     ]);
     if (posRes.data) setPositions(posRes.data as any[]);
     if (profRes.data) setProfiles(profRes.data as any[]);
+    if (catRes.data?.setting_value) {
+      try {
+        const parsed = JSON.parse(catRes.data.setting_value);
+        if (Array.isArray(parsed) && parsed.length > 0) setCategoryOptions(parsed);
+      } catch { /* keep defaults */ }
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const saveCategories = async (cats: CategoryOption[]) => {
+    setCategoryOptions(cats);
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert(
+        { setting_key: SETTINGS_KEY, setting_value: JSON.stringify(cats), updated_by: user?.id } as any,
+        { onConflict: "setting_key" }
+      );
+    if (error) {
+      toast({ title: "Erro ao salvar categorias", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCatLabel.trim()) return;
+    const value = newCatValue.trim() || newCatLabel.trim().toLowerCase().replace(/\s+/g, "_").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (categoryOptions.some(c => c.value === value)) {
+      toast({ title: "Categoria já existe", variant: "destructive" });
+      return;
+    }
+    const updated = [...categoryOptions, { value, label: newCatLabel.trim() }];
+    await saveCategories(updated);
+    setNewCatValue("");
+    setNewCatLabel("");
+    toast({ title: "Categoria adicionada!" });
+  };
+
+  const handleDeleteCategory = async (value: string) => {
+    const inUse = positions.some(p => p.category === value);
+    if (inUse) {
+      toast({ title: "Categoria em uso", description: "Remova as posições desta categoria antes.", variant: "destructive" });
+      return;
+    }
+    await saveCategories(categoryOptions.filter(c => c.value !== value));
+    toast({ title: "Categoria removida!" });
+  };
 
   const handleAdd = async () => {
     if (!title.trim()) {
@@ -134,6 +192,55 @@ const ManageOrgChart = () => {
         <h3 className="font-bold text-foreground">Organograma das Missões</h3>
       </div>
 
+      {/* Category Manager */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowCatManager(!showCatManager)} className="flex items-center gap-2 w-full text-left">
+          <Tag size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Gerenciar Categorias</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showCatManager ? "▲" : "▼"}</span>
+        </button>
+        {showCatManager && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              {categoryOptions.map(c => (
+                <div key={c.value} className="flex items-center gap-2 p-2 bg-background rounded-lg border border-border">
+                  <span className="flex-1 text-xs font-medium text-foreground">{c.label}</span>
+                  <span className="text-[10px] text-muted-foreground">{c.value}</span>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive">
+                        <Trash2 size={12} />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remover categoria?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          A categoria "{c.label}" será removida. Posições que usam esta categoria devem ser alteradas antes.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteCategory(c.value)}>Confirmar</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 space-y-1">
+                <Label className="text-[10px]">Nome da Categoria</Label>
+                <Input value={newCatLabel} onChange={e => setNewCatLabel(e.target.value)} placeholder="Ex: Coordenador de Louvor" className="h-8 text-xs" />
+              </div>
+              <Button size="sm" onClick={handleAddCategory} className="h-8 text-xs gap-1">
+                <Plus size={12} /> Adicionar
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Add form */}
       <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
         <h4 className="text-sm font-semibold text-foreground">Nova Posição</h4>
@@ -203,17 +310,11 @@ const ManageOrgChart = () => {
 };
 
 const InlineEditRow = ({
-  pos,
-  profiles,
-  categoryOptions,
-  getCategoryLabel,
-  getProfileName,
-  onUpdate,
-  onDelete,
+  pos, profiles, categoryOptions, getCategoryLabel, getProfileName, onUpdate, onDelete,
 }: {
   pos: OrgPosition;
   profiles: ProfileOption[];
-  categoryOptions: { value: string; label: string }[];
+  categoryOptions: CategoryOption[];
   getCategoryLabel: (cat: string) => string;
   getProfileName: (pid: string | null) => string;
   onUpdate: (pos: OrgPosition, field: string, value: any) => Promise<void>;
@@ -260,9 +361,23 @@ const InlineEditRow = ({
         <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="text-primary h-8 w-8">
           <Pencil size={14} />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(pos.id)} className="text-destructive h-8 w-8">
-          <Trash2 size={14} />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-destructive h-8 w-8">
+              <Trash2 size={14} />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover posição?</AlertDialogTitle>
+              <AlertDialogDescription>"{pos.title}" será removido do organograma.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onDelete(pos.id)}>Confirmar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }

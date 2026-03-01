@@ -278,11 +278,27 @@ const ManageMissionaries = () => {
               <span className={`text-xs px-2 py-0.5 rounded-full ${m.used ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
                 {m.used ? "Cadastrado" : "Pendente"}
               </span>
-              {!m.used && (
-                <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
-                  <Trash2 size={16} />
-                </button>
-              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                    <Trash2 size={16} />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remover missionário?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {m.used
+                        ? `${m.full_name} já se cadastrou. Ao remover, ele não poderá se recadastrar sem nova autorização.`
+                        : `${m.full_name} será removido da lista de autorizados.`}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(m.id)}>Confirmar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           ))
         )}

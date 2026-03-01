@@ -259,48 +259,61 @@ const Mapa = () => {
                       </div>
                     </div>
 
-                    {/* User input fields */}
-                    <div className="space-y-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Seu endereço</label>
-                        <Textarea
-                          value={note.user_address || ""}
-                          onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
-                          placeholder="Informe seu endereço..."
-                          rows={1}
-                          className="text-xs"
-                        />
+                    {/* User input fields - only for "em andamento" */}
+                    {loc.status === "em andamento" ? (
+                      <div className="space-y-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Seu endereço</label>
+                          <Textarea
+                            value={note.user_address || ""}
+                            onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
+                            placeholder="Informe seu endereço..."
+                            rows={1}
+                            className="text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
+                          <Textarea
+                            value={note.needs}
+                            onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
+                            placeholder="Descreva as necessidades deste local..."
+                            rows={2}
+                            className="text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Observações</label>
+                          <Textarea
+                            value={note.notes}
+                            onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
+                            placeholder="Anotações adicionais..."
+                            rows={2}
+                            className="text-xs"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => saveNote(loc.id)}
+                          disabled={savingId === loc.id}
+                          className="gap-1 gradient-mission text-primary-foreground"
+                        >
+                          <Save size={12} />
+                          {savingId === loc.id ? "Salvando..." : "Salvar"}
+                        </Button>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                        <Textarea
-                          value={note.needs}
-                          onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
-                          placeholder="Descreva as necessidades deste local..."
-                          rows={2}
-                          className="text-xs"
-                        />
+                    ) : loc.google_maps_url ? (
+                      <div className="pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={loc.google_maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
+                        >
+                          <Navigation size={14} /> Abrir direção no Google Maps
+                        </a>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Observações</label>
-                        <Textarea
-                          value={note.notes}
-                          onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
-                          placeholder="Anotações adicionais..."
-                          rows={2}
-                          className="text-xs"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => saveNote(loc.id)}
-                        disabled={savingId === loc.id}
-                        className="gap-1 gradient-mission text-primary-foreground"
-                      >
-                        <Save size={12} />
-                        {savingId === loc.id ? "Salvando..." : "Salvar"}
-                      </Button>
-                    </div>
+                    ) : null}
                   </div>
                 );
               })}
