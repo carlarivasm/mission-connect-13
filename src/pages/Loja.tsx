@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
-import { ShoppingBag, MessageCircle } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { ShoppingBag, ShoppingCart, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -41,6 +43,7 @@ const categoryEmojis: Record<string, string> = {
 const Loja = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { totalItems } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -73,6 +76,19 @@ const Loja = () => {
       <AppHeader title="Loja Missionária" onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-5">
+        {/* Cart button */}
+        <button
+          onClick={() => navigate("/checkout")}
+          className="fixed bottom-24 right-4 z-40 gradient-mission text-primary-foreground p-3.5 rounded-full shadow-elevated transition-transform active:scale-95"
+        >
+          <ShoppingCart size={24} />
+          {totalItems > 0 && (
+            <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {totalItems}
+            </span>
+          )}
+        </button>
+
         {/* Category filters */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           <button
@@ -126,6 +142,29 @@ const Loja = () => {
 
 const ProductCard = ({ product }: { product: Product }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(
+    product.sizes.length > 0 ? product.sizes[0] : undefined
+  );
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(
+    product.colors.length > 0 ? product.colors[0] : undefined
+  );
+  const { addItem } = useCart();
+  const { toast } = useToast();
+
+  const handleAddToCart = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      category: product.category,
+      selectedSize,
+      selectedColor,
+    });
+    toast({ title: "Adicionado ao carrinho!", description: product.name });
+    setShowDetails(false);
+  };
 
   return (
     <>
@@ -148,9 +187,30 @@ const ProductCard = ({ product }: { product: Product }) => {
         <div className="p-3">
           <p className="font-semibold text-foreground text-sm truncate">{product.name}</p>
           <p className="text-xs text-muted-foreground">{categoryLabels[product.category] || product.category}</p>
-          <p className="text-base font-bold text-primary mt-1">
-            R$ {product.price.toFixed(2)}
-          </p>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-base font-bold text-primary">
+              R$ {product.price.toFixed(2)}
+            </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Quick add without size/color selection
+                addItem({
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  image_url: product.image_url,
+                  category: product.category,
+                  selectedSize: product.sizes.length > 0 ? product.sizes[0] : undefined,
+                  selectedColor: product.colors.length > 0 ? product.colors[0] : undefined,
+                });
+                toast({ title: "Adicionado!", description: product.name });
+              }}
+              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
         </div>
       </button>
 
@@ -185,10 +245,20 @@ const ProductCard = ({ product }: { product: Product }) => {
 
               {product.sizes.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Tamanhos</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Tamanho</p>
                   <div className="flex gap-1.5 flex-wrap">
                     {product.sizes.map((s) => (
-                      <span key={s} className="px-2.5 py-1 rounded-lg bg-muted text-xs font-medium text-foreground">{s}</span>
+                      <button
+                        key={s}
+                        onClick={() => setSelectedSize(s)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          selectedSize === s
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {s}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -196,29 +266,33 @@ const ProductCard = ({ product }: { product: Product }) => {
 
               {product.colors.length > 0 && (
                 <div className="mt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Cores</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Cor</p>
                   <div className="flex gap-1.5 flex-wrap">
                     {product.colors.map((c) => (
-                      <span key={c} className="px-2.5 py-1 rounded-lg bg-muted text-xs font-medium text-foreground">{c}</span>
+                      <button
+                        key={c}
+                        onClick={() => setSelectedColor(c)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          selectedColor === c
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {c}
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
 
-            {product.contact_info && (
-              <a
-                href={product.contact_info.startsWith("http") ? product.contact_info : `https://wa.me/${product.contact_info.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                <Button className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2">
-                  <MessageCircle size={20} />
-                  Fazer Pedido
-                </Button>
-              </a>
-            )}
+            <Button
+              onClick={() => handleAddToCart()}
+              className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
+            >
+              <ShoppingCart size={20} />
+              Adicionar ao Carrinho
+            </Button>
 
             <button
               onClick={() => setShowDetails(false)}

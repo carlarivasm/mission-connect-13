@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, ShoppingBag, Pencil, ImagePlus } from "lucide-react";
+import { Trash2, ShoppingBag, Pencil, ImagePlus, CreditCard, Save, Upload } from "lucide-react";
 
 interface Product {
   id: string;
@@ -31,6 +31,109 @@ const categories = [
   { value: "casaco", label: "Casaco" },
   { value: "outros", label: "Outros" },
 ];
+
+const PaymentSettings = () => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [whatsapp, setWhatsapp] = useState("");
+  const [paymentLink, setPaymentLink] = useState("");
+  const [qrcodeUrl, setQrcodeUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url"])
+      .then(({ data }) => {
+        if (data) {
+          data.forEach((d) => {
+            if (d.setting_key === "store_whatsapp") setWhatsapp(d.setting_value);
+            if (d.setting_key === "store_payment_link") setPaymentLink(d.setting_value);
+            if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
+          });
+        }
+      });
+  }, []);
+
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `qrcode-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(fileName, file);
+    if (error) {
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
+    } else {
+      const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(fileName);
+      setQrcodeUrl(urlData.publicUrl);
+      toast({ title: "QR Code enviado!" });
+    }
+    setUploading(false);
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    const entries = [
+      { setting_key: "store_whatsapp", setting_value: whatsapp.trim() },
+      { setting_key: "store_payment_link", setting_value: paymentLink.trim() },
+      { setting_key: "store_qrcode_url", setting_value: qrcodeUrl.trim() },
+    ];
+    for (const entry of entries) {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+          { ...entry, updated_by: user.id, updated_at: new Date().toISOString() } as any,
+          { onConflict: "setting_key" }
+        );
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    }
+    toast({ title: "Configurações de pagamento salvas!" });
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
+      <h3 className="font-semibold text-foreground flex items-center gap-2">
+        <CreditCard size={18} /> Configurações de Pagamento
+      </h3>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label>WhatsApp para receber pedidos</Label>
+          <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="5511999999999" />
+          <p className="text-[10px] text-muted-foreground">Número com DDD e código do país (ex: 5511999999999)</p>
+        </div>
+        <div className="space-y-1">
+          <Label>Link de Pagamento (Pix, etc.)</Label>
+          <Input value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} placeholder="https://..." />
+        </div>
+        <div className="space-y-1">
+          <Label>QR Code de Pagamento</Label>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
+              <Upload size={16} />
+              {uploading ? "Enviando..." : "Upload QR Code"}
+              <input type="file" accept="image/*" onChange={handleQrUpload} className="hidden" disabled={uploading} />
+            </label>
+            {qrcodeUrl && (
+              <img src={qrcodeUrl} alt="QR Code" className="h-16 w-16 rounded-lg object-contain bg-muted p-1" />
+            )}
+          </div>
+        </div>
+      </div>
+      <Button onClick={handleSave} disabled={saving} className="gradient-mission text-primary-foreground gap-2">
+        <Save size={16} /> {saving ? "Salvando..." : "Salvar Pagamento"}
+      </Button>
+    </div>
+  );
+};
 
 const ManageStore = () => {
   const { toast } = useToast();
@@ -73,14 +176,9 @@ const ManageStore = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-
     const ext = file.name.split(".").pop();
     const fileName = `${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("product-images")
-      .upload(fileName, file);
-
+    const { error: uploadError } = await supabase.storage.from("product-images").upload(fileName, file);
     if (uploadError) {
       toast({ title: "Erro no upload", description: uploadError.message, variant: "destructive" });
     } else {
@@ -94,7 +192,6 @@ const ManageStore = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-
     const payload = {
       name: name.trim(),
       description: description.trim() || null,
@@ -107,7 +204,6 @@ const ManageStore = () => {
       image_url: imageUrl || null,
       created_by: user?.id,
     };
-
     if (editingId) {
       const { error } = await supabase.from("store_products").update(payload).eq("id", editingId);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -143,6 +239,8 @@ const ManageStore = () => {
 
   return (
     <div className="space-y-6">
+      <PaymentSettings />
+
       <form onSubmit={handleSubmit} className="bg-card rounded-xl p-4 shadow-card space-y-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <ShoppingBag size={18} /> {editingId ? "Editar Produto" : "Novo Produto"}
