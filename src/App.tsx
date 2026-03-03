@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppSettingsProvider } from "@/contexts/AppSettingsContext";
+import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -14,6 +15,7 @@ import Galeria from "./pages/Galeria";
 import Mapa from "./pages/Mapa";
 import Admin from "./pages/Admin";
 import Loja from "./pages/Loja";
+import Checkout from "./pages/Checkout";
 import Familia from "./pages/Familia";
 import Pesquisas from "./pages/Pesquisas";
 import Perfil from "./pages/Perfil";
@@ -30,6 +32,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppSettingsProvider>
+            <CartProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -39,12 +42,14 @@ const App = () => (
               <Route path="/mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/loja" element={<ProtectedRoute><Loja /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
               <Route path="/familia" element={<ProtectedRoute><Familia /></ProtectedRoute>} />
               <Route path="/pesquisas" element={<ProtectedRoute><Pesquisas /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
               <Route path="/organograma" element={<ProtectedRoute><Organograma /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </CartProvider>
           </AppSettingsProvider>
         </AuthProvider>
       </BrowserRouter>
