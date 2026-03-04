@@ -6,6 +6,8 @@ import { useCart } from "@/contexts/CartContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle } from "lucide-react";
 
@@ -29,6 +31,7 @@ const Checkout = () => {
   const [qrcodeUrl, setQrcodeUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [observation, setObservation] = useState("");
 
   useEffect(() => {
     supabase
@@ -71,16 +74,59 @@ const Checkout = () => {
 
     lines.push(``);
     lines.push(`💰 *Total: R$ ${totalPrice.toFixed(2)}*`);
+
+    if (observation.trim()) {
+      lines.push(``);
+      lines.push(`📝 *Observação:* ${observation.trim()}`);
+    }
+
     lines.push(``);
     lines.push(`✅ Pagamento confirmado pelo cliente.`);
 
     return lines.join("\n");
   };
 
-  const handleConfirmPayment = () => {
+  const saveOrderToDb = async () => {
+    if (!user) return;
+
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        user_name: user.user_metadata?.full_name || user.email || "",
+        user_email: user.email || "",
+        observation: observation.trim() || null,
+        total_price: totalPrice,
+        status: "confirmed",
+      } as any)
+      .select("id")
+      .single();
+
+    if (orderErr || !order) return;
+
+    const orderItems = items.map((item) => ({
+      order_id: order.id,
+      product_id: item.id,
+      product_name: item.name,
+      category: item.category,
+      price: item.price,
+      quantity: item.quantity,
+      selected_size: item.selectedSize || null,
+      selected_color: item.selectedColor || null,
+      image_url: item.image_url || null,
+    }));
+
+    await supabase.from("order_items").insert(orderItems as any);
+  };
+
+  const handleConfirmPayment = async () => {
     if (items.length === 0) return;
     setSending(true);
 
+    // Save to database
+    await saveOrderToDb();
+
+    // Send to WhatsApp
     const message = buildOrderMessage();
     const encoded = encodeURIComponent(message);
     const cleanNumber = whatsapp.replace(/\D/g, "");
@@ -182,6 +228,20 @@ const Checkout = () => {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Observation */}
+        <div className="bg-card rounded-xl p-4 shadow-card space-y-2">
+          <Label htmlFor="observation" className="text-sm font-bold text-foreground uppercase tracking-wide">
+            Observação
+          </Label>
+          <Textarea
+            id="observation"
+            value={observation}
+            onChange={(e) => setObservation(e.target.value)}
+            placeholder="Número do quarto, pedido especial, etc."
+            rows={2}
+          />
         </div>
 
         {/* Total */}

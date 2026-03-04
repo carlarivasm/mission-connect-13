@@ -187,6 +187,12 @@ const ProductCard = ({ product }: { product: Product }) => {
         <div className="p-3">
           <p className="font-semibold text-foreground text-sm truncate">{product.name}</p>
           <p className="text-xs text-muted-foreground">{categoryLabels[product.category] || product.category}</p>
+          {product.sizes.length > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">Tam: {product.sizes.join(", ")}</p>
+          )}
+          {product.colors.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">Cor: {product.colors.join(", ")}</p>
+          )}
           <div className="flex items-center justify-between mt-1">
             <p className="text-base font-bold text-primary">
               R$ {product.price.toFixed(2)}

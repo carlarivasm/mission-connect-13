@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, GraduationCap, Settings, FileText, Network } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, GraduationCap, Settings, FileText, Network, ShoppingCart, Megaphone } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
@@ -16,6 +16,8 @@ import ManageFormations from "@/components/admin/ManageFormations";
 import ManageAppSettings from "@/components/admin/ManageAppSettings";
 import ManageLocationNotes from "@/components/admin/ManageLocationNotes";
 import ManageOrgChart from "@/components/admin/ManageOrgChart";
+import ManageOrders from "@/components/admin/ManageOrders";
+import AdminBroadcast from "@/components/admin/AdminBroadcast";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -77,12 +79,16 @@ const Admin = () => {
               <ShoppingBag size={16} />
               <span>Loja</span>
             </TabsTrigger>
+            <TabsTrigger value="orders" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <ShoppingCart size={16} />
+              <span>Pedidos</span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full grid grid-cols-4 mb-2">
             <TabsTrigger value="surveys" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <ClipboardList size={16} />
               <span>Pesquisas</span>
             </TabsTrigger>
-          </TabsList>
-          <TabsList className="w-full grid grid-cols-3 mb-4">
             <TabsTrigger value="formations" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <GraduationCap size={16} />
               <span>Formação</span>
@@ -91,6 +97,12 @@ const Admin = () => {
               <Network size={16} />
               <span>Organograma</span>
             </TabsTrigger>
+            <TabsTrigger value="broadcast" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <Megaphone size={16} />
+              <span>Mensagens</span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full grid grid-cols-1 mb-4">
             <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Settings size={16} />
               <span>Configurações</span>
@@ -104,9 +116,11 @@ const Admin = () => {
           <TabsContent value="locations"><ManageLocations /></TabsContent>
           <TabsContent value="location-notes"><ManageLocationNotes /></TabsContent>
           <TabsContent value="store"><ManageStore /></TabsContent>
+          <TabsContent value="orders"><ManageOrders /></TabsContent>
           <TabsContent value="surveys"><ManageSurveys /></TabsContent>
           <TabsContent value="formations"><ManageFormations /></TabsContent>
           <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
+          <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
         </Tabs>
       </main>

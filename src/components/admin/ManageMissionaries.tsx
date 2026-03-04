@@ -5,7 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff } from "lucide-react";
+import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface AuthorizedMissionary {
@@ -33,6 +33,7 @@ const ManageMissionaries = () => {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [togglingRole, setTogglingRole] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMissionaries = async () => {
@@ -99,6 +100,36 @@ const ManageMissionaries = () => {
     }
   };
 
+  const handleDeleteUser = async (profileId: string, profileEmail: string) => {
+    setActionLoading(profileId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "delete_user", userId: profileId, email: profileEmail },
+      });
+      if (error) throw error;
+      toast({ title: "Usuário excluído!", description: "O usuário foi removido e pode ser reincluído." });
+      fetchProfiles();
+      fetchMissionaries();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+    setActionLoading(null);
+  };
+
+  const handleResendConfirmation = async (profileEmail: string) => {
+    setActionLoading(profileEmail);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "resend_confirmation", email: profileEmail },
+      });
+      if (error) throw error;
+      toast({ title: "E-mail reenviado!", description: `Confirmação reenviada para ${profileEmail}.` });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+    setActionLoading(null);
+  };
+
   const handleToggleAdmin = async (profileId: string, currentlyAdmin: boolean) => {
     setTogglingRole(profileId);
     try {
@@ -143,7 +174,6 @@ const ManageMissionaries = () => {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
 
-      // Try to find name and email columns (flexible header matching)
       const findCol = (row: Record<string, string>, patterns: string[]) => {
         const key = Object.keys(row).find((k) =>
           patterns.some((p) => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(p))
@@ -184,7 +214,6 @@ const ManageMissionaries = () => {
         return;
       }
 
-      // Filter out already existing emails
       const existingEmails = missionaries.map((m) => m.email);
       const newEntries = entries.filter((e) => !existingEmails.includes(e.email));
       const skipped = entries.length - newEntries.length;
@@ -304,58 +333,99 @@ const ManageMissionaries = () => {
         )}
       </div>
 
-      {/* Gerenciar Papéis */}
+      {/* Gerenciar Usuários */}
       <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <ShieldCheck size={18} /> Gerenciar Administradores
+          <ShieldCheck size={18} /> Gerenciar Usuários
         </h3>
         <p className="text-xs text-muted-foreground">
-          Promova ou remova o papel de administrador dos usuários cadastrados.
+          Gerencie papéis, exclua usuários ou reenvie e-mails de confirmação.
         </p>
         <div className="space-y-2">
           {profiles.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário cadastrado.</p>
           ) : (
             profiles.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{p.email}</p>
+              <div key={p.id} className="flex flex-col gap-2 p-3 bg-background rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
+                    <p className="text-xs text-muted-foreground">{p.email}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {p.is_admin ? "Admin" : "Missionário"}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  {p.is_admin ? "Admin" : "Missionário"}
-                </span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant={p.is_admin ? "outline" : "default"}
-                      disabled={togglingRole === p.id}
-                      className="text-xs gap-1"
-                    >
-                      {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
-                      {p.is_admin ? "Remover Admin" : "Tornar Admin"}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {p.is_admin ? "Remover administrador?" : "Tornar administrador?"}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {p.is_admin
-                          ? `${p.full_name} perderá acesso ao painel administrativo e voltará a ser missionário.`
-                          : `${p.full_name} terá acesso total ao painel administrativo do aplicativo.`}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleToggleAdmin(p.id, p.is_admin)}>
-                        Confirmar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex gap-1 flex-wrap">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant={p.is_admin ? "outline" : "default"}
+                        disabled={togglingRole === p.id}
+                        className="text-xs gap-1"
+                      >
+                        {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+                        {p.is_admin ? "Remover Admin" : "Tornar Admin"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {p.is_admin ? "Remover administrador?" : "Tornar administrador?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {p.is_admin
+                            ? `${p.full_name} perderá acesso ao painel administrativo.`
+                            : `${p.full_name} terá acesso total ao painel administrativo.`}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleToggleAdmin(p.id, p.is_admin)}>
+                          Confirmar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1"
+                    disabled={actionLoading === p.email}
+                    onClick={() => handleResendConfirmation(p.email)}
+                  >
+                    <RefreshCw size={14} /> Reenviar E-mail
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs gap-1"
+                        disabled={actionLoading === p.id}
+                      >
+                        <UserX size={14} /> Excluir
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {p.full_name} será removido do sistema. Ele poderá ser reincluído depois se o e-mail estiver na lista de autorizados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteUser(p.id, p.email)}>
+                          Confirmar Exclusão
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             ))
           )}

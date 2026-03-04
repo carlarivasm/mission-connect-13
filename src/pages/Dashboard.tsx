@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import QuickAction from "@/components/QuickAction";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import NotificationPopup from "@/components/NotificationPopup";
 
 interface EventData {
   id: string;
@@ -101,6 +102,7 @@ const Dashboard = () => {
         </section>
       </main>
 
+      <NotificationPopup />
       <BottomNav />
     </div>
   );
