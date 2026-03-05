@@ -17,7 +17,6 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const now = new Date();
-    // Look ahead 24 hours for events
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const todayStr = now.toISOString().split("T")[0];
     const tomorrowStr = tomorrow.toISOString().split("T")[0];
@@ -35,18 +34,18 @@ serve(async (req) => {
       });
     }
 
-    // Reminder intervals in minutes
+    // Reminder intervals with corresponding profile column
     const reminderIntervals = [
-      { minutes: 24 * 60, label: "amanhã" },
-      { minutes: 30, label: "em 30 minutos" },
-      { minutes: 10, label: "em 10 minutos" },
-      { minutes: 5, label: "em 5 minutos" },
+      { minutes: 24 * 60, label: "amanhã", column: "notify_reminder_24h" },
+      { minutes: 30, label: "em 30 minutos", column: "notify_reminder_30min" },
+      { minutes: 10, label: "em 10 minutos", column: "notify_reminder_10min" },
+      { minutes: 5, label: "em 5 minutos", column: "notify_reminder_5min" },
     ];
 
-    // Get all users who have reminders enabled
+    // Get all users who have reminders enabled globally
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, notify_reminders")
+      .select("id, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min")
       .eq("notify_reminders", true);
 
     if (profilesError) throw profilesError;
@@ -64,7 +63,6 @@ serve(async (req) => {
       const diffMinutes = diffMs / (1000 * 60);
 
       for (const interval of reminderIntervals) {
-        // Check if we're within a window for this reminder (±2 minutes tolerance for cron)
         const tolerance = 2;
         if (diffMinutes >= interval.minutes - tolerance && diffMinutes <= interval.minutes + tolerance) {
           const timeStr = event.event_time ? ` às ${event.event_time.slice(0, 5)}` : "";
@@ -72,10 +70,9 @@ serve(async (req) => {
             day: "2-digit",
             month: "short",
           });
-          
+
           const reminderKey = `${event.id}_${interval.minutes}`;
 
-          // Check existing reminders for this specific interval
           const { data: existing } = await supabase
             .from("notifications")
             .select("user_id")
@@ -85,15 +82,17 @@ serve(async (req) => {
           const alreadyNotified = new Set((existing || []).map((n: any) => n.user_id));
 
           for (const profile of profiles) {
-            if (!alreadyNotified.has(profile.id)) {
-              notificationsToInsert.push({
-                user_id: profile.id,
-                title: "📅 Lembrete de evento",
-                message: `"${event.title}" acontece ${interval.label}${timeStr} (${dateStr}).`,
-                type: "event_reminder",
-                data: { event_id: event.id, reminder_key: reminderKey },
-              });
-            }
+            // Check per-interval preference
+            if (!(profile as any)[interval.column]) continue;
+            if (alreadyNotified.has(profile.id)) continue;
+
+            notificationsToInsert.push({
+              user_id: profile.id,
+              title: "📅 Lembrete de evento",
+              message: `"${event.title}" acontece ${interval.label}${timeStr} (${dateStr}).`,
+              type: "event_reminder",
+              data: { event_id: event.id, reminder_key: reminderKey },
+            });
           }
         }
       }
@@ -107,9 +106,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({
-        message: `Sent ${notificationsToInsert.length} reminders`,
-      }),
+      JSON.stringify({ message: `Sent ${notificationsToInsert.length} reminders` }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

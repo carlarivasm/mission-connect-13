@@ -30,12 +30,16 @@ const Perfil = () => {
   const [notifyEvents, setNotifyEvents] = useState(true);
   const [notifyLocations, setNotifyLocations] = useState(true);
   const [notifyReminders, setNotifyReminders] = useState(true);
+  const [notifyReminder24h, setNotifyReminder24h] = useState(true);
+  const [notifyReminder30min, setNotifyReminder30min] = useState(true);
+  const [notifyReminder10min, setNotifyReminder10min] = useState(true);
+  const [notifyReminder5min, setNotifyReminder5min] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders")
+      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -48,6 +52,10 @@ const Perfil = () => {
           setNotifyEvents(d.notify_events ?? true);
           setNotifyLocations(d.notify_locations ?? true);
           setNotifyReminders(d.notify_reminders ?? true);
+          setNotifyReminder24h(d.notify_reminder_24h ?? true);
+          setNotifyReminder30min(d.notify_reminder_30min ?? true);
+          setNotifyReminder10min(d.notify_reminder_10min ?? true);
+          setNotifyReminder5min(d.notify_reminder_5min ?? true);
         }
         setLoading(false);
       });
@@ -96,6 +104,10 @@ const Perfil = () => {
         notify_events: notifyEvents,
         notify_locations: notifyLocations,
         notify_reminders: notifyReminders,
+        notify_reminder_24h: notifyReminder24h,
+        notify_reminder_30min: notifyReminder30min,
+        notify_reminder_10min: notifyReminder10min,
+        notify_reminder_5min: notifyReminder5min,
       } as any)
       .eq("id", user.id);
 
@@ -196,10 +208,30 @@ const Perfil = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">Lembretes de eventos</p>
-                    <p className="text-xs text-muted-foreground">Lembrete 24h antes de cada evento</p>
+                    <p className="text-xs text-muted-foreground">Ative/desative cada intervalo abaixo</p>
                   </div>
                   <Switch checked={notifyReminders} onCheckedChange={setNotifyReminders} />
                 </div>
+                {notifyReminders && (
+                  <div className="ml-4 space-y-3 border-l-2 border-muted pl-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-foreground">24 horas antes</p>
+                      <Switch checked={notifyReminder24h} onCheckedChange={setNotifyReminder24h} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-foreground">30 minutos antes</p>
+                      <Switch checked={notifyReminder30min} onCheckedChange={setNotifyReminder30min} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-foreground">10 minutos antes</p>
+                      <Switch checked={notifyReminder10min} onCheckedChange={setNotifyReminder10min} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-foreground">5 minutos antes</p>
+                      <Switch checked={notifyReminder5min} onCheckedChange={setNotifyReminder5min} />
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
