@@ -28,7 +28,7 @@ const categoryColors: Record<string, string> = {
   evangelização: "bg-destructive/10 text-destructive",
 };
 const categoryLabels: Record<string, string> = {
-  geral: "Geral", oração: "Oração", formação: "Formação", liturgia: "Liturgia", evangelização: "Evangelização",
+  geral: "Geral", oração: "Oração", formação: "Vídeo", liturgia: "Liturgia", evangelização: "Evangelização",
 };
 
 const Materiais = () => {
@@ -77,7 +77,7 @@ const Materiais = () => {
         <Tabs defaultValue="materiais" className="w-full">
           <TabsList className="w-full grid grid-cols-2 mb-4">
             <TabsTrigger value="materiais">Materiais de Apoio</TabsTrigger>
-            <TabsTrigger value="formacao">Formação</TabsTrigger>
+            <TabsTrigger value="formacao">Vídeos</TabsTrigger>
           </TabsList>
 
           {/* Materials Tab */}
@@ -110,11 +110,18 @@ const Materiais = () => {
                         {categoryLabels[mat.category] || mat.category}
                       </span>
                     </div>
-                    {mat.link_url && (
-                      <a href={mat.link_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary">
-                        <ExternalLink size={18} />
-                      </a>
-                    )}
+                    <div className="flex gap-1 shrink-0">
+                      {mat.file_url && (
+                        <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Baixar documento">
+                          <FileText size={18} />
+                        </a>
+                      )}
+                      {mat.link_url && (
+                        <a href={mat.link_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Abrir link">
+                          <ExternalLink size={18} />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
