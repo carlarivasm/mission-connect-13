@@ -503,6 +503,10 @@ export type Database = {
           id: string
           notify_events: boolean
           notify_locations: boolean
+          notify_reminder_10min: boolean
+          notify_reminder_24h: boolean
+          notify_reminder_30min: boolean
+          notify_reminder_5min: boolean
           notify_reminders: boolean
           phone: string | null
           updated_at: string
@@ -519,6 +523,10 @@ export type Database = {
           id: string
           notify_events?: boolean
           notify_locations?: boolean
+          notify_reminder_10min?: boolean
+          notify_reminder_24h?: boolean
+          notify_reminder_30min?: boolean
+          notify_reminder_5min?: boolean
           notify_reminders?: boolean
           phone?: string | null
           updated_at?: string
@@ -535,6 +543,10 @@ export type Database = {
           id?: string
           notify_events?: boolean
           notify_locations?: boolean
+          notify_reminder_10min?: boolean
+          notify_reminder_24h?: boolean
+          notify_reminder_30min?: boolean
+          notify_reminder_5min?: boolean
           notify_reminders?: boolean
           phone?: string | null
           updated_at?: string
