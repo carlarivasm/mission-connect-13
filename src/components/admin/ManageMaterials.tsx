@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, BookPlus, Pencil, ExternalLink } from "lucide-react";
+import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText } from "lucide-react";
 
 interface Material {
   id: string;
@@ -30,6 +30,8 @@ const ManageMaterials = () => {
   const [category, setCategory] = useState("geral");
   const [linkUrl, setLinkUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMaterials = async () => {
     const { data, error } = await supabase
@@ -45,19 +47,45 @@ const ManageMaterials = () => {
 
   const resetForm = () => {
     setTitle(""); setDescription(""); setCategory("geral"); setLinkUrl(""); setEditingId(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFile(true);
+    const ext = file.name.split(".").pop();
+    const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("material-documents").upload(filePath, file);
+    if (uploadError) {
+      toast({ title: "Erro ao enviar arquivo", description: uploadError.message, variant: "destructive" });
+      setUploadingFile(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("material-documents").getPublicUrl(filePath);
+    setUploadingFile(false);
+    return urlData.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
-    const payload = {
+    let fileUrl: string | null = null;
+    const fileInput = fileInputRef.current;
+    if (fileInput?.files?.[0]) {
+      const url = await handleFileUpload({ target: fileInput } as any);
+      if (url) fileUrl = url;
+    }
+
+    const payload: any = {
       title: title.trim(),
       description: description.trim() || null,
       category,
       link_url: linkUrl.trim() || null,
       created_by: user?.id,
     };
+    if (fileUrl) payload.file_url = fileUrl;
 
     if (editingId) {
       const { error } = await supabase.from("materials").update(payload).eq("id", editingId);
@@ -88,7 +116,7 @@ const ManageMaterials = () => {
   const categoryLabels: Record<string, string> = {
     geral: "Geral",
     oração: "Oração",
-    formação: "Formação",
+    formação: "Vídeo",
     liturgia: "Liturgia",
     evangelização: "Evangelização",
   };
@@ -108,7 +136,7 @@ const ManageMaterials = () => {
             <Label>Descrição</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Sobre o material" rows={2} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Categoria</Label>
               <Select value={category} onValueChange={setCategory}>
@@ -116,16 +144,21 @@ const ManageMaterials = () => {
                 <SelectContent>
                   <SelectItem value="geral">Geral</SelectItem>
                   <SelectItem value="oração">Oração</SelectItem>
-                  <SelectItem value="formação">Formação</SelectItem>
+                  <SelectItem value="formação">Vídeo</SelectItem>
                   <SelectItem value="liturgia">Liturgia</SelectItem>
                   <SelectItem value="evangelização">Evangelização</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Link (Google Drive, etc.)</Label>
+              <Label>Link (vídeo, Google Drive, etc.)</Label>
               <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1"><Upload size={12} /> Documento (.pdf, .doc, .docx, etc.)</Label>
+            <Input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
+            {uploadingFile && <p className="text-xs text-muted-foreground">Enviando arquivo...</p>}
           </div>
         </div>
         <div className="flex gap-2">
@@ -147,9 +180,14 @@ const ManageMaterials = () => {
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">{m.title}</p>
                 <p className="text-xs text-muted-foreground">{categoryLabels[m.category] || m.category}</p>
+                {m.file_url && (
+                  <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                    <FileText size={10} /> Baixar documento
+                  </a>
+                )}
                 {m.link_url && (
                   <a href={m.link_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                    <ExternalLink size={10} /> Acessar material
+                    <ExternalLink size={10} /> Acessar link
                   </a>
                 )}
               </div>

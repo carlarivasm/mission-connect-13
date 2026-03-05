@@ -7,12 +7,26 @@ import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Plus, Trash2, Save } from "lucide-react";
+import { Users, Plus, Trash2, Save, Search, UserPlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface FamilyMember {
   name: string;
   age: string;
+}
+
+interface LinkedUser {
+  user_id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
+}
+
+interface SearchResult {
+  id: string;
+  full_name: string;
+  email: string;
+  avatar_url: string | null;
 }
 
 const Familia = () => {
@@ -24,28 +38,149 @@ const Familia = () => {
   const [familyName, setFamilyName] = useState("");
   const [members, setMembers] = useState<FamilyMember[]>([]);
 
+  // Linked users state
+  const [familyGroupId, setFamilyGroupId] = useState<string | null>(null);
+  const [linkedUsers, setLinkedUsers] = useState<LinkedUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
   useEffect(() => {
     if (!user) return;
-    supabase
+    loadData();
+  }, [user]);
+
+  const loadData = async () => {
+    if (!user) return;
+    // Load profile data
+    const { data } = await supabase
       .from("profiles")
       .select("family_members_count, family_ages, family_names, family_name")
       .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setFamilyName((data as any).family_name ?? "");
-          const names: string[] = (data as any).family_names ?? [];
-          const ages: string[] = data.family_ages ?? [];
-          const count = Math.max(names.length, ages.length, data.family_members_count ?? 0);
-          const merged: FamilyMember[] = [];
-          for (let i = 0; i < count; i++) {
-            merged.push({ name: names[i] ?? "", age: ages[i] ?? "" });
-          }
-          setMembers(merged);
+      .single();
+
+    if (data) {
+      setFamilyName((data as any).family_name ?? "");
+      const names: string[] = (data as any).family_names ?? [];
+      const ages: string[] = data.family_ages ?? [];
+      const count = Math.max(names.length, ages.length, data.family_members_count ?? 0);
+      const merged: FamilyMember[] = [];
+      for (let i = 0; i < count; i++) {
+        merged.push({ name: names[i] ?? "", age: ages[i] ?? "" });
+      }
+      setMembers(merged);
+    }
+
+    // Load family group
+    const { data: memberData } = await supabase
+      .from("family_group_members" as any)
+      .select("family_group_id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    if (memberData && (memberData as any[]).length > 0) {
+      const groupId = (memberData as any[])[0].family_group_id;
+      setFamilyGroupId(groupId);
+      await loadLinkedUsers(groupId);
+    }
+
+    setLoading(false);
+  };
+
+  const loadLinkedUsers = async (groupId: string) => {
+    if (!user) return;
+    const { data: membersData } = await supabase
+      .from("family_group_members" as any)
+      .select("user_id")
+      .eq("family_group_id", groupId);
+
+    if (membersData) {
+      const userIds = (membersData as any[]).map((m: any) => m.user_id).filter((id: string) => id !== user.id);
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, avatar_url")
+          .in("id", userIds);
+        if (profiles) {
+          setLinkedUsers(profiles.map((p: any) => ({ user_id: p.id, full_name: p.full_name, email: p.email, avatar_url: p.avatar_url })));
         }
-        setLoading(false);
-      });
-  }, [user]);
+      } else {
+        setLinkedUsers([]);
+      }
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || !user) return;
+    setSearching(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, avatar_url")
+      .neq("id", user.id)
+      .or(`full_name.ilike.%${searchQuery.trim()}%,email.ilike.%${searchQuery.trim()}%`)
+      .limit(10);
+
+    if (data) {
+      const alreadyLinked = new Set(linkedUsers.map((u) => u.user_id));
+      setSearchResults(data.filter((p: any) => !alreadyLinked.has(p.id)).map((p: any) => ({
+        id: p.id, full_name: p.full_name, email: p.email, avatar_url: p.avatar_url,
+      })));
+    }
+    setSearching(false);
+  };
+
+  const handleAddLinkedUser = async (targetUser: SearchResult) => {
+    if (!user) return;
+    let groupId = familyGroupId;
+
+    // Create family group if doesn't exist
+    if (!groupId) {
+      const { data: newGroup, error: groupErr } = await supabase
+        .from("family_groups" as any)
+        .insert({ name: familyName || "Minha Família", created_by: user.id } as any)
+        .select("id")
+        .single();
+
+      if (groupErr || !newGroup) {
+        toast({ title: "Erro", description: "Não foi possível criar o grupo familiar.", variant: "destructive" });
+        return;
+      }
+      groupId = (newGroup as any).id;
+      setFamilyGroupId(groupId);
+
+      // Add current user as member
+      await supabase.from("family_group_members" as any).insert({ family_group_id: groupId, user_id: user.id } as any);
+    }
+
+    // Add target user
+    const { error } = await supabase
+      .from("family_group_members" as any)
+      .insert({ family_group_id: groupId, user_id: targetUser.id } as any);
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Membro vinculado!", description: `${targetUser.full_name} foi adicionado à família.` });
+      setLinkedUsers([...linkedUsers, { user_id: targetUser.id, full_name: targetUser.full_name, email: targetUser.email, avatar_url: targetUser.avatar_url }]);
+      setSearchResults(searchResults.filter((r) => r.id !== targetUser.id));
+    }
+  };
+
+  const handleRemoveLinkedUser = async (userId: string) => {
+    if (!familyGroupId) return;
+    const { error } = await supabase
+      .from("family_group_members" as any)
+      .delete()
+      .eq("family_group_id", familyGroupId)
+      .eq("user_id", userId);
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      setLinkedUsers(linkedUsers.filter((u) => u.user_id !== userId));
+      toast({ title: "Membro removido da família." });
+    }
+  };
 
   const handleAdd = () => setMembers([...members, { name: "", age: "" }]);
   const handleRemove = (index: number) => setMembers(members.filter((_, i) => i !== index));
@@ -135,6 +270,72 @@ const Familia = () => {
                       <Input placeholder="Idade" value={member.age} onChange={(e) => handleChange(index, "age", e.target.value)} className="w-20" />
                       <button type="button" onClick={() => handleRemove(index)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
                         <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Linked Users Section */}
+            <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+              <Label className="flex items-center gap-2">
+                <UserPlus size={16} /> Vincular missionários à família
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Busque por nome ou e-mail para vincular outro missionário à sua família.
+              </p>
+
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="flex-1"
+                />
+                <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={searching} className="gap-1">
+                  <Search size={14} /> {searching ? "..." : "Buscar"}
+                </Button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="space-y-2 border-t border-muted pt-2">
+                  <p className="text-xs text-muted-foreground">Resultados:</p>
+                  {searchResults.map((r) => (
+                    <div key={r.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => handleAddLinkedUser(r)} className="gap-1 shrink-0">
+                        <UserPlus size={14} /> Vincular
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {linkedUsers.length > 0 && (
+                <div className="space-y-2 border-t border-muted pt-2">
+                  <p className="text-xs text-muted-foreground font-semibold">Membros vinculados:</p>
+                  {linkedUsers.map((lu) => (
+                    <div key={lu.user_id} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
+                        {lu.avatar_url ? (
+                          <img src={lu.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
+                            {lu.full_name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{lu.email}</p>
+                      </div>
+                      <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
+                        <X size={16} />
                       </button>
                     </div>
                   ))}

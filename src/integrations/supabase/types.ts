@@ -104,6 +104,56 @@ export type Database = {
         }
         Relationships: []
       }
+      family_group_members: {
+        Row: {
+          created_at: string
+          family_group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_group_members_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      family_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       formation_categories: {
         Row: {
           created_at: string

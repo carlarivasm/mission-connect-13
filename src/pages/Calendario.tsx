@@ -59,9 +59,12 @@ const Calendario = () => {
 
   const eventsForDay = (day: number) => events.filter((e) => e.event_date === getDateKey(day));
 
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const upcomingEvents = events.filter((e) => e.event_date >= todayStr);
+
   const displayedEvents = selectedDay
     ? eventsForDay(selectedDay)
-    : events;
+    : upcomingEvents;
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
