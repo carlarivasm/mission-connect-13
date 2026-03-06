@@ -20,6 +20,7 @@ import Familia from "./pages/Familia";
 import Pesquisas from "./pages/Pesquisas";
 import Perfil from "./pages/Perfil";
 import Organograma from "./pages/Organograma";
+import PushNotificationManager from "@/components/PushNotificationManager";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
         <AuthProvider>
           <AppSettingsProvider>
             <CartProvider>
+            <PushNotificationManager />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

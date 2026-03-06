@@ -94,6 +94,16 @@ const ManageEvents = () => {
           if (notifs.length > 0) {
             await supabase.from("notifications").insert(notifs as any);
           }
+
+          // Send push notification
+          const pushTitle = eventType === "reunião" ? "🤝 Nova reunião agendada" : "📅 Novo evento";
+          const pushBody = `"${title.trim()}" em ${dateStr}${timeStr}.`;
+          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: pushTitle, body: pushBody, link: "/calendario" }),
+          }).catch(console.error);
         }
         resetForm();
         fetchEvents();
