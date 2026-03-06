@@ -43,6 +43,15 @@ const AdminBroadcast = () => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Mensagem enviada!", description: `Enviada para ${profiles.length} usuários.` });
+
+      // Send push notification
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title.trim(), body: message.trim(), link: "/dashboard" }),
+      }).catch(console.error);
+
       setTitle("");
       setMessage("");
     }
