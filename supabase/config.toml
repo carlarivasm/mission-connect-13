@@ -1,7 +1,9 @@
 project_id = "yefsuhdzjdhnobabtmky"
 
-[functions.event-reminders]
-verify_jwt = false
-
-[functions.send-push-notification]
-verify_jwt = false
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.event-reminders]
+    verify_jwt = false
+  [functions.send-push-notification]
+    verify_jwt = false
