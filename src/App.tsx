@@ -21,6 +21,8 @@ import Pesquisas from "./pages/Pesquisas";
 import Perfil from "./pages/Perfil";
 import Organograma from "./pages/Organograma";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const App = () => (
             <PushNotificationManager />
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
               <Route path="/materiais" element={<ProtectedRoute><Materiais /></ProtectedRoute>} />

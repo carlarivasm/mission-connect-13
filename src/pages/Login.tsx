@@ -121,7 +121,15 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
+            {isLogin && (
+              <button
+                onClick={() => navigate("/forgot-password")}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors block w-full"
+              >
+                Esqueceu a senha?
+              </button>
+            )}
             <button
               onClick={() => setIsLogin(!isLogin)}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
