@@ -21,6 +21,8 @@ import Pesquisas from "./pages/Pesquisas";
 import Perfil from "./pages/Perfil";
 import Organograma from "./pages/Organograma";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
