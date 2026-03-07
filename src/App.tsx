@@ -39,6 +39,8 @@ const App = () => (
             <PushNotificationManager />
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
               <Route path="/materiais" element={<ProtectedRoute><Materiais /></ProtectedRoute>} />
