@@ -122,6 +122,11 @@ const PaymentSettings = () => {
           <Input value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} placeholder="https://..." />
         </div>
         <div className="space-y-1">
+          <Label>Chave Pix</Label>
+          <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+          <p className="text-[10px] text-muted-foreground">Será exibida abaixo do QR Code para o usuário copiar.</p>
+        </div>
+        <div className="space-y-1">
           <Label>QR Code de Pagamento</Label>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
@@ -133,6 +138,11 @@ const PaymentSettings = () => {
               <img src={qrcodeUrl} alt="QR Code" className="h-16 w-16 rounded-lg object-contain bg-muted p-1" />
             )}
           </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Dados Bancários</Label>
+          <Textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} placeholder="Banco, Agência, Conta, Titular..." rows={3} />
+          <p className="text-[10px] text-muted-foreground">Exibido na tela de checkout para transferência.</p>
         </div>
       </div>
       <Button onClick={handleSave} disabled={saving} className="gradient-mission text-primary-foreground gap-2">
