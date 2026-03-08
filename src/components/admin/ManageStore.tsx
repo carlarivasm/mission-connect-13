@@ -86,6 +86,8 @@ const PaymentSettings = () => {
       { setting_key: "store_whatsapp", setting_value: whatsapp.trim() },
       { setting_key: "store_payment_link", setting_value: paymentLink.trim() },
       { setting_key: "store_qrcode_url", setting_value: qrcodeUrl.trim() },
+      { setting_key: "store_pix_key", setting_value: pixKey.trim() },
+      { setting_key: "store_bank_details", setting_value: bankDetails.trim() },
     ];
     for (const entry of entries) {
       const { error } = await supabase
