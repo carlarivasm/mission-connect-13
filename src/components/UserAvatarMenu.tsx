@@ -69,6 +69,9 @@ const UserAvatarMenu = ({ onLogout }: UserAvatarMenuProps) => {
         <DropdownMenuItem onClick={() => navigate("/familia")} className="gap-2 cursor-pointer">
           <Users size={16} /> Minha Família
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate("/organograma")} className="gap-2 cursor-pointer">
+          <Network size={16} /> Organograma
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={toggleDarkMode} className="gap-2 cursor-pointer">
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
