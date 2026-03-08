@@ -47,6 +47,8 @@ const Checkout = () => {
             if (d.setting_key === "store_whatsapp") setWhatsapp(d.setting_value);
             if (d.setting_key === "store_payment_link") setPaymentLink(d.setting_value);
             if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
+            if (d.setting_key === "store_pix_key") setPixKey(d.setting_value);
+            if (d.setting_key === "store_bank_details") setBankDetails(d.setting_value);
           });
         }
         setLoading(false);
