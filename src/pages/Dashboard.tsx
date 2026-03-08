@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Shield, ClipboardList, Network } from "lucide-react";
+import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Shield, ClipboardList } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -57,16 +57,15 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Acesso Rápido</h3>
-          <div className="grid grid-cols-4 gap-3">
-            <QuickAction icon={Calendar} label="Calendário" onClick={() => navigate("/calendario")} />
-            <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
-            <QuickAction icon={Camera} label="Fotos" onClick={() => navigate("/galeria")} />
+          <div className="grid grid-cols-3 gap-3">
             <QuickAction icon={MapPin} label="Mapa" onClick={() => navigate("/mapa")} variant="accent" />
+            <QuickAction icon={Calendar} label="Calendário" onClick={() => navigate("/calendario")} />
+            <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} variant="accent" />
           </div>
           <div className="grid grid-cols-3 gap-3 mt-3">
-            <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} variant="accent" />
+            <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} />
+            <QuickAction icon={Camera} label="Fotos" onClick={() => navigate("/galeria")} variant="accent" />
             <QuickAction icon={ClipboardList} label="Pesquisas" onClick={() => navigate("/pesquisas")} />
-            <QuickAction icon={Network} label="Organograma" onClick={() => navigate("/organograma")} />
           </div>
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">
