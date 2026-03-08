@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle } from "lucide-react";
+import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle, Copy, Check } from "lucide-react";
 
 const categoryLabels: Record<string, string> = {
   camiseta: "Camiseta",
@@ -29,21 +29,26 @@ const Checkout = () => {
   const [whatsapp, setWhatsapp] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
   const [qrcodeUrl, setQrcodeUrl] = useState("");
+  const [pixKey, setPixKey] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [observation, setObservation] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase
       .from("app_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url"])
+      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url", "store_pix_key", "store_bank_details"])
       .then(({ data }) => {
         if (data) {
           data.forEach((d) => {
             if (d.setting_key === "store_whatsapp") setWhatsapp(d.setting_value);
             if (d.setting_key === "store_payment_link") setPaymentLink(d.setting_value);
             if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
+            if (d.setting_key === "store_pix_key") setPixKey(d.setting_value);
+            if (d.setting_key === "store_bank_details") setBankDetails(d.setting_value);
           });
         }
         setLoading(false);
@@ -261,6 +266,37 @@ const Checkout = () => {
             </div>
           )}
 
+          {pixKey && (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-muted-foreground">Chave Pix:</p>
+              <div className="flex items-center gap-2 w-full">
+                <code className="flex-1 bg-muted rounded-lg px-3 py-2 text-sm text-foreground text-center font-mono break-all">
+                  {pixKey}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(pixKey);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                    toast({ title: "Chave Pix copiada!" });
+                  }}
+                  className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {bankDetails && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-semibold">Dados Bancários:</p>
+              <pre className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground whitespace-pre-wrap font-sans">
+                {bankDetails}
+              </pre>
+            </div>
+          )}
+
           {paymentLink && (
             <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="block">
               <Button variant="outline" className="w-full gap-2">
@@ -270,7 +306,7 @@ const Checkout = () => {
             </a>
           )}
 
-          {!qrcodeUrl && !paymentLink && (
+          {!qrcodeUrl && !paymentLink && !pixKey && !bankDetails && (
             <p className="text-sm text-muted-foreground text-center">
               O administrador ainda não configurou as opções de pagamento.
             </p>

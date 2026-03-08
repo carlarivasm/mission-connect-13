@@ -41,17 +41,22 @@ const PaymentSettings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [pixKey, setPixKey] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
+
   useEffect(() => {
     supabase
       .from("app_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url"])
+      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url", "store_pix_key", "store_bank_details"])
       .then(({ data }) => {
         if (data) {
           data.forEach((d) => {
             if (d.setting_key === "store_whatsapp") setWhatsapp(d.setting_value);
             if (d.setting_key === "store_payment_link") setPaymentLink(d.setting_value);
             if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
+            if (d.setting_key === "store_pix_key") setPixKey(d.setting_value);
+            if (d.setting_key === "store_bank_details") setBankDetails(d.setting_value);
           });
         }
       });
@@ -81,6 +86,8 @@ const PaymentSettings = () => {
       { setting_key: "store_whatsapp", setting_value: whatsapp.trim() },
       { setting_key: "store_payment_link", setting_value: paymentLink.trim() },
       { setting_key: "store_qrcode_url", setting_value: qrcodeUrl.trim() },
+      { setting_key: "store_pix_key", setting_value: pixKey.trim() },
+      { setting_key: "store_bank_details", setting_value: bankDetails.trim() },
     ];
     for (const entry of entries) {
       const { error } = await supabase
@@ -115,6 +122,11 @@ const PaymentSettings = () => {
           <Input value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} placeholder="https://..." />
         </div>
         <div className="space-y-1">
+          <Label>Chave Pix</Label>
+          <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+          <p className="text-[10px] text-muted-foreground">Será exibida abaixo do QR Code para o usuário copiar.</p>
+        </div>
+        <div className="space-y-1">
           <Label>QR Code de Pagamento</Label>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
@@ -126,6 +138,11 @@ const PaymentSettings = () => {
               <img src={qrcodeUrl} alt="QR Code" className="h-16 w-16 rounded-lg object-contain bg-muted p-1" />
             )}
           </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Dados Bancários</Label>
+          <Textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} placeholder="Banco, Agência, Conta, Titular..." rows={3} />
+          <p className="text-[10px] text-muted-foreground">Exibido na tela de checkout para transferência.</p>
         </div>
       </div>
       <Button onClick={handleSave} disabled={saving} className="gradient-mission text-primary-foreground gap-2">
