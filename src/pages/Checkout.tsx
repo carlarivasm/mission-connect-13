@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle } from "lucide-react";
+import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle, Copy, Check } from "lucide-react";
 
 const categoryLabels: Record<string, string> = {
   camiseta: "Camiseta",
