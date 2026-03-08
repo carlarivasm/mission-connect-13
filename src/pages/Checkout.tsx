@@ -29,9 +29,12 @@ const Checkout = () => {
   const [whatsapp, setWhatsapp] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
   const [qrcodeUrl, setQrcodeUrl] = useState("");
+  const [pixKey, setPixKey] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [observation, setObservation] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     supabase
