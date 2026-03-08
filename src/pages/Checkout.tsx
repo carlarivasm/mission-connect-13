@@ -40,7 +40,7 @@ const Checkout = () => {
     supabase
       .from("app_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url"])
+      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url", "store_pix_key", "store_bank_details"])
       .then(({ data }) => {
         if (data) {
           data.forEach((d) => {
