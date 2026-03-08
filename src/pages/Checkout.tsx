@@ -266,6 +266,37 @@ const Checkout = () => {
             </div>
           )}
 
+          {pixKey && (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs text-muted-foreground">Chave Pix:</p>
+              <div className="flex items-center gap-2 w-full">
+                <code className="flex-1 bg-muted rounded-lg px-3 py-2 text-sm text-foreground text-center font-mono break-all">
+                  {pixKey}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(pixKey);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                    toast({ title: "Chave Pix copiada!" });
+                  }}
+                  className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {bankDetails && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-semibold">Dados Bancários:</p>
+              <pre className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground whitespace-pre-wrap font-sans">
+                {bankDetails}
+              </pre>
+            </div>
+          )}
+
           {paymentLink && (
             <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="block">
               <Button variant="outline" className="w-full gap-2">
@@ -275,7 +306,7 @@ const Checkout = () => {
             </a>
           )}
 
-          {!qrcodeUrl && !paymentLink && (
+          {!qrcodeUrl && !paymentLink && !pixKey && !bankDetails && (
             <p className="text-sm text-muted-foreground text-center">
               O administrador ainda não configurou as opções de pagamento.
             </p>
