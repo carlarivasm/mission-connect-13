@@ -46,6 +46,7 @@ const Mapa = () => {
   const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
   const [userNotes, setUserNotes] = useState<Record<string, UserNote>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchData = async () => {
