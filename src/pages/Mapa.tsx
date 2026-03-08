@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ExternalLink, Save, Navigation } from "lucide-react";
+import { MapPin, ExternalLink, Save, Navigation, ChevronDown, ChevronUp, Plus, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -46,6 +46,7 @@ const Mapa = () => {
   const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
   const [userNotes, setUserNotes] = useState<Record<string, UserNote>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -259,51 +260,87 @@ const Mapa = () => {
                       </div>
                     </div>
 
-                    {/* User input fields - only for "em andamento" */}
-                    {loc.status === "em andamento" ? (
-                      <div className="space-y-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-muted-foreground">Seu endereço</label>
-                          <Textarea
-                            value={note.user_address || ""}
-                            onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
-                            placeholder="Informe seu endereço..."
-                            rows={1}
-                            className="text-xs"
-                          />
+                    {/* Expand/collapse notes toggle */}
+                    <div className="pt-2 border-t border-border space-y-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setExpandedNotes(prev => ({ ...prev, [loc.id]: !prev[loc.id] }))}
+                        className="flex items-center gap-2 w-full text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <FileText size={14} />
+                        {note.needs || note.notes || note.user_address
+                          ? "Ver / editar observações"
+                          : "Adicionar observações"}
+                        {expandedNotes[loc.id] ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
+                      </button>
+
+                      {/* Saved notes preview (when collapsed) */}
+                      {!expandedNotes[loc.id] && (note.needs || note.notes || note.user_address) && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 pl-6">
+                          {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
+                          {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
+                          {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                          <Textarea
-                            value={note.needs}
-                            onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
-                            placeholder="Descreva as necessidades deste local..."
-                            rows={2}
-                            className="text-xs"
-                          />
+                      )}
+
+                      {/* Expanded edit form */}
+                      {expandedNotes[loc.id] && (
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
+                            <Textarea
+                              value={note.user_address || ""}
+                              onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
+                              placeholder="Apt, bloco, referência..."
+                              rows={1}
+                              className="text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
+                            <Textarea
+                              value={note.needs}
+                              onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
+                              placeholder="Descreva as necessidades deste local..."
+                              rows={2}
+                              className="text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-muted-foreground">Observações</label>
+                            <Textarea
+                              value={note.notes}
+                              onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
+                              placeholder="Anotações adicionais..."
+                              rows={2}
+                              className="text-xs"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => saveNote(loc.id)}
+                              disabled={savingId === loc.id}
+                              className="gap-1 gradient-mission text-primary-foreground"
+                            >
+                              <Save size={12} />
+                              {savingId === loc.id ? "Salvando..." : "Salvar"}
+                            </Button>
+                            {loc.google_maps_url && (
+                              <a
+                                href={loc.google_maps_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline py-1"
+                              >
+                                <Navigation size={12} /> Direção no Maps
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-muted-foreground">Observações</label>
-                          <Textarea
-                            value={note.notes}
-                            onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
-                            placeholder="Anotações adicionais..."
-                            rows={2}
-                            className="text-xs"
-                          />
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => saveNote(loc.id)}
-                          disabled={savingId === loc.id}
-                          className="gap-1 gradient-mission text-primary-foreground"
-                        >
-                          <Save size={12} />
-                          {savingId === loc.id ? "Salvando..." : "Salvar"}
-                        </Button>
-                      </div>
-                    ) : loc.google_maps_url ? (
-                      <div className="pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                      )}
+
+                      {/* Google Maps link when collapsed and no notes expanded */}
+                      {!expandedNotes[loc.id] && loc.google_maps_url && (
                         <a
                           href={loc.google_maps_url}
                           target="_blank"
@@ -312,8 +349,8 @@ const Mapa = () => {
                         >
                           <Navigation size={14} /> Abrir direção no Google Maps
                         </a>
-                      </div>
-                    ) : null}
+                      )}
+                    </div>
                   </div>
                 );
               })}
