@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ExternalLink, Save, Navigation, ChevronDown, ChevronUp, Plus, FileText } from "lucide-react";
+import { MapPin, ExternalLink, Save, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -18,10 +18,12 @@ interface MissionLocation {
 }
 
 interface UserNote {
+  id?: string;
   location_id: string;
   needs: string;
   notes: string;
   user_address: string;
+  created_at?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -44,9 +46,11 @@ const Mapa = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
-  const [userNotes, setUserNotes] = useState<Record<string, UserNote>>({});
+  const [userNotes, setUserNotes] = useState<Record<string, UserNote[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  // Draft for new note per location
+  const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,13 +68,23 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("location_id, needs, notes, user_address")
-          .eq("user_id", user.id);
+          .select("id, location_id, needs, notes, user_address, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
 
         if (notes) {
-          const map: Record<string, UserNote> = {};
+          const map: Record<string, UserNote[]> = {};
           (notes as any[]).forEach((n) => {
-            map[n.location_id] = { location_id: n.location_id, needs: n.needs || "", notes: n.notes || "", user_address: n.user_address || "" };
+            const locId = n.location_id;
+            if (!map[locId]) map[locId] = [];
+            map[locId].push({
+              id: n.id,
+              location_id: locId,
+              needs: n.needs || "",
+              notes: n.notes || "",
+              user_address: n.user_address || "",
+              created_at: n.created_at,
+            });
           });
           setUserNotes(map);
         }
@@ -82,8 +96,12 @@ const Mapa = () => {
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
-  const updateLocalNote = (locationId: string, field: "needs" | "notes" | "user_address", value: string) => {
-    setUserNotes((prev) => ({
+  const getDraft = (locationId: string): UserNote => {
+    return drafts[locationId] || { location_id: locationId, needs: "", notes: "", user_address: "" };
+  };
+
+  const updateDraft = (locationId: string, field: "needs" | "notes" | "user_address", value: string) => {
+    setDrafts((prev) => ({
       ...prev,
       [locationId]: {
         ...(prev[locationId] || { location_id: locationId, needs: "", notes: "", user_address: "" }),
@@ -92,29 +110,93 @@ const Mapa = () => {
     }));
   };
 
-  const saveNote = async (locationId: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "needs" | "notes" | "user_address", value: string) => {
+    setUserNotes((prev) => ({
+      ...prev,
+      [locationId]: (prev[locationId] || []).map((n) =>
+        n.id === noteId ? { ...n, [field]: value } : n
+      ),
+    }));
+  };
+
+  const saveNewNote = async (locationId: string) => {
     if (!user) return;
-    setSavingId(locationId);
-    const note = userNotes[locationId] || { needs: "", notes: "", user_address: "" };
+    const draft = getDraft(locationId);
+    if (!draft.needs.trim() && !draft.notes.trim() && !draft.user_address.trim()) {
+      toast({ title: "Preencha ao menos um campo", variant: "destructive" });
+      return;
+    }
+    setSavingId(`new-${locationId}`);
+
+    const { data, error } = await supabase
+      .from("location_user_notes")
+      .insert({
+        location_id: locationId,
+        user_id: user.id,
+        needs: draft.needs.trim() || null,
+        notes: draft.notes.trim() || null,
+        user_address: draft.user_address.trim() || null,
+      } as any)
+      .select("id, location_id, needs, notes, user_address, created_at")
+      .single();
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else if (data) {
+      const newNote: UserNote = {
+        id: (data as any).id,
+        location_id: locationId,
+        needs: (data as any).needs || "",
+        notes: (data as any).notes || "",
+        user_address: (data as any).user_address || "",
+        created_at: (data as any).created_at,
+      };
+      setUserNotes((prev) => ({
+        ...prev,
+        [locationId]: [newNote, ...(prev[locationId] || [])],
+      }));
+      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, needs: "", notes: "", user_address: "" } }));
+      toast({ title: "Salvo!", description: "Observação registrada com sucesso." });
+    }
+    setSavingId(null);
+  };
+
+  const saveExistingNote = async (locationId: string, noteId: string) => {
+    if (!user) return;
+    const note = (userNotes[locationId] || []).find((n) => n.id === noteId);
+    if (!note) return;
+    setSavingId(noteId);
 
     const { error } = await supabase
       .from("location_user_notes")
-      .upsert(
-        {
-          location_id: locationId,
-          user_id: user.id,
-          needs: note.needs.trim() || null,
-          notes: note.notes.trim() || null,
-          user_address: (note.user_address || "").trim() || null,
-          updated_at: new Date().toISOString(),
-        } as any,
-        { onConflict: "location_id,user_id" }
-      );
+      .update({
+        needs: note.needs.trim() || null,
+        notes: note.notes.trim() || null,
+        user_address: note.user_address.trim() || null,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", noteId);
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Salvo!", description: "Suas observações foram registradas." });
+      toast({ title: "Atualizado!", description: "Observação atualizada." });
+    }
+    setSavingId(null);
+  };
+
+  const deleteNote = async (locationId: string, noteId: string) => {
+    if (!user) return;
+    setSavingId(noteId);
+    const { error } = await supabase.from("location_user_notes").delete().eq("id", noteId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      setUserNotes((prev) => ({
+        ...prev,
+        [locationId]: (prev[locationId] || []).filter((n) => n.id !== noteId),
+      }));
+      toast({ title: "Removido", description: "Observação removida." });
     }
     setSavingId(null);
   };
@@ -226,7 +308,8 @@ const Mapa = () => {
           ) : (
             <div className="space-y-3">
               {filteredLocations.map((loc) => {
-                const note = userNotes[loc.id] || { needs: "", notes: "", user_address: "" };
+                const notes = userNotes[loc.id] || [];
+                const draft = getDraft(loc.id);
                 const isSelected = selectedLocation?.id === loc.id;
                 return (
                   <div
@@ -267,79 +350,148 @@ const Mapa = () => {
                         className="flex items-center gap-2 w-full text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
                       >
                         <FileText size={14} />
-                        {note.needs || note.notes || note.user_address
-                          ? "Ver / editar observações"
+                        {notes.length > 0
+                          ? `Ver observações (${notes.length})`
                           : "Adicionar observações"}
                         {expandedNotes[loc.id] ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
                       </button>
 
                       {/* Saved notes preview (when collapsed) */}
-                      {!expandedNotes[loc.id] && (note.needs || note.notes || note.user_address) && (
-                        <div className="text-xs text-muted-foreground space-y-0.5 pl-6">
-                          {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
-                          {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
-                          {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
+                      {!expandedNotes[loc.id] && notes.length > 0 && (
+                        <div className="text-xs text-muted-foreground space-y-1 pl-6">
+                          {notes.slice(0, 2).map((note, idx) => (
+                            <div key={note.id || idx} className="space-y-0.5">
+                              {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
+                              {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
+                              {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
+                            </div>
+                          ))}
+                          {notes.length > 2 && (
+                            <p className="text-primary font-semibold">+{notes.length - 2} mais...</p>
+                          )}
                         </div>
                       )}
 
-                      {/* Expanded edit form */}
+                      {/* Expanded: list existing notes + new note form */}
                       {expandedNotes[loc.id] && (
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
-                            <Textarea
-                              value={note.user_address || ""}
-                              onChange={(e) => updateLocalNote(loc.id, "user_address", e.target.value)}
-                              placeholder="Apt, bloco, referência..."
-                              rows={1}
-                              className="text-xs"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                            <Textarea
-                              value={note.needs}
-                              onChange={(e) => updateLocalNote(loc.id, "needs", e.target.value)}
-                              placeholder="Descreva as necessidades deste local..."
-                              rows={2}
-                              className="text-xs"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-xs font-semibold text-muted-foreground">Observações</label>
-                            <Textarea
-                              value={note.notes}
-                              onChange={(e) => updateLocalNote(loc.id, "notes", e.target.value)}
-                              placeholder="Anotações adicionais..."
-                              rows={2}
-                              className="text-xs"
-                            />
-                          </div>
-                          <div className="flex gap-2">
+                        <div className="space-y-3">
+                          {/* Existing notes */}
+                          {notes.map((note) => (
+                            <div key={note.id} className="p-3 bg-muted/50 rounded-lg space-y-2 border border-border">
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
+                                <Textarea
+                                  value={note.user_address || ""}
+                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "user_address", e.target.value)}
+                                  placeholder="Apt, bloco, referência..."
+                                  rows={1}
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
+                                <Textarea
+                                  value={note.needs}
+                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "needs", e.target.value)}
+                                  placeholder="Descreva as necessidades..."
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Observações</label>
+                                <Textarea
+                                  value={note.notes}
+                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "notes", e.target.value)}
+                                  placeholder="Anotações adicionais..."
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => saveExistingNote(loc.id, note.id!)}
+                                  disabled={savingId === note.id}
+                                  className="gap-1 gradient-mission text-primary-foreground"
+                                >
+                                  <Save size={12} />
+                                  {savingId === note.id ? "Salvando..." : "Salvar"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteNote(loc.id, note.id!)}
+                                  disabled={savingId === note.id}
+                                  className="gap-1"
+                                >
+                                  <Trash2 size={12} /> Remover
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* New note form */}
+                          <div className="p-3 bg-primary/5 rounded-lg space-y-2 border-2 border-dashed border-primary/30">
+                            <p className="text-xs font-bold text-primary flex items-center gap-1">
+                              <Plus size={14} /> Nova observação
+                            </p>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
+                              <Textarea
+                                value={draft.user_address || ""}
+                                onChange={(e) => updateDraft(loc.id, "user_address", e.target.value)}
+                                placeholder="Apt, bloco, referência..."
+                                rows={1}
+                                className="text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
+                              <Textarea
+                                value={draft.needs}
+                                onChange={(e) => updateDraft(loc.id, "needs", e.target.value)}
+                                placeholder="Descreva as necessidades..."
+                                rows={2}
+                                className="text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Observações</label>
+                              <Textarea
+                                value={draft.notes}
+                                onChange={(e) => updateDraft(loc.id, "notes", e.target.value)}
+                                placeholder="Anotações adicionais..."
+                                rows={2}
+                                className="text-xs"
+                              />
+                            </div>
                             <Button
                               size="sm"
-                              onClick={() => saveNote(loc.id)}
-                              disabled={savingId === loc.id}
+                              onClick={() => saveNewNote(loc.id)}
+                              disabled={savingId === `new-${loc.id}`}
                               className="gap-1 gradient-mission text-primary-foreground"
                             >
-                              <Save size={12} />
-                              {savingId === loc.id ? "Salvando..." : "Salvar"}
+                              <Plus size={12} />
+                              {savingId === `new-${loc.id}` ? "Salvando..." : "Adicionar observação"}
                             </Button>
-                            {loc.google_maps_url && (
-                              <a
-                                href={loc.google_maps_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline py-1"
-                              >
-                                <Navigation size={12} /> Direção no Maps
-                              </a>
-                            )}
                           </div>
+
+                          {/* Google Maps link */}
+                          {loc.google_maps_url && (
+                            <a
+                              href={loc.google_maps_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
+                            >
+                              <Navigation size={14} /> Abrir direção no Google Maps
+                            </a>
+                          )}
                         </div>
                       )}
 
-                      {/* Google Maps link when collapsed and no notes expanded */}
+                      {/* Google Maps link when collapsed */}
                       {!expandedNotes[loc.id] && loc.google_maps_url && (
                         <a
                           href={loc.google_maps_url}
