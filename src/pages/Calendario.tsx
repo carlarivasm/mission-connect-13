@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Link2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ const Calendario = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<EventData[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -134,24 +135,48 @@ const Calendario = () => {
               <p className="text-muted-foreground text-sm text-center py-4">Nenhuma atividade neste período.</p>
             ) : (
               displayedEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-                  <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg gradient-mission text-primary-foreground shrink-0">
-                    <span className="text-xs font-bold leading-none">{new Date(event.event_date + 'T00:00:00').getDate()}</span>
-                    <span className="text-[10px] leading-none mt-0.5">{new Date(event.event_date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' })}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-foreground truncate">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {event.event_time?.slice(0, 5) || ""} • {event.event_type}
-                      {event.location ? ` • ${event.location}` : ""}
-                    </p>
-                    {event.meeting_link && (
-                      <a href={event.meeting_link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                        <Link2 size={10} /> Link da reunião
-                      </a>
+                <button
+                  key={event.id}
+                  onClick={() => setExpandedEvent(expandedEvent === event.id ? null : event.id)}
+                  className="w-full text-left p-3 bg-card rounded-xl shadow-card transition-colors hover:bg-accent/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg gradient-mission text-primary-foreground shrink-0">
+                      <span className="text-xs font-bold leading-none">{new Date(event.event_date + 'T00:00:00').getDate()}</span>
+                      <span className="text-[10px] leading-none mt-0.5">{new Date(event.event_date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' })}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-foreground truncate">{event.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {event.event_time?.slice(0, 5) || ""} • {event.event_type}
+                        {event.location ? ` • ${event.location}` : ""}
+                      </p>
+                    </div>
+                    {(event.description || event.meeting_link) && (
+                      <span className="shrink-0 text-muted-foreground">
+                        {expandedEvent === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </span>
                     )}
                   </div>
-                </div>
+                  {expandedEvent === event.id && (
+                    <div className="mt-3 pt-3 border-t border-border space-y-2">
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{event.description}</p>
+                      )}
+                      {event.meeting_link && (
+                        <a
+                          href={event.meeting_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-primary flex items-center gap-1"
+                        >
+                          <Link2 size={10} /> Link da reunião
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </button>
               ))
             )}
           </div>
