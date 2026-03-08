@@ -41,17 +41,22 @@ const PaymentSettings = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const [pixKey, setPixKey] = useState("");
+  const [bankDetails, setBankDetails] = useState("");
+
   useEffect(() => {
     supabase
       .from("app_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url"])
+      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url", "store_pix_key", "store_bank_details"])
       .then(({ data }) => {
         if (data) {
           data.forEach((d) => {
             if (d.setting_key === "store_whatsapp") setWhatsapp(d.setting_value);
             if (d.setting_key === "store_payment_link") setPaymentLink(d.setting_value);
             if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
+            if (d.setting_key === "store_pix_key") setPixKey(d.setting_value);
+            if (d.setting_key === "store_bank_details") setBankDetails(d.setting_value);
           });
         }
       });
