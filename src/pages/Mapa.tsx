@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ExternalLink, Save, Navigation } from "lucide-react";
+import { MapPin, ExternalLink, Save, Navigation, ChevronDown, ChevronUp, Plus, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
