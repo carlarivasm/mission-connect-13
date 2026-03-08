@@ -26,6 +26,7 @@ const Calendario = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<EventData[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
