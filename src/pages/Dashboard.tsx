@@ -44,6 +44,14 @@ const Dashboard = () => {
 
       <main className="px-4 py-5 space-y-6">
         {/* Pending surveys alert */}
+        {!approved && role !== "admin" && (
+          <div className="animate-fade-in rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/30 p-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⏳ Conta pendente de aprovação</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              Seu cadastro está sendo analisado por um administrador. Enquanto isso, algumas funcionalidades estão restritas (Materiais, Fotos e Calendário completo).
+            </p>
+          </div>
+        )}
         <PendingCartAlert />
         <PendingSurveyAlert />
         {/* Welcome */}
