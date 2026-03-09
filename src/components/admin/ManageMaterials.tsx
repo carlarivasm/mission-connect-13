@@ -457,7 +457,7 @@ const VideosTab = () => {
 
       <Dialog open={showVideoDialog} onOpenChange={(open) => { if (!open) resetVideoForm(); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload size={18} /> Adicionar Vídeo</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload size={18} /> Adicionar Vídeo / Podcast</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Categoria</Label>
@@ -472,14 +472,28 @@ const VideosTab = () => {
             </div>
             <div className="space-y-1">
               <Label>Título</Label>
-              <Input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Título do vídeo" />
+              <Input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Título do vídeo ou podcast" />
             </div>
             <div className="space-y-1">
               <Label>Descrição (opcional)</Label>
-              <Textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} placeholder="Descrição do vídeo" />
+              <Textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} placeholder="Descrição do conteúdo" />
             </div>
             <div className="space-y-1">
-              <Label>Arquivo de vídeo</Label>
+              <Label>Link (YouTube, Spotify, podcast, etc.)</Label>
+              <Input
+                value={videoLinkUrl}
+                onChange={(e) => setVideoLinkUrl(e.target.value)}
+                placeholder="https://youtube.com/... ou https://open.spotify.com/..."
+                disabled={!!videoFile}
+              />
+              <p className="text-[10px] text-muted-foreground">Cole o link do YouTube, Spotify ou qualquer plataforma de podcast.</p>
+            </div>
+            <div className="relative flex items-center justify-center py-1">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+              <span className="relative bg-card px-3 text-xs text-muted-foreground">ou</span>
+            </div>
+            <div className="space-y-1">
+              <Label>Upload de arquivo de vídeo</Label>
               {videoFile ? (
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <Film size={16} className="text-muted-foreground" />
@@ -489,15 +503,15 @@ const VideosTab = () => {
                   </button>
                 </div>
               ) : (
-                <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
+                <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors ${videoLinkUrl.trim() ? "opacity-50 pointer-events-none" : ""}`}>
                   <Film size={20} className="text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Selecionar vídeo</span>
                   <input ref={fileInputRef} type="file" accept="video/*" onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0]); }} className="hidden" />
                 </label>
               )}
             </div>
-            <Button onClick={handleUploadVideo} disabled={!videoFile || !videoCategoryId || !videoTitle.trim() || uploading} className="w-full gradient-mission text-primary-foreground">
-              {uploading ? "Enviando..." : "Adicionar Vídeo"}
+            <Button onClick={handleUploadVideo} disabled={(!videoFile && !videoLinkUrl.trim()) || !videoCategoryId || !videoTitle.trim() || uploading} className="w-full gradient-mission text-primary-foreground">
+              {uploading ? "Enviando..." : "Adicionar"}
             </Button>
           </div>
         </DialogContent>
