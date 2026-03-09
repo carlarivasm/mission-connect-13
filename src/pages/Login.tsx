@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,25 +21,46 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already logged in
-  if (user) {
-    navigate("/dashboard", { replace: true });
+  // Redirect if already logged in (via useEffect to avoid render-time navigation)
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
+
+  const validateInputs = (): string | null => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || trimmedEmail.length > 255) return "E-mail inválido.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return "Formato de e-mail inválido.";
+    if (password.length < 6) return "A senha deve ter pelo menos 6 caracteres.";
+    if (password.length > 128) return "Senha muito longa.";
+    if (!isLogin) {
+      const trimmedName = fullName.trim();
+      if (!trimmedName || trimmedName.length < 2) return "Informe seu nome completo.";
+      if (trimmedName.length > 100) return "Nome muito longo (máx. 100 caracteres).";
+    }
     return null;
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validationError = validateInputs();
+    if (validationError) {
+      toast({ title: "Atenção", description: validationError, variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (isLogin) {
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(trimmedEmail, password);
       if (error) {
         toast({ title: "Erro ao entrar", description: error, variant: "destructive" });
       } else {
         navigate("/dashboard");
       }
     } else {
-      const { error } = await signUp(email, password, fullName);
+      const { error } = await signUp(trimmedEmail, password, fullName.trim());
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error, variant: "destructive" });
       } else {
@@ -53,6 +74,8 @@ const Login = () => {
 
     setLoading(false);
   };
+
+  if (user) return null;
 
   return (
     <div className="min-h-screen flex flex-col gradient-warm">
