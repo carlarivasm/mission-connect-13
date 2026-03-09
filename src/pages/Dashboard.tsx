@@ -44,6 +44,7 @@ const Dashboard = () => {
 
       <main className="px-4 py-5 space-y-6">
         {/* Pending surveys alert */}
+        <PendingCartAlert />
         <PendingSurveyAlert />
         {/* Welcome */}
         <div className="animate-fade-in">
