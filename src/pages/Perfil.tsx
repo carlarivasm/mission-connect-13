@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
+import PushDiagnostics from "@/components/PushDiagnostics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -234,6 +235,9 @@ const Perfil = () => {
                 )}
               </div>
             </section>
+
+            {/* Push Diagnostics */}
+            <PushDiagnostics />
 
             {/* Save Button */}
             <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2 animate-fade-in" style={{ animationDelay: "0.3s" }}>
