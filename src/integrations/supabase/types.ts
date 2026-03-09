@@ -643,6 +643,7 @@ export type Database = {
           notify_reminder_5min: boolean
           notify_reminders: boolean
           phone: string | null
+          show_phone_in_org: boolean
           updated_at: string
         }
         Insert: {
@@ -664,6 +665,7 @@ export type Database = {
           notify_reminder_5min?: boolean
           notify_reminders?: boolean
           phone?: string | null
+          show_phone_in_org?: boolean
           updated_at?: string
         }
         Update: {
@@ -685,6 +687,7 @@ export type Database = {
           notify_reminder_5min?: boolean
           notify_reminders?: boolean
           phone?: string | null
+          show_phone_in_org?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -906,18 +909,21 @@ export type Database = {
           full_name: string | null
           id: string | null
           phone: string | null
+          show_phone_in_org: boolean | null
         }
         Insert: {
           avatar_url?: string | null
           full_name?: string | null
           id?: string | null
           phone?: string | null
+          show_phone_in_org?: boolean | null
         }
         Update: {
           avatar_url?: string | null
           full_name?: string | null
           id?: string | null
           phone?: string | null
+          show_phone_in_org?: boolean | null
         }
         Relationships: []
       }
