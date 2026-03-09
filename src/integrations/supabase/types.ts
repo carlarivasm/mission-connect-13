@@ -926,6 +926,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_created_family_group_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
+      get_user_family_group_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -938,6 +946,14 @@ export type Database = {
         Returns: boolean
       }
       is_email_authorized: { Args: { p_email: string }; Returns: boolean }
+      is_family_group_creator: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_family_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "missionary"
