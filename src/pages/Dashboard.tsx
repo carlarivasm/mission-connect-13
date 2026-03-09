@@ -64,11 +64,8 @@ const Dashboard = () => {
           </div>
           <div className="grid grid-cols-3 gap-3 mt-3">
             <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} />
-            <QuickAction icon={ClipboardList} label="Pesquisas" onClick={() => navigate("/pesquisas")} variant="accent" />
-            <QuickAction icon={Network} label="Organograma" onClick={() => navigate("/organograma")} />
-          </div>
-          <div className="grid grid-cols-1 gap-3 mt-3">
-            <QuickAction icon={Camera} label="Fotos" onClick={() => navigate("/galeria")} variant="accent" />
+            <QuickAction icon={Network} label="Organograma" onClick={() => navigate("/organograma")} variant="accent" />
+            <QuickAction icon={Camera} label="Fotos" onClick={() => navigate("/galeria")} />
           </div>
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">

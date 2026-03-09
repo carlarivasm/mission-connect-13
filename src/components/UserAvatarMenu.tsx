@@ -72,6 +72,9 @@ const UserAvatarMenu = ({ onLogout }: UserAvatarMenuProps) => {
         <DropdownMenuItem onClick={() => navigate("/organograma")} className="gap-2 cursor-pointer">
           <Network size={16} /> Organograma
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate("/pesquisas")} className="gap-2 cursor-pointer">
+          <ClipboardList size={16} /> Pesquisas
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={toggleDarkMode} className="gap-2 cursor-pointer">
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
