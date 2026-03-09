@@ -112,7 +112,7 @@ const Mapa = () => {
     }));
   };
 
-  const updateExistingNote = (locationId: string, noteId: string, field: "needs" | "notes" | "user_address", value: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "needs" | "notes" | "user_address", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: (prev[locationId] || []).map((n) =>
