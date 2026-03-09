@@ -81,6 +81,7 @@ const Mapa = () => {
             map[locId].push({
               id: n.id,
               location_id: locId,
+              house_number: n.house_number || "",
               needs: n.needs || "",
               notes: n.notes || "",
               user_address: n.user_address || "",
