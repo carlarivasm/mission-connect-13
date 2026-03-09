@@ -867,6 +867,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_email_authorized: { Args: { p_email: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "missionary"

@@ -76,15 +76,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isFirstUser = (count ?? 0) === 0;
 
     if (!isFirstUser) {
-      // Check if email is authorized
-      const { data: authorized } = await supabase
-        .from("authorized_missionaries")
-        .select("id")
-        .eq("email", email)
-        .eq("used", false)
-        .maybeSingle();
+      // Check if email is authorized via secure RPC
+      const { data: isAuthorized } = await supabase.rpc("is_email_authorized", { p_email: email });
 
-      if (!authorized) {
+      if (!isAuthorized) {
         return { error: "Este e-mail não está autorizado. Peça ao administrador para adicioná-lo à lista." };
       }
     }
