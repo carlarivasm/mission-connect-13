@@ -371,9 +371,14 @@ const ManageMissionaries = () => {
                     <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
                     <p className="text-xs text-muted-foreground">{p.email}</p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                    {p.is_admin ? "Admin" : "Missionário"}
-                  </span>
+                   <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                     {p.is_admin ? "Admin" : "Missionário"}
+                   </span>
+                   {!p.approved && (
+                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                       Pendente
+                     </span>
+                   )}
                 </div>
                 <div className="flex gap-1 flex-wrap">
                   <AlertDialog>
