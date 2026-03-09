@@ -72,6 +72,7 @@ const ManageLocationNotes = () => {
       "Missionário": r.user_name,
       "Email": r.user_email,
       "Nº Casa": r.house_number,
+      "Morador": r.resident_name,
       "Complemento": r.user_address,
       "Necessidades": r.needs,
       "Observações": r.notes,
