@@ -22,7 +22,8 @@ interface EventData {
 
 const Calendario = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, approved, role } = useAuth();
+  const isApproved = approved || role === "admin";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<EventData[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
