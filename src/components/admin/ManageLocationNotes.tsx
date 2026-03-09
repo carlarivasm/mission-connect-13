@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel, exportToCsv } from "@/lib/excel";
 
 interface NoteRow {
   location_name: string;
