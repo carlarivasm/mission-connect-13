@@ -22,15 +22,35 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { signOut, user, role, approved } = useAuth();
   const [events, setEvents] = useState<EventData[]>([]);
+  const [eventsLabel, setEventsLabel] = useState("Próximas Atividades");
 
   useEffect(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // First try to get today's events
     supabase
       .from("events")
       .select("id, title, event_date, event_time, event_type")
-      .gte("event_date", new Date().toISOString().split("T")[0])
-      .order("event_date", { ascending: true })
-      .limit(5)
-      .then(({ data }) => { if (data) setEvents(data); });
+      .eq("event_date", todayStr)
+      .order("event_time", { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setEvents(data);
+          setEventsLabel("Atividades de Hoje");
+        } else {
+          // No events today, show upcoming
+          supabase
+            .from("events")
+            .select("id, title, event_date, event_time, event_type")
+            .gt("event_date", todayStr)
+            .order("event_date", { ascending: true })
+            .limit(5)
+            .then(({ data: upcoming }) => {
+              if (upcoming) setEvents(upcoming);
+              setEventsLabel("Próximas Atividades");
+            });
+        }
+      });
   }, []);
 
   const handleLogout = async () => {
