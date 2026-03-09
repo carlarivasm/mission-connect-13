@@ -61,16 +61,10 @@ const ManageFamilies = () => {
       }
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Famílias");
-
     if (format === "csv") {
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      downloadBlob(blob, "familias.csv");
+      exportToCsv(rows, "familias.csv");
     } else {
-      XLSX.writeFile(wb, "familias.xlsx");
+      exportToExcel(rows, "Famílias", "familias.xlsx");
     }
 
     toast({ title: "Exportado!", description: `Arquivo ${format.toUpperCase()} baixado.` });

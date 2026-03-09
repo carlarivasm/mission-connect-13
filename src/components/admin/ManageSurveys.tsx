@@ -310,10 +310,7 @@ const ManageSurveys = () => {
       });
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
-    XLSX.writeFile(wb, `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
+    exportToExcel(rows, "Resultados", `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
   };
 
   return (
