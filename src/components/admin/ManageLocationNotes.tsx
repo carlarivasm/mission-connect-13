@@ -131,6 +131,7 @@ const ManageLocationNotes = () => {
                     <p className="text-xs text-muted-foreground">{r.user_email}</p>
                   </td>
                   <td className="py-2 px-2 text-foreground text-xs">{r.house_number || "—"}</td>
+                  <td className="py-2 px-2 text-foreground text-xs">{r.resident_name || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs">{r.user_address || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs max-w-[150px] truncate">{r.needs || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs max-w-[150px] truncate">{r.notes || "—"}</td>
