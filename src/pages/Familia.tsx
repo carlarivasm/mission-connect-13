@@ -22,6 +22,13 @@ interface LinkedUser {
   avatar_url: string | null;
 }
 
+interface FamilyGroupInfo {
+  id: string;
+  name: string;
+  created_by: string;
+  creator_name?: string;
+}
+
 interface SearchResult {
   id: string;
   full_name: string;
@@ -40,6 +47,8 @@ const Familia = () => {
 
   // Linked users state
   const [familyGroupId, setFamilyGroupId] = useState<string | null>(null);
+  const [familyGroupInfo, setFamilyGroupInfo] = useState<FamilyGroupInfo | null>(null);
+  const [isGroupCreator, setIsGroupCreator] = useState(true);
   const [linkedUsers, setLinkedUsers] = useState<LinkedUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -81,6 +90,46 @@ const Familia = () => {
     if (memberData && memberData.length > 0) {
       const groupId = memberData[0].family_group_id;
       setFamilyGroupId(groupId);
+
+      // Load group info to determine if user is creator
+      const { data: groupData } = await supabase
+        .from("family_groups")
+        .select("id, name, created_by")
+        .eq("id", groupId)
+        .single();
+
+      if (groupData) {
+        const creatorIsUser = groupData.created_by === user.id;
+        setIsGroupCreator(creatorIsUser);
+
+        // If user is NOT the creator, load creator's name and use group name
+        if (!creatorIsUser) {
+          const { data: creatorProfile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", groupData.created_by)
+            .single();
+
+          setFamilyGroupInfo({
+            id: groupData.id,
+            name: groupData.name,
+            created_by: groupData.created_by,
+            creator_name: creatorProfile?.full_name || "Membro da família",
+          });
+
+          // Use group name as family name if user doesn't have their own
+          if (!familyName) {
+            setFamilyName(groupData.name);
+          }
+        } else {
+          setFamilyGroupInfo({
+            id: groupData.id,
+            name: groupData.name,
+            created_by: groupData.created_by,
+          });
+        }
+      }
+
       await loadLinkedUsers(groupId);
     }
 
@@ -238,6 +287,21 @@ const Familia = () => {
           <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>
         ) : (
           <div className="space-y-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            {/* Show info banner when user was linked by someone else */}
+            {!isGroupCreator && familyGroupInfo && (
+              <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+                <UserPlus size={20} className="text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Você faz parte da família "{familyGroupInfo.name}"
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Vinculado(a) por {familyGroupInfo.creator_name}. Os dados da família são compartilhados entre os membros.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
               <div className="space-y-1">
                 <Label>Nome da Família</Label>
@@ -245,7 +309,13 @@ const Familia = () => {
                   placeholder="Ex: Família Silva"
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
+                  disabled={!isGroupCreator && !!familyGroupInfo}
                 />
+                {!isGroupCreator && familyGroupInfo && (
+                  <p className="text-xs text-muted-foreground">
+                    Apenas {familyGroupInfo.creator_name} pode editar o nome do grupo.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -280,45 +350,68 @@ const Familia = () => {
             {/* Linked Users Section */}
             <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
               <Label className="flex items-center gap-2">
-                <UserPlus size={16} /> Vincular missionários à família
+                <UserPlus size={16} /> {isGroupCreator ? "Vincular missionários à família" : "Membros da família"}
               </Label>
-              <p className="text-xs text-muted-foreground">
-                Busque por nome ou e-mail para vincular outro missionário à sua família.
-              </p>
+              
+              {isGroupCreator && (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Busque por nome ou e-mail para vincular outro missionário à sua família.
+                  </p>
 
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Buscar por nome ou e-mail..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="flex-1"
-                />
-                <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={searching} className="gap-1">
-                  <Search size={14} /> {searching ? "..." : "Buscar"}
-                </Button>
-              </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Buscar por nome ou e-mail..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={searching} className="gap-1">
+                      <Search size={14} /> {searching ? "..." : "Buscar"}
+                    </Button>
+                  </div>
 
-              {searchResults.length > 0 && (
-                <div className="space-y-2 border-t border-muted pt-2">
-                  <p className="text-xs text-muted-foreground">Resultados:</p>
-                  {searchResults.map((r) => (
-                    <div key={r.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{r.email}</p>
-                      </div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => handleAddLinkedUser(r)} className="gap-1 shrink-0">
-                        <UserPlus size={14} /> Vincular
-                      </Button>
+                  {searchResults.length > 0 && (
+                    <div className="space-y-2 border-t border-muted pt-2">
+                      <p className="text-xs text-muted-foreground">Resultados:</p>
+                      {searchResults.map((r) => (
+                        <div key={r.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                          </div>
+                          <Button type="button" size="sm" variant="outline" onClick={() => handleAddLinkedUser(r)} className="gap-1 shrink-0">
+                            <UserPlus size={14} /> Vincular
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </>
+              )}
+
+              {/* Show creator for non-creators */}
+              {!isGroupCreator && familyGroupInfo && (
+                <div className="space-y-2 border-b border-muted pb-2">
+                  <p className="text-xs text-muted-foreground font-semibold">Responsável:</p>
+                  <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                      <Users size={14} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{familyGroupInfo.creator_name}</p>
+                      <p className="text-xs text-muted-foreground">Criador do grupo</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {linkedUsers.length > 0 && (
-                <div className="space-y-2 border-t border-muted pt-2">
-                  <p className="text-xs text-muted-foreground font-semibold">Membros vinculados:</p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-semibold">
+                    {isGroupCreator ? "Membros vinculados:" : "Outros membros:"}
+                  </p>
                   {linkedUsers.map((lu) => (
                     <div key={lu.user_id} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
                       <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
@@ -334,12 +427,20 @@ const Familia = () => {
                         <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
                         <p className="text-xs text-muted-foreground truncate">{lu.email}</p>
                       </div>
-                      <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
-                        <X size={16} />
-                      </button>
+                      {isGroupCreator && (
+                        <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
+                          <X size={16} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
+              )}
+
+              {!isGroupCreator && linkedUsers.length === 0 && !familyGroupInfo && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Você ainda não foi vinculado a nenhum grupo familiar.
+                </p>
               )}
             </div>
 
