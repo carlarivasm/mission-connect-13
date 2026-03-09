@@ -165,6 +165,26 @@ const ManageMissionaries = () => {
     setTogglingRole(null);
   };
 
+  const handleToggleApproval = async (profileId: string, currentlyApproved: boolean) => {
+    setActionLoading(profileId + "_approve");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ approved: !currentlyApproved } as any)
+      .eq("id", profileId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: currentlyApproved ? "Acesso restrito" : "Acesso aprovado!",
+        description: currentlyApproved
+          ? "O usuário terá acesso limitado."
+          : "O usuário agora tem acesso completo ao app.",
+      });
+      fetchProfiles();
+    }
+    setActionLoading(null);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
