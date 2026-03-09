@@ -21,6 +21,7 @@ interface UserNote {
   id?: string;
   location_id: string;
   house_number: string;
+  resident_name: string;
   needs: string;
   notes: string;
   user_address: string;
