@@ -45,11 +45,11 @@
     --sidebar-border: 30 50% 30%;
     --sidebar-ring: 38 80% 55%;
 
-    --gradient-mission: linear-gradient(135deg, hsl(220 60% 25%), hsl(220 60% 35%));
+    --gradient-mission: linear-gradient(135deg, hsl(30 90% 50%), hsl(38 80% 55%));
     --gradient-gold: linear-gradient(135deg, hsl(38 80% 55%), hsl(45 90% 65%));
     --gradient-warm: linear-gradient(180deg, hsl(40 30% 97%), hsl(38 40% 93%));
-    --shadow-card: 0 4px 20px -4px hsl(220 60% 25% / 0.08);
-    --shadow-elevated: 0 8px 30px -6px hsl(220 60% 25% / 0.15);
+    --shadow-card: 0 4px 20px -4px hsl(30 90% 50% / 0.08);
+    --shadow-elevated: 0 8px 30px -6px hsl(30 90% 50% / 0.15);
   }
 
   .dark {
