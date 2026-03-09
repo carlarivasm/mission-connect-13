@@ -10,6 +10,7 @@ interface NoteRow {
   location_address: string;
   user_name: string;
   user_email: string;
+  house_number: string;
   user_address: string;
   needs: string;
   notes: string;
