@@ -187,6 +187,7 @@ const MaterialsTab = () => {
                   <SelectItem value="formação">Formação</SelectItem>
                   <SelectItem value="liturgia">Liturgia</SelectItem>
                   <SelectItem value="evangelização">Evangelização</SelectItem>
+                  <SelectItem value="responsaveis">Material dos Responsáveis</SelectItem>
                   <SelectItem value="atividades">Atividades</SelectItem>
                 </SelectContent>
               </Select>
