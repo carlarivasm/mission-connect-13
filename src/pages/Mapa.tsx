@@ -153,6 +153,7 @@ const Mapa = () => {
         id: (data as any).id,
         location_id: locationId,
         house_number: (data as any).house_number || "",
+        resident_name: (data as any).resident_name || "",
         needs: (data as any).needs || "",
         notes: (data as any).notes || "",
         user_address: (data as any).user_address || "",
