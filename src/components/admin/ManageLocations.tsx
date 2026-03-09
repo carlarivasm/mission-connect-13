@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/excel";
 
 interface MissionLocation {
   id: string;
