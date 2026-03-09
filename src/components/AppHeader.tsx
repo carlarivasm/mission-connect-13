@@ -35,7 +35,17 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
           <h1 className="text-lg font-bold text-primary-foreground font-display">{displayTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <CartButton />
+          {totalItems > 0 && (
+            <button
+              onClick={() => navigate2("/checkout")}
+              className="relative p-1.5 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+            >
+              <ShoppingCart size={20} />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-[10px] font-bold flex items-center justify-center text-secondary-foreground">
+                {totalItems}
+              </span>
+            </button>
+          )}
           <NotificationBell />
           <UserAvatarMenu onLogout={handleLogout} />
         </div>
