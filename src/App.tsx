@@ -43,8 +43,8 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
-              <Route path="/materiais" element={<ProtectedRoute><Materiais /></ProtectedRoute>} />
-              <Route path="/galeria" element={<ProtectedRoute><Galeria /></ProtectedRoute>} />
+              <Route path="/materiais" element={<ProtectedRoute requireApproval><Materiais /></ProtectedRoute>} />
+              <Route path="/galeria" element={<ProtectedRoute requireApproval><Galeria /></ProtectedRoute>} />
               <Route path="/mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><Admin /></ProtectedRoute>} />
               <Route path="/loja" element={<ProtectedRoute><Loja /></ProtectedRoute>} />
