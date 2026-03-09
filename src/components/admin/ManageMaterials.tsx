@@ -265,6 +265,7 @@ const VideosTab = () => {
   const [videoDesc, setVideoDesc] = useState("");
   const [videoCategoryId, setVideoCategoryId] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoLinkUrl, setVideoLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>("all");
@@ -307,22 +308,32 @@ const VideosTab = () => {
   };
 
   const handleUploadVideo = async () => {
-    if (!videoFile || !videoCategoryId || !videoTitle.trim() || !user) return;
+    if (!videoCategoryId || !videoTitle.trim() || !user) return;
+    if (!videoFile && !videoLinkUrl.trim()) return;
     setUploading(true);
     try {
-      const ext = videoFile.name.split(".").pop();
-      const path = `${videoCategoryId}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("formation-videos").upload(path, videoFile);
-      if (upErr) throw upErr;
+      let publicUrl = "";
+      let storagePath = "";
 
-      const { data: { publicUrl } } = supabase.storage.from("formation-videos").getPublicUrl(path);
+      if (videoFile) {
+        const ext = videoFile.name.split(".").pop();
+        const path = `${videoCategoryId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("formation-videos").upload(path, videoFile);
+        if (upErr) throw upErr;
+        const { data: { publicUrl: url } } = supabase.storage.from("formation-videos").getPublicUrl(path);
+        publicUrl = url;
+        storagePath = path;
+      } else {
+        publicUrl = videoLinkUrl.trim();
+        storagePath = "external-link";
+      }
 
       const { error: insErr } = await supabase.from("formation_videos").insert({
         category_id: videoCategoryId,
         title: videoTitle.trim(),
         description: videoDesc.trim() || null,
         video_url: publicUrl,
-        storage_path: path,
+        storage_path: storagePath,
         created_by: user.id,
       } as any);
       if (insErr) throw insErr;
@@ -337,7 +348,9 @@ const VideosTab = () => {
   };
 
   const handleDeleteVideo = async (video: Video) => {
-    await supabase.storage.from("formation-videos").remove([video.storage_path]);
+    if (video.storage_path && video.storage_path !== "external-link") {
+      await supabase.storage.from("formation-videos").remove([video.storage_path]);
+    }
     const { error } = await supabase.from("formation_videos").delete().eq("id", video.id);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
     else { toast({ title: "Vídeo excluído" }); fetchData(); }
@@ -349,6 +362,7 @@ const VideosTab = () => {
     setVideoDesc("");
     setVideoCategoryId("");
     setVideoFile(null);
+    setVideoLinkUrl("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -405,20 +419,28 @@ const VideosTab = () => {
         {filteredVideos.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum vídeo adicionado.</p>
         ) : (
-          filteredVideos.map((video) => (
+          filteredVideos.map((video) => {
+            const isLink = video.storage_path === "external-link";
+            return (
             <div key={video.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <Film size={18} className="text-muted-foreground" />
+                {isLink ? <ExternalLink size={18} className="text-muted-foreground" /> : <Film size={18} className="text-muted-foreground" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground text-sm truncate">{video.title}</p>
                 <p className="text-xs text-muted-foreground">{getCatName(video.category_id)}</p>
+                {isLink && (
+                  <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5 truncate">
+                    <ExternalLink size={10} /> {video.video_url}
+                  </a>
+                )}
               </div>
               <button onClick={() => handleDeleteVideo(video)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
                 <Trash2 size={16} />
               </button>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -443,7 +465,7 @@ const VideosTab = () => {
 
       <Dialog open={showVideoDialog} onOpenChange={(open) => { if (!open) resetVideoForm(); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload size={18} /> Adicionar Vídeo</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload size={18} /> Adicionar Vídeo / Podcast</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Categoria</Label>
@@ -458,14 +480,28 @@ const VideosTab = () => {
             </div>
             <div className="space-y-1">
               <Label>Título</Label>
-              <Input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Título do vídeo" />
+              <Input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Título do vídeo ou podcast" />
             </div>
             <div className="space-y-1">
               <Label>Descrição (opcional)</Label>
-              <Textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} placeholder="Descrição do vídeo" />
+              <Textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} placeholder="Descrição do conteúdo" />
             </div>
             <div className="space-y-1">
-              <Label>Arquivo de vídeo</Label>
+              <Label>Link (YouTube, Spotify, podcast, etc.)</Label>
+              <Input
+                value={videoLinkUrl}
+                onChange={(e) => setVideoLinkUrl(e.target.value)}
+                placeholder="https://youtube.com/... ou https://open.spotify.com/..."
+                disabled={!!videoFile}
+              />
+              <p className="text-[10px] text-muted-foreground">Cole o link do YouTube, Spotify ou qualquer plataforma de podcast.</p>
+            </div>
+            <div className="relative flex items-center justify-center py-1">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+              <span className="relative bg-card px-3 text-xs text-muted-foreground">ou</span>
+            </div>
+            <div className="space-y-1">
+              <Label>Upload de arquivo de vídeo</Label>
               {videoFile ? (
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                   <Film size={16} className="text-muted-foreground" />
@@ -475,15 +511,15 @@ const VideosTab = () => {
                   </button>
                 </div>
               ) : (
-                <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
+                <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors ${videoLinkUrl.trim() ? "opacity-50 pointer-events-none" : ""}`}>
                   <Film size={20} className="text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Selecionar vídeo</span>
                   <input ref={fileInputRef} type="file" accept="video/*" onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0]); }} className="hidden" />
                 </label>
               )}
             </div>
-            <Button onClick={handleUploadVideo} disabled={!videoFile || !videoCategoryId || !videoTitle.trim() || uploading} className="w-full gradient-mission text-primary-foreground">
-              {uploading ? "Enviando..." : "Adicionar Vídeo"}
+            <Button onClick={handleUploadVideo} disabled={(!videoFile && !videoLinkUrl.trim()) || !videoCategoryId || !videoTitle.trim() || uploading} className="w-full gradient-mission text-primary-foreground">
+              {uploading ? "Enviando..." : "Adicionar"}
             </Button>
           </div>
         </DialogContent>
