@@ -70,15 +70,6 @@ const ManageFamilies = () => {
     toast({ title: "Exportado!", description: `Arquivo ${format.toUpperCase()} baixado.` });
   };
 
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   if (loading) return <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>;
 
   return (
