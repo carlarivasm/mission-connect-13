@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/excel";
 
 interface MissionLocation {
   id: string;
@@ -190,10 +190,7 @@ const ManageLocations = () => {
       Observações: n.notes || "",
       Data: new Date(n.created_at).toLocaleDateString("pt-BR"),
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Observações");
-    XLSX.writeFile(wb, "observacoes_locais_missao.xlsx");
+    exportToExcel(rows, "Observações", "observacoes_locais_missao.xlsx");
   };
 
   const statusColors: Record<string, string> = {

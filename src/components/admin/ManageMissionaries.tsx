@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck } from "lucide-react";
-import * as XLSX from "xlsx";
+import { readExcelFile } from "@/lib/excel";
 
 interface AuthorizedMissionary {
   id: string;
@@ -169,10 +169,7 @@ const ManageMissionaries = () => {
     setUploading(true);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+      const rows = await readExcelFile(file);
 
       const findCol = (row: Record<string, string>, patterns: string[]) => {
         const key = Object.keys(row).find((k) =>

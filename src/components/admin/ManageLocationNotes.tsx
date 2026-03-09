@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel, exportToCsv } from "@/lib/excel";
 
 interface NoteRow {
   location_name: string;
@@ -73,19 +73,10 @@ const ManageLocationNotes = () => {
       "Atualizado em": new Date(r.updated_at).toLocaleDateString("pt-BR"),
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Observações");
-
     if (format === "csv") {
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "observacoes-locais.csv"; a.click();
-      URL.revokeObjectURL(url);
+      exportToCsv(data, "observacoes-locais.csv");
     } else {
-      XLSX.writeFile(wb, "observacoes-locais.xlsx");
+      exportToExcel(data, "Observações", "observacoes-locais.xlsx");
     }
     toast({ title: "Exportado!" });
   };

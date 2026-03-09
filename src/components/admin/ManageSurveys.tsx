@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -310,10 +310,7 @@ const ManageSurveys = () => {
       });
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Resultados");
-    XLSX.writeFile(wb, `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
+    exportToExcel(rows, "Resultados", `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
   };
 
   return (

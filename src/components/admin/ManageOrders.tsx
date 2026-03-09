@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FileSpreadsheet, ShoppingCart, Eye } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/excel";
 
 interface OrderItem {
   id: string;
@@ -88,10 +88,7 @@ const ManageOrders = () => {
       });
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
-    XLSX.writeFile(wb, `pedidos_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    exportToExcel(rows, "Pedidos", `pedidos_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast({ title: "Excel exportado!" });
   };
 

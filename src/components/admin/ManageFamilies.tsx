@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel, exportToCsv } from "@/lib/excel";
 
 interface FamilyRow {
   id: string;
@@ -61,28 +61,13 @@ const ManageFamilies = () => {
       }
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Famílias");
-
     if (format === "csv") {
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      downloadBlob(blob, "familias.csv");
+      exportToCsv(rows, "familias.csv");
     } else {
-      XLSX.writeFile(wb, "familias.xlsx");
+      exportToExcel(rows, "Famílias", "familias.xlsx");
     }
 
     toast({ title: "Exportado!", description: `Arquivo ${format.toUpperCase()} baixado.` });
-  };
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   if (loading) return <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>;
