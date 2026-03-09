@@ -169,7 +169,7 @@ const Familia = () => {
   const handleRemoveLinkedUser = async (userId: string) => {
     if (!familyGroupId) return;
     const { error } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .delete()
       .eq("family_group_id", familyGroupId)
       .eq("user_id", userId);
