@@ -51,6 +51,7 @@ const ManageLocationNotes = () => {
         location_address: locMap[n.location_id]?.address || "",
         user_name: userMap[n.user_id]?.name || "",
         user_email: userMap[n.user_id]?.email || "",
+        house_number: n.house_number || "",
         user_address: n.user_address || "",
         needs: n.needs || "",
         notes: n.notes || "",
