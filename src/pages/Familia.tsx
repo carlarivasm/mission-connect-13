@@ -154,8 +154,8 @@ const Familia = () => {
 
     // Add target user
     const { error } = await supabase
-      .from("family_group_members" as any)
-      .insert({ family_group_id: groupId, user_id: targetUser.id } as any);
+      .from("family_group_members")
+      .insert({ family_group_id: groupId!, user_id: targetUser.id });
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
