@@ -86,62 +86,79 @@ const Calendario = () => {
     <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Calendário" onLogout={handleLogout} />
       <main className="px-4 py-5 space-y-5">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
-            <ChevronLeft size={20} className="text-foreground" />
-          </button>
-          <h2 className="text-lg font-display font-bold text-foreground">
-            {MONTHS[month]} {year}
-          </h2>
-          <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
-            <ChevronRight size={20} className="text-foreground" />
-          </button>
-        </div>
+        {!isApproved && (
+          <div className="animate-fade-in rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/30 p-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⏳ Acesso limitado</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              Sua conta está pendente de aprovação. Você pode ver apenas as próximas atividades.
+            </p>
+          </div>
+        )}
 
-        {/* Calendar Grid */}
-        <div className="bg-card rounded-2xl shadow-card p-4">
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {DAYS.map((d) => (
-              <div key={d} className="text-center text-xs font-bold text-muted-foreground py-1">
-                {d}
+        {isApproved && (
+          <>
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between">
+              <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <ChevronLeft size={20} className="text-foreground" />
+              </button>
+              <h2 className="text-lg font-display font-bold text-foreground">
+                {MONTHS[month]} {year}
+              </h2>
+              <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                <ChevronRight size={20} className="text-foreground" />
+              </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="bg-card rounded-2xl shadow-card p-4">
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {DAYS.map((d) => (
+                  <div key={d} className="text-center text-xs font-bold text-muted-foreground py-1">
+                    {d}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} />;
-              const hasEvent = eventsForDay(day).length > 0;
-              const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
-              const isSelected = selectedDay === day;
-              return (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(selectedDay === day ? null : day)}
-                  className={`relative flex flex-col items-center justify-center h-10 rounded-lg text-sm transition-all ${
-                    isSelected
-                      ? "ring-2 ring-primary bg-primary/10 font-bold text-primary"
-                      : isToday
-                      ? "gradient-mission text-primary-foreground font-bold"
-                      : hasEvent
-                      ? "bg-secondary/20 text-foreground font-semibold"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {day}
-                  {hasEvent && !isToday && (
-                    <span className="absolute bottom-1 w-1 h-1 rounded-full bg-secondary" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+              <div className="grid grid-cols-7 gap-1">
+                {days.map((day, i) => {
+                  if (!day) return <div key={`empty-${i}`} />;
+                  const hasEvent = eventsForDay(day).length > 0;
+                  const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+                  const isSelected = selectedDay === day;
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => setSelectedDay(selectedDay === day ? null : day)}
+                      className={`relative flex flex-col items-center justify-center h-10 rounded-lg text-sm transition-all ${
+                        isSelected
+                          ? "ring-2 ring-primary bg-primary/10 font-bold text-primary"
+                          : isToday
+                          ? "gradient-mission text-primary-foreground font-bold"
+                          : hasEvent
+                          ? "bg-secondary/20 text-foreground font-semibold"
+                          : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {day}
+                      {hasEvent && !isToday && (
+                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-secondary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Events List */}
         <section>
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">
-            {selectedDay ? `Atividades do dia ${selectedDay}` : "Atividades do Mês"}
+            {!isApproved
+              ? "Próximas Atividades"
+              : selectedDay
+              ? `Atividades do dia ${selectedDay}`
+              : "Atividades do Mês"}
           </h3>
           <div className="space-y-2">
             {displayedEvents.length === 0 ? (
@@ -165,13 +182,13 @@ const Calendario = () => {
                         {event.location ? ` • ${event.location}` : ""}
                       </p>
                     </div>
-                    {(event.description || event.meeting_link) && (
+                    {isApproved && (event.description || event.meeting_link) && (
                       <span className="shrink-0 text-muted-foreground">
                         {expandedEvent === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </span>
                     )}
                   </div>
-                  {expandedEvent === event.id && (
+                  {isApproved && expandedEvent === event.id && (
                     <div className="mt-3 pt-3 border-t border-border space-y-2">
                       {event.description && (
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{event.description}</p>
