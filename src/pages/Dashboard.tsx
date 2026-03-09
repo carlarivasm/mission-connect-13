@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, MapPin, ShoppingBag, Shield, Network } from "lucide-react";
+import { BookOpen, MapPin, ShoppingBag, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -61,9 +61,6 @@ const Dashboard = () => {
             <QuickAction icon={MapPin} label="Mapa" onClick={() => navigate("/mapa")} variant="accent" />
             <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} />
             <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
-          </div>
-          <div className="grid grid-cols-1 gap-3 mt-3">
-            <QuickAction icon={Network} label="Organograma" onClick={() => navigate("/organograma")} />
           </div>
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">
