@@ -124,7 +124,7 @@ const Mapa = () => {
   const saveNewNote = async (locationId: string) => {
     if (!user) return;
     const draft = getDraft(locationId);
-    if (!draft.needs.trim() && !draft.notes.trim() && !draft.user_address.trim()) {
+    if (!draft.house_number.trim() && !draft.needs.trim() && !draft.notes.trim() && !draft.user_address.trim()) {
       toast({ title: "Preencha ao menos um campo", variant: "destructive" });
       return;
     }
