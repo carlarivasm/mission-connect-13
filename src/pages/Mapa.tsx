@@ -99,7 +99,7 @@ const Mapa = () => {
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
   const getDraft = (locationId: string): UserNote => {
-    return drafts[locationId] || { location_id: locationId, needs: "", notes: "", user_address: "" };
+    return drafts[locationId] || { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" };
   };
 
   const updateDraft = (locationId: string, field: "needs" | "notes" | "user_address", value: string) => {
