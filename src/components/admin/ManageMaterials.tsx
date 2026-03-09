@@ -348,7 +348,9 @@ const VideosTab = () => {
   };
 
   const handleDeleteVideo = async (video: Video) => {
-    await supabase.storage.from("formation-videos").remove([video.storage_path]);
+    if (video.storage_path && video.storage_path !== "external-link") {
+      await supabase.storage.from("formation-videos").remove([video.storage_path]);
+    }
     const { error } = await supabase.from("formation_videos").delete().eq("id", video.id);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
     else { toast({ title: "Vídeo excluído" }); fetchData(); }
