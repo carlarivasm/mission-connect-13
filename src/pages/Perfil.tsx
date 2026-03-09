@@ -236,6 +236,9 @@ const Perfil = () => {
               </div>
             </section>
 
+            {/* Push Diagnostics */}
+            <PushDiagnostics />
+
             {/* Save Button */}
             <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2 animate-fade-in" style={{ animationDelay: "0.3s" }}>
               <Save size={16} />
