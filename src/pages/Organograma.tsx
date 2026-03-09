@@ -22,6 +22,7 @@ interface Profile {
   full_name: string;
   avatar_url: string | null;
   phone: string | null;
+  show_phone_in_org: boolean;
 }
 
 interface CategoryOption {
