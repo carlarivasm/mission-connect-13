@@ -56,11 +56,6 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
         {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
         <p className="text-[10px] text-muted-foreground">{catLabel}</p>
       </div>
-      {profile?.phone && (
-        <a href={`tel:${profile.phone}`} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-          <Phone size={14} />
-        </a>
-      )}
     </div>
   );
 };
