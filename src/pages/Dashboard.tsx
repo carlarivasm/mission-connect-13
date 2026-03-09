@@ -73,7 +73,9 @@ const Dashboard = () => {
           <div className="grid grid-cols-3 gap-3">
             <QuickAction icon={MapPin} label="Mapa" onClick={() => navigate("/mapa")} variant="accent" />
             <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} />
-            <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
+            {(approved || role === "admin") && (
+              <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
+            )}
           </div>
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">
