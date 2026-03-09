@@ -123,8 +123,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const serviceAccountJson = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON")!;
 
     const serviceAccount = JSON.parse(serviceAccountJson);
