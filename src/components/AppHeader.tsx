@@ -13,6 +13,8 @@ interface AppHeaderProps {
 
 const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
   const handleLogout = onLogout || (() => {});
+  const { totalItems } = useCart();
+  const navigate2 = useNavigate();
   const { settings } = useAppSettings();
   const displayTitle = title || settings.app_name || "JFM";
   const logoSrc = settings.logo_url || logo;
