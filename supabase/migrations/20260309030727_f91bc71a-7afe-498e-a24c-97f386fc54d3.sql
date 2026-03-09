@@ -1,0 +1,1 @@
+ALTER TABLE public.location_user_notes DROP CONSTRAINT location_user_notes_location_user_unique;
