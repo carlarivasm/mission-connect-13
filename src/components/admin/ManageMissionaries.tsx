@@ -62,9 +62,10 @@ const ManageMissionaries = () => {
         (adminRoles || []).filter((r) => r.role === "admin").map((r) => r.user_id)
       );
       setProfiles(
-        allProfiles.map((p) => ({
+        allProfiles.map((p: any) => ({
           ...p,
           is_admin: adminIds.has(p.id),
+          approved: p.approved ?? true,
         }))
       );
     }
