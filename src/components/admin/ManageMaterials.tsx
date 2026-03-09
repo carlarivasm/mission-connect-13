@@ -362,6 +362,7 @@ const VideosTab = () => {
     setVideoDesc("");
     setVideoCategoryId("");
     setVideoFile(null);
+    setVideoLinkUrl("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
