@@ -83,6 +83,7 @@ const Mapa = () => {
               id: n.id,
               location_id: locId,
               house_number: n.house_number || "",
+              resident_name: n.resident_name || "",
               needs: n.needs || "",
               notes: n.notes || "",
               user_address: n.user_address || "",
