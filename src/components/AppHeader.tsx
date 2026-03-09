@@ -1,9 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
 import logo from "@/assets/logo-jfm.png";
 import NotificationBell from "@/components/NotificationBell";
 import UserAvatarMenu from "@/components/UserAvatarMenu";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
+import { useCart } from "@/contexts/CartContext";
 
 interface AppHeaderProps {
   title?: string;
