@@ -138,11 +138,12 @@ const Mapa = () => {
         location_id: locationId,
         user_id: user.id,
         house_number: draft.house_number.trim() || null,
+        resident_name: draft.resident_name.trim() || null,
         needs: draft.needs.trim() || null,
         notes: draft.notes.trim() || null,
         user_address: draft.user_address.trim() || null,
       } as any)
-      .select("id, location_id, house_number, needs, notes, user_address, created_at")
+      .select("id, location_id, house_number, resident_name, needs, notes, user_address, created_at")
       .single();
 
     if (error) {
