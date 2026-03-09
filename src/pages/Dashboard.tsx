@@ -20,7 +20,7 @@ interface EventData {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { signOut, user, role } = useAuth();
+  const { signOut, user, role, approved } = useAuth();
   const [events, setEvents] = useState<EventData[]>([]);
 
   useEffect(() => {
@@ -44,6 +44,14 @@ const Dashboard = () => {
 
       <main className="px-4 py-5 space-y-6">
         {/* Pending surveys alert */}
+        {!approved && role !== "admin" && (
+          <div className="animate-fade-in rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/30 p-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⏳ Conta pendente de aprovação</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              Seu cadastro está sendo analisado por um administrador. Enquanto isso, algumas funcionalidades estão restritas (Materiais, Fotos e Calendário completo).
+            </p>
+          </div>
+        )}
         <PendingCartAlert />
         <PendingSurveyAlert />
         {/* Welcome */}
@@ -65,7 +73,9 @@ const Dashboard = () => {
           <div className="grid grid-cols-3 gap-3">
             <QuickAction icon={MapPin} label="Mapa" onClick={() => navigate("/mapa")} variant="accent" />
             <QuickAction icon={ShoppingBag} label="Loja" onClick={() => navigate("/loja")} />
-            <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
+            {(approved || role === "admin") && (
+              <QuickAction icon={BookOpen} label="Materiais" onClick={() => navigate("/materiais")} variant="accent" />
+            )}
           </div>
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">

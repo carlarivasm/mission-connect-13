@@ -21,6 +21,7 @@ interface ProfileWithRole {
   full_name: string;
   email: string;
   is_admin: boolean;
+  approved: boolean;
 }
 
 const ManageMissionaries = () => {
@@ -49,7 +50,7 @@ const ManageMissionaries = () => {
   const fetchProfiles = async () => {
     const { data: allProfiles } = await supabase
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name, email, approved")
       .order("full_name");
 
     const { data: adminRoles } = await supabase
@@ -61,9 +62,10 @@ const ManageMissionaries = () => {
         (adminRoles || []).filter((r) => r.role === "admin").map((r) => r.user_id)
       );
       setProfiles(
-        allProfiles.map((p) => ({
+        allProfiles.map((p: any) => ({
           ...p,
           is_admin: adminIds.has(p.id),
+          approved: p.approved ?? true,
         }))
       );
     }
@@ -161,6 +163,26 @@ const ManageMissionaries = () => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
     setTogglingRole(null);
+  };
+
+  const handleToggleApproval = async (profileId: string, currentlyApproved: boolean) => {
+    setActionLoading(profileId + "_approve");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ approved: !currentlyApproved } as any)
+      .eq("id", profileId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: currentlyApproved ? "Acesso restrito" : "Acesso aprovado!",
+        description: currentlyApproved
+          ? "O usuário terá acesso limitado."
+          : "O usuário agora tem acesso completo ao app.",
+      });
+      fetchProfiles();
+    }
+    setActionLoading(null);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -349,11 +371,28 @@ const ManageMissionaries = () => {
                     <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
                     <p className="text-xs text-muted-foreground">{p.email}</p>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                    {p.is_admin ? "Admin" : "Missionário"}
-                  </span>
+                   <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                     {p.is_admin ? "Admin" : "Missionário"}
+                   </span>
+                   {!p.approved && (
+                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                       Pendente
+                     </span>
+                   )}
                 </div>
-                <div className="flex gap-1 flex-wrap">
+                 <div className="flex gap-1 flex-wrap">
+                   {!p.is_admin && (
+                     <Button
+                       size="sm"
+                       variant={p.approved ? "outline" : "default"}
+                       className={`text-xs gap-1 ${!p.approved ? "gradient-mission text-primary-foreground" : ""}`}
+                       disabled={actionLoading === p.id + "_approve"}
+                       onClick={() => handleToggleApproval(p.id, p.approved)}
+                     >
+                       {p.approved ? <ShieldOff size={14} /> : <UserCheck size={14} />}
+                       {p.approved ? "Restringir" : "Aprovar Acesso"}
+                     </Button>
+                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
