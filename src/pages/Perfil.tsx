@@ -35,6 +35,7 @@ const Perfil = () => {
   const [notifyReminder30min, setNotifyReminder30min] = useState(true);
   const [notifyReminder10min, setNotifyReminder10min] = useState(true);
   const [notifyReminder5min, setNotifyReminder5min] = useState(true);
+  const [showPhoneInOrg, setShowPhoneInOrg] = useState(false);
 
   useEffect(() => {
     if (!user) return;
