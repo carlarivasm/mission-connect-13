@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, CalendarPlus, Pencil, Link2 } from "lucide-react";
+import { Trash2, CalendarPlus, Pencil, Link2, Bell, BellOff } from "lucide-react";
 
 interface Event {
   id: string;
@@ -18,6 +19,11 @@ interface Event {
   event_type: string;
   location: string | null;
   meeting_link: string | null;
+  notify_push: boolean;
+  reminder_24h: boolean;
+  reminder_30min: boolean;
+  reminder_10min: boolean;
+  reminder_5min: boolean;
 }
 
 const ManageEvents = () => {
@@ -36,12 +42,19 @@ const ManageEvents = () => {
   const [meetingLink, setMeetingLink] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Notification settings per event
+  const [notifyPush, setNotifyPush] = useState(true);
+  const [reminder24h, setReminder24h] = useState(true);
+  const [reminder30min, setReminder30min] = useState(true);
+  const [reminder10min, setReminder10min] = useState(true);
+  const [reminder5min, setReminder5min] = useState(true);
+
   const fetchEvents = async () => {
     const { data, error } = await supabase
       .from("events")
       .select("*")
       .order("event_date", { ascending: true });
-    if (data) setEvents(data);
+    if (data) setEvents(data as any);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
     setLoading(false);
   };
@@ -51,6 +64,8 @@ const ManageEvents = () => {
   const resetForm = () => {
     setTitle(""); setDescription(""); setEventDate(""); setEventTime("");
     setEventType("missão"); setLocation(""); setMeetingLink(""); setEditingId(null);
+    setNotifyPush(true); setReminder24h(true); setReminder30min(true);
+    setReminder10min(true); setReminder5min(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,14 +81,19 @@ const ManageEvents = () => {
       location: location.trim() || null,
       meeting_link: meetingLink.trim() || null,
       created_by: user?.id,
+      notify_push: notifyPush,
+      reminder_24h: reminder24h,
+      reminder_30min: reminder30min,
+      reminder_10min: reminder10min,
+      reminder_5min: reminder5min,
     };
 
     if (editingId) {
-      const { error } = await supabase.from("events").update(payload).eq("id", editingId);
+      const { error } = await supabase.from("events").update(payload as any).eq("id", editingId);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
       else { toast({ title: "Evento atualizado!" }); resetForm(); fetchEvents(); }
     } else {
-      const { error } = await supabase.from("events").insert(payload);
+      const { error } = await supabase.from("events").insert(payload as any);
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
       } else {
@@ -95,15 +115,17 @@ const ManageEvents = () => {
             await supabase.from("notifications").insert(notifs as any);
           }
 
-          // Send push notification
-          const pushTitle = eventType === "reunião" ? "🤝 Nova reunião agendada" : "📅 Novo evento";
-          const pushBody = `"${title.trim()}" em ${dateStr}${timeStr}.`;
-          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-          await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: pushTitle, body: pushBody, link: "/calendario" }),
-          }).catch(console.error);
+          // Send push notification only if push is enabled for this event
+          if (notifyPush) {
+            const pushTitle = eventType === "reunião" ? "🤝 Nova reunião agendada" : "📅 Novo evento";
+            const pushBody = `"${title.trim()}" em ${dateStr}${timeStr}.`;
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: pushTitle, body: pushBody, link: "/calendario" }),
+            }).catch(console.error);
+          }
         }
         resetForm();
         fetchEvents();
@@ -121,6 +143,11 @@ const ManageEvents = () => {
     setEventType(ev.event_type);
     setLocation(ev.location || "");
     setMeetingLink(ev.meeting_link || "");
+    setNotifyPush(ev.notify_push ?? true);
+    setReminder24h(ev.reminder_24h ?? true);
+    setReminder30min(ev.reminder_30min ?? true);
+    setReminder10min(ev.reminder_10min ?? true);
+    setReminder5min(ev.reminder_5min ?? true);
   };
 
   const handleDelete = async (id: string) => {
@@ -177,6 +204,39 @@ const ManageEvents = () => {
             <Label>Link da Reunião</Label>
             <Input value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)} placeholder="https://meet.google.com/..." />
           </div>
+
+          {/* Notification Settings */}
+          <div className="border border-border rounded-lg p-3 space-y-3">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Bell size={14} /> Configurações de Notificação
+            </h4>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Push notification</p>
+                <p className="text-xs text-muted-foreground">Enviar push para dispositivos</p>
+              </div>
+              <Switch checked={notifyPush} onCheckedChange={setNotifyPush} />
+            </div>
+            <div className="border-t border-border pt-2 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Lembretes automáticos:</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">24 horas antes</p>
+                <Switch checked={reminder24h} onCheckedChange={setReminder24h} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">30 minutos antes</p>
+                <Switch checked={reminder30min} onCheckedChange={setReminder30min} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">10 minutos antes</p>
+                <Switch checked={reminder10min} onCheckedChange={setReminder10min} />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-foreground">5 minutos antes</p>
+                <Switch checked={reminder5min} onCheckedChange={setReminder5min} />
+              </div>
+            </div>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
@@ -206,6 +266,21 @@ const ManageEvents = () => {
                   {ev.event_time?.slice(0, 5) || ""} • {ev.event_type}
                   {ev.location ? ` • ${ev.location}` : ""}
                 </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {ev.notify_push ? (
+                    <Bell size={10} className="text-primary" />
+                  ) : (
+                    <BellOff size={10} className="text-muted-foreground" />
+                  )}
+                  <span className="text-[10px] text-muted-foreground">
+                    {[
+                      ev.reminder_24h && "24h",
+                      ev.reminder_30min && "30m",
+                      ev.reminder_10min && "10m",
+                      ev.reminder_5min && "5m",
+                    ].filter(Boolean).join(", ") || "sem lembretes"}
+                  </span>
+                </div>
                 {ev.meeting_link && (
                   <a href={ev.meeting_link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5">
                     <Link2 size={10} /> Link da reunião
