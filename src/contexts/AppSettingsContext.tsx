@@ -14,7 +14,7 @@ const defaults: AppSettings = {
   primary_color: "220 60% 25%",
   secondary_color: "38 80% 55%",
   logo_url: "",
-  login_subtitle: "Unidos na fé, servindo com amor",
+  login_subtitle: "Um em Cristo, unidos na missão",
 };
 
 interface AppSettingsContextType {
