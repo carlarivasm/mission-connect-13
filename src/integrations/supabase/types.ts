@@ -308,6 +308,7 @@ export type Database = {
           location_id: string
           needs: string | null
           notes: string | null
+          resident_name: string | null
           updated_at: string
           user_address: string | null
           user_id: string
@@ -319,6 +320,7 @@ export type Database = {
           location_id: string
           needs?: string | null
           notes?: string | null
+          resident_name?: string | null
           updated_at?: string
           user_address?: string | null
           user_id: string
@@ -330,6 +332,7 @@ export type Database = {
           location_id?: string
           needs?: string | null
           notes?: string | null
+          resident_name?: string | null
           updated_at?: string
           user_address?: string | null
           user_id?: string

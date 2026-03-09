@@ -1,0 +1,1 @@
+ALTER TABLE public.location_user_notes ADD COLUMN resident_name text;
