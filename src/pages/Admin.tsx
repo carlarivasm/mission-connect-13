@@ -89,10 +89,6 @@ const Admin = () => {
               <ClipboardList size={16} />
               <span>Pesquisas</span>
             </TabsTrigger>
-            <TabsTrigger value="formations" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <GraduationCap size={16} />
-              <span>Formação</span>
-            </TabsTrigger>
             <TabsTrigger value="orgchart" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Network size={16} />
               <span>Organograma</span>
@@ -100,6 +96,10 @@ const Admin = () => {
             <TabsTrigger value="broadcast" className="flex flex-col items-center gap-0.5 text-xs py-2">
               <Megaphone size={16} />
               <span>Mensagens</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 text-xs py-2">
+              <Settings size={16} />
+              <span>Configurações</span>
             </TabsTrigger>
           </TabsList>
           <TabsList className="w-full grid grid-cols-1 mb-4">
