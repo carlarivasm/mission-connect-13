@@ -121,7 +121,7 @@ const Organograma = () => {
         if (profileIds.length > 0) {
           const { data: profData } = await supabase
             .from("profiles_org_public" as any)
-            .select("id, full_name, avatar_url, phone");
+            .select("id, full_name, avatar_url, phone, show_phone_in_org");
           if (profData) {
             const map = new Map<string, Profile>();
             (profData as any[]).forEach(p => map.set(p.id, p));
