@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
-import { Phone, ChevronDown, ChevronRight, Church } from "lucide-react";
+import { ChevronDown, ChevronRight, Church } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface OrgPosition {
@@ -21,7 +21,6 @@ interface Profile {
   id: string;
   full_name: string;
   avatar_url: string | null;
-  phone: string | null;
 }
 
 interface CategoryOption {
@@ -57,11 +56,6 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
         {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
         <p className="text-[10px] text-muted-foreground">{catLabel}</p>
       </div>
-      {profile?.phone && (
-        <a href={`tel:${profile.phone}`} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-          <Phone size={14} />
-        </a>
-      )}
     </div>
   );
 };
@@ -119,9 +113,8 @@ const Organograma = () => {
         const profileIds = typed.filter(p => p.profile_id).map(p => p.profile_id!);
         if (profileIds.length > 0) {
           const { data: profData } = await supabase
-            .from("profiles")
-            .select("id, full_name, avatar_url, phone")
-            .in("id", profileIds);
+            .from("profiles_org_public" as any)
+            .select("id, full_name, avatar_url");
           if (profData) {
             const map = new Map<string, Profile>();
             (profData as any[]).forEach(p => map.set(p.id, p));
