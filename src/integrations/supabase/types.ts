@@ -303,6 +303,7 @@ export type Database = {
       location_user_notes: {
         Row: {
           created_at: string
+          house_number: string | null
           id: string
           location_id: string
           needs: string | null
@@ -313,6 +314,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          house_number?: string | null
           id?: string
           location_id: string
           needs?: string | null
@@ -323,6 +325,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          house_number?: string | null
           id?: string
           location_id?: string
           needs?: string | null
