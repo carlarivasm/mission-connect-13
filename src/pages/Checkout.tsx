@@ -91,6 +91,17 @@ const Checkout = () => {
     return lines.join("\n");
   };
 
+  const decreaseStock = async () => {
+    for (const item of items) {
+      await supabase.rpc("decrease_stock", {
+        p_product_id: item.id,
+        p_size: item.selectedSize || null,
+        p_color: item.selectedColor || null,
+        p_quantity: item.quantity,
+      });
+    }
+  };
+
   const saveOrderToDb = async () => {
     if (!user) return;
 
@@ -130,6 +141,9 @@ const Checkout = () => {
 
     // Save to database
     await saveOrderToDb();
+
+    // Decrease stock
+    await decreaseStock();
 
     // Send to WhatsApp
     const message = buildOrderMessage();

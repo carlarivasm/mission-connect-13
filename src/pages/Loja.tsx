@@ -5,7 +5,7 @@ import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { ShoppingBag, ShoppingCart, Plus } from "lucide-react";
+import { ShoppingBag, ShoppingCart, Plus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,6 +20,13 @@ interface Product {
   sizes: string[];
   colors: string[];
   contact_info: string | null;
+}
+
+interface StockEntry {
+  product_id: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -45,24 +52,49 @@ const Loja = () => {
   const { signOut } = useAuth();
   const { totalItems } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stock, setStock] = useState<StockEntry[]>([]);
+  const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("store_products")
-      .select("*")
-      .eq("available", true)
-      .order("category")
-      .then(({ data }) => {
-        if (data) setProducts(data as Product[]);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.from("store_products").select("*").order("category"),
+      supabase.from("product_stock").select("product_id, size, color, quantity"),
+      supabase.from("app_settings").select("setting_value").eq("setting_key", "store_whatsapp").single(),
+    ]).then(([prodRes, stockRes, whatsRes]) => {
+      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      if (stockRes.data) setStock(stockRes.data as StockEntry[]);
+      if (whatsRes.data) setWhatsapp(whatsRes.data.setting_value);
+      setLoading(false);
+    });
   }, []);
 
   const handleLogout = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const getProductTotalStock = (productId: string) => {
+    const entries = stock.filter((s) => s.product_id === productId);
+    if (entries.length === 0) return null; // No stock configured
+    return entries.reduce((sum, s) => sum + s.quantity, 0);
+  };
+
+  const getVariantStock = (productId: string, size: string | null, color: string | null) => {
+    const entry = stock.find(
+      (s) => s.product_id === productId &&
+        (s.size ?? null) === (size ?? null) &&
+        (s.color ?? null) === (color ?? null)
+    );
+    return entry?.quantity ?? null;
+  };
+
+  const isProductAvailable = (product: Product) => {
+    if (!product.available) return false;
+    const totalStock = getProductTotalStock(product.id);
+    if (totalStock === null) return true; // No stock tracking = always available
+    return totalStock > 0;
   };
 
   const filteredProducts = selectedCategory
@@ -129,7 +161,14 @@ const Loja = () => {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                stock={stock}
+                whatsapp={whatsapp}
+                isAvailable={isProductAvailable(product)}
+                getVariantStock={(size, color) => getVariantStock(product.id, size, color)}
+              />
             ))}
           </div>
         )}
@@ -140,7 +179,19 @@ const Loja = () => {
   );
 };
 
-const ProductCard = ({ product }: { product: Product }) => {
+const ProductCard = ({
+  product,
+  stock,
+  whatsapp,
+  isAvailable,
+  getVariantStock,
+}: {
+  product: Product;
+  stock: StockEntry[];
+  whatsapp: string;
+  isAvailable: boolean;
+  getVariantStock: (size: string | null, color: string | null) => number | null;
+}) => {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes.length > 0 ? product.sizes[0] : undefined
@@ -151,8 +202,19 @@ const ProductCard = ({ product }: { product: Product }) => {
   const { addItem } = useCart();
   const { toast } = useToast();
 
+  const currentVariantStock = getVariantStock(selectedSize ?? null, selectedColor ?? null);
+  const variantOutOfStock = currentVariantStock !== null && currentVariantStock <= 0;
+
+  const handleWhatsApp = () => {
+    if (!whatsapp) return;
+    const cleanNumber = whatsapp.replace(/\D/g, "");
+    const msg = encodeURIComponent(`Olá! Gostaria de saber sobre a disponibilidade do produto: ${product.name}`);
+    window.open(`https://wa.me/${cleanNumber}?text=${msg}`, "_blank");
+  };
+
   const handleAddToCart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!isAvailable || variantOutOfStock) return;
     addItem({
       id: product.id,
       name: product.name,
@@ -166,12 +228,40 @@ const ProductCard = ({ product }: { product: Product }) => {
     setShowDetails(false);
   };
 
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAvailable) return;
+    // Check default variant stock
+    const defaultSize = product.sizes.length > 0 ? product.sizes[0] : null;
+    const defaultColor = product.colors.length > 0 ? product.colors[0] : null;
+    const defaultStock = getVariantStock(defaultSize, defaultColor);
+    if (defaultStock !== null && defaultStock <= 0) {
+      toast({ title: "Esgotado", description: "Este item está fora de estoque.", variant: "destructive" });
+      return;
+    }
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      category: product.category,
+      selectedSize: defaultSize ?? undefined,
+      selectedColor: defaultColor ?? undefined,
+    });
+    toast({ title: "Adicionado!", description: product.name });
+  };
+
   return (
     <>
       <button
         onClick={() => setShowDetails(true)}
-        className="bg-card rounded-xl shadow-card overflow-hidden text-left transition-transform active:scale-[0.98]"
+        className="bg-card rounded-xl shadow-card overflow-hidden text-left transition-transform active:scale-[0.98] relative"
       >
+        {!isAvailable && (
+          <div className="absolute inset-0 bg-background/60 z-10 flex items-center justify-center rounded-xl">
+            <span className="text-xs font-bold text-destructive bg-card px-3 py-1 rounded-full shadow">Indisponível</span>
+          </div>
+        )}
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -197,25 +287,21 @@ const ProductCard = ({ product }: { product: Product }) => {
             <p className="text-base font-bold text-primary">
               R$ {product.price.toFixed(2)}
             </p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Quick add without size/color selection
-                addItem({
-                  id: product.id,
-                  name: product.name,
-                  price: product.price,
-                  image_url: product.image_url,
-                  category: product.category,
-                  selectedSize: product.sizes.length > 0 ? product.sizes[0] : undefined,
-                  selectedColor: product.colors.length > 0 ? product.colors[0] : undefined,
-                });
-                toast({ title: "Adicionado!", description: product.name });
-              }}
-              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              <Plus size={16} />
-            </button>
+            {isAvailable ? (
+              <button
+                onClick={handleQuickAdd}
+                className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                <Plus size={16} />
+              </button>
+            ) : whatsapp ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleWhatsApp(); }}
+                className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+              >
+                <MessageCircle size={16} />
+              </button>
+            ) : null}
           </div>
         </div>
       </button>
@@ -253,19 +339,29 @@ const ProductCard = ({ product }: { product: Product }) => {
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Tamanho</p>
                   <div className="flex gap-1.5 flex-wrap">
-                    {product.sizes.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setSelectedSize(s)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                          selectedSize === s
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground hover:bg-muted/80"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
+                    {product.sizes.map((s) => {
+                      const sStock = getVariantStock(s, selectedColor ?? null);
+                      const outOfStock = sStock !== null && sStock <= 0;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setSelectedSize(s)}
+                          disabled={outOfStock}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            outOfStock
+                              ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                              : selectedSize === s
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground hover:bg-muted/80"
+                          }`}
+                        >
+                          {s}
+                          {sStock !== null && (
+                            <span className="ml-1 text-[10px] opacity-70">({sStock})</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -274,31 +370,63 @@ const ProductCard = ({ product }: { product: Product }) => {
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Cor</p>
                   <div className="flex gap-1.5 flex-wrap">
-                    {product.colors.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => setSelectedColor(c)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                          selectedColor === c
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground hover:bg-muted/80"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+                    {product.colors.map((c) => {
+                      const cStock = getVariantStock(selectedSize ?? null, c);
+                      const outOfStock = cStock !== null && cStock <= 0;
+                      return (
+                        <button
+                          key={c}
+                          onClick={() => setSelectedColor(c)}
+                          disabled={outOfStock}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            outOfStock
+                              ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                              : selectedColor === c
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground hover:bg-muted/80"
+                          }`}
+                        >
+                          {c}
+                          {cStock !== null && (
+                            <span className="ml-1 text-[10px] opacity-70">({cStock})</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
+
+              {/* Stock info */}
+              {currentVariantStock !== null && (
+                <p className={`text-xs mt-2 font-semibold ${currentVariantStock > 0 ? "text-green-600" : "text-destructive"}`}>
+                  {currentVariantStock > 0 ? `${currentVariantStock} em estoque` : "Fora de estoque"}
+                </p>
+              )}
             </div>
 
-            <Button
-              onClick={() => handleAddToCart()}
-              className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
-            >
-              <ShoppingCart size={20} />
-              Adicionar ao Carrinho
-            </Button>
+            {isAvailable && !variantOutOfStock ? (
+              <Button
+                onClick={() => handleAddToCart()}
+                className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
+              >
+                <ShoppingCart size={20} />
+                Adicionar ao Carrinho
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-center text-sm text-destructive font-semibold">Produto indisponível</p>
+                {whatsapp && (
+                  <Button
+                    onClick={handleWhatsApp}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold gap-2"
+                  >
+                    <MessageCircle size={20} />
+                    Falar no WhatsApp
+                  </Button>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => setShowDetails(false)}
