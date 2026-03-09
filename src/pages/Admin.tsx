@@ -112,7 +112,7 @@ const Admin = () => {
           <TabsContent value="store"><ManageStore /></TabsContent>
           <TabsContent value="orders"><ManageOrders /></TabsContent>
           <TabsContent value="surveys"><ManageSurveys /></TabsContent>
-          <TabsContent value="formations"><ManageFormations /></TabsContent>
+          
           <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
