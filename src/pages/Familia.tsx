@@ -287,6 +287,21 @@ const Familia = () => {
           <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>
         ) : (
           <div className="space-y-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            {/* Show info banner when user was linked by someone else */}
+            {!isGroupCreator && familyGroupInfo && (
+              <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+                <UserPlus size={20} className="text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Você faz parte da família "{familyGroupInfo.name}"
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Vinculado(a) por {familyGroupInfo.creator_name}. Os dados da família são compartilhados entre os membros.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
               <div className="space-y-1">
                 <Label>Nome da Família</Label>
@@ -294,7 +309,13 @@ const Familia = () => {
                   placeholder="Ex: Família Silva"
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
+                  disabled={!isGroupCreator && !!familyGroupInfo}
                 />
+                {!isGroupCreator && familyGroupInfo && (
+                  <p className="text-xs text-muted-foreground">
+                    Apenas {familyGroupInfo.creator_name} pode editar o nome do grupo.
+                  </p>
+                )}
               </div>
             </div>
 
