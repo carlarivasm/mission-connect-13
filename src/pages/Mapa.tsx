@@ -401,6 +401,16 @@ const Mapa = () => {
                                 />
                               </div>
                               <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Nome do morador</label>
+                                <input
+                                  type="text"
+                                  value={note.resident_name || ""}
+                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "resident_name", e.target.value)}
+                                  placeholder="Nome de quem mora na casa..."
+                                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                />
+                              </div>
+                              <div className="space-y-1">
                                 <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
                                 <Textarea
                                   value={note.user_address || ""}
