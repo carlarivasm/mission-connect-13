@@ -73,6 +73,11 @@ export type Database = {
           id: string
           location: string | null
           meeting_link: string | null
+          notify_push: boolean
+          reminder_10min: boolean
+          reminder_24h: boolean
+          reminder_30min: boolean
+          reminder_5min: boolean
           title: string
           updated_at: string
         }
@@ -86,6 +91,11 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_link?: string | null
+          notify_push?: boolean
+          reminder_10min?: boolean
+          reminder_24h?: boolean
+          reminder_30min?: boolean
+          reminder_5min?: boolean
           title: string
           updated_at?: string
         }
@@ -99,6 +109,11 @@ export type Database = {
           id?: string
           location?: string | null
           meeting_link?: string | null
+          notify_push?: boolean
+          reminder_10min?: boolean
+          reminder_24h?: boolean
+          reminder_30min?: boolean
+          reminder_5min?: boolean
           title?: string
           updated_at?: string
         }
