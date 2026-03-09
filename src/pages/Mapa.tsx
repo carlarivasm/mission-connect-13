@@ -102,11 +102,11 @@ const Mapa = () => {
     return drafts[locationId] || { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" };
   };
 
-  const updateDraft = (locationId: string, field: "needs" | "notes" | "user_address", value: string) => {
+  const updateDraft = (locationId: string, field: "house_number" | "needs" | "notes" | "user_address", value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, needs: "", notes: "", user_address: "" }),
+        ...(prev[locationId] || { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" }),
         [field]: value,
       },
     }));
