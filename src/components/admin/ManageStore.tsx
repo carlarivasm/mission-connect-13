@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, ShoppingBag, Pencil, ImagePlus, CreditCard, Save, Upload } from "lucide-react";
+import { Trash2, ShoppingBag, Pencil, ImagePlus, CreditCard, Save, Upload, Package } from "lucide-react";
 
 interface Product {
   id: string;
@@ -21,6 +21,14 @@ interface Product {
   sizes: string[];
   colors: string[];
   contact_info: string | null;
+}
+
+interface StockEntry {
+  id: string;
+  product_id: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
 }
 
 const categories = [
@@ -152,6 +160,90 @@ const PaymentSettings = () => {
   );
 };
 
+const StockManager = ({ product, onStockUpdated }: { product: Product; onStockUpdated: () => void }) => {
+  const { toast } = useToast();
+  const [stock, setStock] = useState<StockEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStock = async () => {
+    const { data } = await supabase
+      .from("product_stock")
+      .select("*")
+      .eq("product_id", product.id);
+    if (data) setStock(data as StockEntry[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchStock(); }, [product.id]);
+
+  // Generate all variants
+  const variants: { size: string | null; color: string | null }[] = [];
+  const sizes = product.sizes.length > 0 ? product.sizes : [null];
+  const colors = product.colors.length > 0 ? product.colors : [null];
+  for (const size of sizes) {
+    for (const color of colors) {
+      variants.push({ size, color });
+    }
+  }
+
+  const getStockQty = (size: string | null, color: string | null) => {
+    const entry = stock.find(
+      (s) => (s.size ?? null) === size && (s.color ?? null) === color
+    );
+    return entry?.quantity ?? 0;
+  };
+
+  const handleStockChange = async (size: string | null, color: string | null, qty: number) => {
+    const { error } = await supabase
+      .from("product_stock")
+      .upsert(
+        {
+          product_id: product.id,
+          size: size || null,
+          color: color || null,
+          quantity: Math.max(0, qty),
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: "product_id,size,color" }
+      );
+    if (error) {
+      toast({ title: "Erro ao salvar estoque", description: error.message, variant: "destructive" });
+    } else {
+      fetchStock();
+      onStockUpdated();
+    }
+  };
+
+  if (loading) return <p className="text-xs text-muted-foreground">Carregando estoque...</p>;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+        <Package size={12} /> Estoque
+      </p>
+      <div className="grid gap-1.5">
+        {variants.map(({ size, color }) => {
+          const label = [size, color].filter(Boolean).join(" / ") || "Geral";
+          const qty = getStockQty(size, color);
+          return (
+            <div key={`${size}_${color}`} className="flex items-center gap-2">
+              <span className="text-xs text-foreground min-w-[80px]">{label}</span>
+              <Input
+                type="number"
+                min="0"
+                value={qty}
+                onChange={(e) => handleStockChange(size, color, parseInt(e.target.value) || 0)}
+                className="w-20 h-8 text-xs"
+              />
+              <span className="text-[10px] text-muted-foreground">un.</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const ManageStore = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -159,6 +251,7 @@ const ManageStore = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -340,34 +433,48 @@ const ManageStore = () => {
           <p className="text-muted-foreground text-sm text-center py-4">Nenhum produto cadastrado.</p>
         ) : (
           products.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-              {p.image_url ? (
-                <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-              ) : (
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <ShoppingBag size={20} className="text-muted-foreground" />
+            <div key={p.id} className="bg-card rounded-xl shadow-card overflow-hidden">
+              <div className="flex items-center gap-3 p-3">
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <ShoppingBag size={20} className="text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground text-sm truncate">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {categoryLabel(p.category)} • R$ {p.price.toFixed(2)}
+                  </p>
+                  {p.sizes.length > 0 && (
+                    <p className="text-xs text-muted-foreground">Tam: {p.sizes.join(", ")}</p>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${p.available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {p.available ? "Disponível" : "Esgotado"}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setExpandedStockId(expandedStockId === p.id ? null : p.id)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    title="Gerenciar estoque"
+                  >
+                    <Package size={16} />
+                  </button>
+                  <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                    <Pencil size={16} />
+                  </button>
+                  <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              {expandedStockId === p.id && (
+                <div className="px-3 pb-3 border-t border-border pt-3">
+                  <StockManager product={p} onStockUpdated={fetchProducts} />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm truncate">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {categoryLabel(p.category)} • R$ {p.price.toFixed(2)}
-                </p>
-                {p.sizes.length > 0 && (
-                  <p className="text-xs text-muted-foreground">Tam: {p.sizes.join(", ")}</p>
-                )}
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${p.available ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                {p.available ? "Disponível" : "Esgotado"}
-              </span>
-              <div className="flex gap-1">
-                <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
-                  <Pencil size={16} />
-                </button>
-                <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
-                  <Trash2 size={16} />
-                </button>
-              </div>
             </div>
           ))
         )}
