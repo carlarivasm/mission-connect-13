@@ -7,6 +7,7 @@ import QuickAction from "@/components/QuickAction";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import NotificationPopup from "@/components/NotificationPopup";
+import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 
 interface EventData {
   id: string;
