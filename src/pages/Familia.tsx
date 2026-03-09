@@ -47,6 +47,8 @@ const Familia = () => {
 
   // Linked users state
   const [familyGroupId, setFamilyGroupId] = useState<string | null>(null);
+  const [familyGroupInfo, setFamilyGroupInfo] = useState<FamilyGroupInfo | null>(null);
+  const [isGroupCreator, setIsGroupCreator] = useState(true);
   const [linkedUsers, setLinkedUsers] = useState<LinkedUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
