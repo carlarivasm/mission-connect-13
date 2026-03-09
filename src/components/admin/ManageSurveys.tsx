@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
   AlertDialogAction,
