@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
-import { ChevronDown, ChevronRight, Church } from "lucide-react";
+import { ChevronDown, ChevronRight, Church, Phone } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface OrgPosition {
@@ -21,6 +21,7 @@ interface Profile {
   id: string;
   full_name: string;
   avatar_url: string | null;
+  phone: string | null;
 }
 
 interface CategoryOption {
@@ -54,6 +55,11 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{name}</p>
         {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
+        {profile?.phone && (
+          <a href={`tel:${profile.phone}`} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
+            <Phone size={10} /> {profile.phone}
+          </a>
+        )}
         <p className="text-[10px] text-muted-foreground">{catLabel}</p>
       </div>
     </div>
@@ -63,7 +69,7 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
 const CategorySection = ({ label, positions, profiles, catLabels, defaultOpen = true }: {
   label: string; positions: OrgPosition[]; profiles: Map<string, Profile>; catLabels: Record<string, string>; defaultOpen?: boolean;
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   if (positions.length === 0) return null;
 
   return (
@@ -114,7 +120,7 @@ const Organograma = () => {
         if (profileIds.length > 0) {
           const { data: profData } = await supabase
             .from("profiles_org_public" as any)
-            .select("id, full_name, avatar_url");
+            .select("id, full_name, avatar_url, phone");
           if (profData) {
             const map = new Map<string, Profile>();
             (profData as any[]).forEach(p => map.set(p.id, p));
