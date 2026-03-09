@@ -7,6 +7,7 @@ import QuickAction from "@/components/QuickAction";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import NotificationPopup from "@/components/NotificationPopup";
+import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 
 interface EventData {
   id: string;
@@ -41,6 +42,8 @@ const Dashboard = () => {
       <AppHeader onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-6">
+        {/* Pending surveys alert */}
+        <PendingSurveyAlert />
         {/* Welcome */}
         <div className="animate-fade-in">
           <h2 className="text-2xl font-display font-bold text-foreground">
