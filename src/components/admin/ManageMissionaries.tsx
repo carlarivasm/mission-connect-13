@@ -50,7 +50,7 @@ const ManageMissionaries = () => {
   const fetchProfiles = async () => {
     const { data: allProfiles } = await supabase
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name, email, approved")
       .order("full_name");
 
     const { data: adminRoles } = await supabase
