@@ -12,15 +12,46 @@ const PushNotificationManager = () => {
     if (!user || initialized.current) return;
     initialized.current = true;
 
-    // Register firebase SW separately from PWA SW
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then(() => {
-          requestNotificationPermission(user.id);
-        })
-        .catch((err) => console.error("Firebase SW registration failed:", err));
-    }
+    const setup = async () => {
+      if (!("serviceWorker" in navigator)) {
+        console.warn("[Push] Service Workers not supported");
+        return;
+      }
+
+      try {
+        // Check if SW already registered
+        let registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        
+        if (!registration) {
+          console.log("[Push] Registering firebase SW...");
+          registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+          console.log("[Push] Firebase SW registered:", registration.scope);
+        } else {
+          console.log("[Push] Firebase SW already registered:", registration.scope);
+        }
+
+        // Wait for SW to be active
+        if (registration.installing) {
+          await new Promise<void>((resolve) => {
+            registration!.installing!.addEventListener("statechange", (e) => {
+              if ((e.target as ServiceWorker).state === "activated") resolve();
+            });
+          });
+        }
+
+        console.log("[Push] Requesting notification permission...");
+        const token = await requestNotificationPermission(user.id);
+        if (token) {
+          console.log("[Push] Token obtained successfully:", token.substring(0, 20) + "...");
+        } else {
+          console.warn("[Push] No token obtained - permission may have been denied");
+        }
+      } catch (err) {
+        console.error("[Push] Setup error:", err);
+      }
+    };
+
+    setup();
 
     // Listen for foreground messages
     onForegroundMessage((payload: any) => {
