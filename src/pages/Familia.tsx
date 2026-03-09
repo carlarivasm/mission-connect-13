@@ -22,6 +22,13 @@ interface LinkedUser {
   avatar_url: string | null;
 }
 
+interface FamilyGroupInfo {
+  id: string;
+  name: string;
+  created_by: string;
+  creator_name?: string;
+}
+
 interface SearchResult {
   id: string;
   full_name: string;
