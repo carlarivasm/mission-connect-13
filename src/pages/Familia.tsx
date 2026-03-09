@@ -90,6 +90,46 @@ const Familia = () => {
     if (memberData && memberData.length > 0) {
       const groupId = memberData[0].family_group_id;
       setFamilyGroupId(groupId);
+
+      // Load group info to determine if user is creator
+      const { data: groupData } = await supabase
+        .from("family_groups")
+        .select("id, name, created_by")
+        .eq("id", groupId)
+        .single();
+
+      if (groupData) {
+        const creatorIsUser = groupData.created_by === user.id;
+        setIsGroupCreator(creatorIsUser);
+
+        // If user is NOT the creator, load creator's name and use group name
+        if (!creatorIsUser) {
+          const { data: creatorProfile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", groupData.created_by)
+            .single();
+
+          setFamilyGroupInfo({
+            id: groupData.id,
+            name: groupData.name,
+            created_by: groupData.created_by,
+            creator_name: creatorProfile?.full_name || "Membro da família",
+          });
+
+          // Use group name as family name if user doesn't have their own
+          if (!familyName) {
+            setFamilyName(groupData.name);
+          }
+        } else {
+          setFamilyGroupInfo({
+            id: groupData.id,
+            name: groupData.name,
+            created_by: groupData.created_by,
+          });
+        }
+      }
+
       await loadLinkedUsers(groupId);
     }
 
