@@ -73,13 +73,13 @@ const Familia = () => {
 
     // Load family group
     const { data: memberData } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .select("family_group_id")
       .eq("user_id", user.id)
       .limit(1);
 
-    if (memberData && (memberData as any[]).length > 0) {
-      const groupId = (memberData as any[])[0].family_group_id;
+    if (memberData && memberData.length > 0) {
+      const groupId = memberData[0].family_group_id;
       setFamilyGroupId(groupId);
       await loadLinkedUsers(groupId);
     }
@@ -90,12 +90,12 @@ const Familia = () => {
   const loadLinkedUsers = async (groupId: string) => {
     if (!user) return;
     const { data: membersData } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .select("user_id")
       .eq("family_group_id", groupId);
 
     if (membersData) {
-      const userIds = (membersData as any[]).map((m: any) => m.user_id).filter((id: string) => id !== user.id);
+      const userIds = membersData.map((m) => m.user_id).filter((id) => id !== user.id);
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
@@ -136,26 +136,26 @@ const Familia = () => {
     // Create family group if doesn't exist
     if (!groupId) {
       const { data: newGroup, error: groupErr } = await supabase
-        .from("family_groups" as any)
-        .insert({ name: familyName || "Minha Família", created_by: user.id } as any)
+        .from("family_groups")
+        .insert({ name: familyName || "Minha Família", created_by: user.id })
         .select("id")
         .single();
 
       if (groupErr || !newGroup) {
-        toast({ title: "Erro", description: "Não foi possível criar o grupo familiar.", variant: "destructive" });
+        toast({ title: "Erro", description: groupErr?.message || "Não foi possível criar o grupo familiar.", variant: "destructive" });
         return;
       }
-      groupId = (newGroup as any).id;
+      groupId = newGroup.id;
       setFamilyGroupId(groupId);
 
       // Add current user as member
-      await supabase.from("family_group_members" as any).insert({ family_group_id: groupId, user_id: user.id } as any);
+      await supabase.from("family_group_members").insert({ family_group_id: groupId, user_id: user.id });
     }
 
     // Add target user
     const { error } = await supabase
-      .from("family_group_members" as any)
-      .insert({ family_group_id: groupId, user_id: targetUser.id } as any);
+      .from("family_group_members")
+      .insert({ family_group_id: groupId!, user_id: targetUser.id });
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -169,7 +169,7 @@ const Familia = () => {
   const handleRemoveLinkedUser = async (userId: string) => {
     if (!familyGroupId) return;
     const { error } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .delete()
       .eq("family_group_id", familyGroupId)
       .eq("user_id", userId);
