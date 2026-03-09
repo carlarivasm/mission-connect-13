@@ -174,6 +174,7 @@ const Mapa = () => {
     const { error } = await supabase
       .from("location_user_notes")
       .update({
+        house_number: note.house_number.trim() || null,
         needs: note.needs.trim() || null,
         notes: note.notes.trim() || null,
         user_address: note.user_address.trim() || null,
