@@ -116,9 +116,10 @@ const ManageMaterials = () => {
   const categoryLabels: Record<string, string> = {
     geral: "Geral",
     oração: "Oração",
-    formação: "Vídeo",
+    formação: "Formação",
     liturgia: "Liturgia",
     evangelização: "Evangelização",
+    atividades: "Atividades",
   };
 
   return (
@@ -144,9 +145,10 @@ const ManageMaterials = () => {
                 <SelectContent>
                   <SelectItem value="geral">Geral</SelectItem>
                   <SelectItem value="oração">Oração</SelectItem>
-                  <SelectItem value="formação">Vídeo</SelectItem>
+                  <SelectItem value="formação">Formação</SelectItem>
                   <SelectItem value="liturgia">Liturgia</SelectItem>
                   <SelectItem value="evangelização">Evangelização</SelectItem>
+                  <SelectItem value="atividades">Atividades</SelectItem>
                 </SelectContent>
               </Select>
             </div>
