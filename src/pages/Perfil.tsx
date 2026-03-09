@@ -35,12 +35,13 @@ const Perfil = () => {
   const [notifyReminder30min, setNotifyReminder30min] = useState(true);
   const [notifyReminder10min, setNotifyReminder10min] = useState(true);
   const [notifyReminder5min, setNotifyReminder5min] = useState(true);
+  const [showPhoneInOrg, setShowPhoneInOrg] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min")
+      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min, show_phone_in_org")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
@@ -57,6 +58,7 @@ const Perfil = () => {
           setNotifyReminder30min(d.notify_reminder_30min ?? true);
           setNotifyReminder10min(d.notify_reminder_10min ?? true);
           setNotifyReminder5min(d.notify_reminder_5min ?? true);
+          setShowPhoneInOrg(d.show_phone_in_org ?? false);
         }
         setLoading(false);
       });
@@ -109,6 +111,7 @@ const Perfil = () => {
         notify_reminder_30min: notifyReminder30min,
         notify_reminder_10min: notifyReminder10min,
         notify_reminder_5min: notifyReminder5min,
+        show_phone_in_org: showPhoneInOrg,
       } as any)
       .eq("id", user.id);
 
@@ -182,6 +185,13 @@ const Perfil = () => {
                 <div className="space-y-1">
                   <Label className="flex items-center gap-1"><Phone size={12} /> Telefone</Label>
                   <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                  <div className="flex items-center justify-between mt-2 p-2 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Exibir telefone no Organograma</p>
+                      <p className="text-[10px] text-muted-foreground">Outros membros poderão ver seu telefone</p>
+                    </div>
+                    <Switch checked={showPhoneInOrg} onCheckedChange={setShowPhoneInOrg} />
+                  </div>
                 </div>
               </div>
             </section>

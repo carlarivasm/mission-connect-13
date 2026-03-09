@@ -22,6 +22,7 @@ interface Profile {
   full_name: string;
   avatar_url: string | null;
   phone: string | null;
+  show_phone_in_org: boolean;
 }
 
 interface CategoryOption {
@@ -55,7 +56,7 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{name}</p>
         {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
-        {profile?.phone && (
+        {profile?.show_phone_in_org && profile?.phone && (
           <a href={`tel:${profile.phone}`} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
             <Phone size={10} /> {profile.phone}
           </a>
@@ -120,7 +121,7 @@ const Organograma = () => {
         if (profileIds.length > 0) {
           const { data: profData } = await supabase
             .from("profiles_org_public" as any)
-            .select("id, full_name, avatar_url, phone");
+            .select("id, full_name, avatar_url, phone, show_phone_in_org");
           if (profData) {
             const map = new Map<string, Profile>();
             (profData as any[]).forEach(p => map.set(p.id, p));
