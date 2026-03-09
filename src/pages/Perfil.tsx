@@ -111,6 +111,7 @@ const Perfil = () => {
         notify_reminder_30min: notifyReminder30min,
         notify_reminder_10min: notifyReminder10min,
         notify_reminder_5min: notifyReminder5min,
+        show_phone_in_org: showPhoneInOrg,
       } as any)
       .eq("id", user.id);
 
