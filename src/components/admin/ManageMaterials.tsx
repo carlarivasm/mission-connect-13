@@ -419,20 +419,28 @@ const VideosTab = () => {
         {filteredVideos.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum vídeo adicionado.</p>
         ) : (
-          filteredVideos.map((video) => (
+          filteredVideos.map((video) => {
+            const isLink = video.storage_path === "external-link";
+            return (
             <div key={video.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <Film size={18} className="text-muted-foreground" />
+                {isLink ? <ExternalLink size={18} className="text-muted-foreground" /> : <Film size={18} className="text-muted-foreground" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground text-sm truncate">{video.title}</p>
                 <p className="text-xs text-muted-foreground">{getCatName(video.category_id)}</p>
+                {isLink && (
+                  <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5 truncate">
+                    <ExternalLink size={10} /> {video.video_url}
+                  </a>
+                )}
               </div>
               <button onClick={() => handleDeleteVideo(video)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
                 <Trash2 size={16} />
               </button>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
