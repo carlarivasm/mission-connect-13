@@ -92,8 +92,6 @@ Deno.serve(async (req) => {
 
     // If the token is the service role key itself, allow (internal call from event-reminders)
     if (token !== serviceRoleKey) {
-      // Validate as a user JWT and check admin role
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
       const authClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
