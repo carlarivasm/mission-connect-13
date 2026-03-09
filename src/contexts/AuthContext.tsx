@@ -68,22 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Check if there are any users yet (first user becomes admin)
-    const { count } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true });
-
-    const isFirstUser = (count ?? 0) === 0;
-
-    if (!isFirstUser) {
-      // Check if email is authorized via secure RPC
-      const { data: isAuthorized } = await supabase.rpc("is_email_authorized", { p_email: email });
-
-      if (!isAuthorized) {
-        return { error: "Este e-mail não está autorizado. Peça ao administrador para adicioná-lo à lista." };
-      }
-    }
-
     const { error } = await supabase.auth.signUp({
       email,
       password,
