@@ -372,6 +372,7 @@ const Mapa = () => {
                           {notes.slice(0, 2).map((note, idx) => (
                             <div key={note.id || idx} className="space-y-0.5">
                               {note.house_number && <p><span className="font-semibold">Nº Casa:</span> {note.house_number}</p>}
+                              {note.resident_name && <p><span className="font-semibold">Morador:</span> {note.resident_name}</p>}
                               {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
                               {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
                               {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
