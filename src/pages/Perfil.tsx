@@ -41,7 +41,7 @@ const Perfil = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min")
+      .select("full_name, email, phone, avatar_url, notify_events, notify_locations, notify_reminders, notify_reminder_24h, notify_reminder_30min, notify_reminder_10min, notify_reminder_5min, show_phone_in_org")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
