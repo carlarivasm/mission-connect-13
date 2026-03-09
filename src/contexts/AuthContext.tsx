@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole;
+  approved: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
@@ -27,24 +28,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole>(null);
+  const [approved, setApproved] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = async (userId: string) => {
-    const { data } = await supabase.rpc("get_user_role", { _user_id: userId });
-    setRole((data as AppRole) || null);
+  const fetchRoleAndApproval = async (userId: string) => {
+    const [roleRes, profileRes] = await Promise.all([
+      supabase.rpc("get_user_role", { _user_id: userId }),
+      supabase.from("profiles").select("approved").eq("id", userId).single(),
+    ]);
+    setRole((roleRes.data as AppRole) || null);
+    setApproved(profileRes.data?.approved ?? true);
   };
 
   useEffect(() => {
-    // Set up auth listener BEFORE checking session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlock with Supabase auth
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(() => fetchRoleAndApproval(session.user.id), 0);
         } else {
           setRole(null);
+          setApproved(true);
         }
         setLoading(false);
       }
@@ -54,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchRoleAndApproval(session.user.id);
       }
       setLoading(false);
     });
@@ -84,10 +89,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setSession(null);
     setRole(null);
+    setApproved(true);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, approved, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
