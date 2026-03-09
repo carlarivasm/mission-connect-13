@@ -12,7 +12,7 @@ import ManageLocations from "@/components/admin/ManageLocations";
 import ManageStore from "@/components/admin/ManageStore";
 import ManageSurveys from "@/components/admin/ManageSurveys";
 import ManageFamilies from "@/components/admin/ManageFamilies";
-import ManageFormations from "@/components/admin/ManageFormations";
+
 import ManageAppSettings from "@/components/admin/ManageAppSettings";
 import ManageLocationNotes from "@/components/admin/ManageLocationNotes";
 import ManageOrgChart from "@/components/admin/ManageOrgChart";
