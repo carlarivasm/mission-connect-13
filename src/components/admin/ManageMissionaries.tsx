@@ -21,6 +21,7 @@ interface ProfileWithRole {
   full_name: string;
   email: string;
   is_admin: boolean;
+  approved: boolean;
 }
 
 const ManageMissionaries = () => {
