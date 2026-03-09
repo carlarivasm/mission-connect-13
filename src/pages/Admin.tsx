@@ -102,12 +102,6 @@ const Admin = () => {
               <span>Configurações</span>
             </TabsTrigger>
           </TabsList>
-          <TabsList className="w-full grid grid-cols-1 mb-4">
-            <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Settings size={16} />
-              <span>Configurações</span>
-            </TabsTrigger>
-          </TabsList>
 
           <TabsContent value="missionaries"><ManageMissionaries /></TabsContent>
           <TabsContent value="families"><ManageFamilies /></TabsContent>
