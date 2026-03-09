@@ -1,9 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
 import logo from "@/assets/logo-jfm.png";
 import NotificationBell from "@/components/NotificationBell";
 import UserAvatarMenu from "@/components/UserAvatarMenu";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
+import { useCart } from "@/contexts/CartContext";
 
 interface AppHeaderProps {
   title?: string;
@@ -12,6 +13,8 @@ interface AppHeaderProps {
 
 const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
   const handleLogout = onLogout || (() => {});
+  const { totalItems } = useCart();
+  const navigate2 = useNavigate();
   const { settings } = useAppSettings();
   const displayTitle = title || settings.app_name || "JFM";
   const logoSrc = settings.logo_url || logo;
@@ -32,6 +35,17 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
           <h1 className="text-lg font-bold text-primary-foreground font-display">{displayTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
+          {totalItems > 0 && (
+            <button
+              onClick={() => navigate2("/checkout")}
+              className="relative p-1.5 text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+            >
+              <ShoppingCart size={20} />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-[10px] font-bold flex items-center justify-center text-secondary-foreground">
+                {totalItems}
+              </span>
+            </button>
+          )}
           <NotificationBell />
           <UserAvatarMenu onLogout={handleLogout} />
         </div>
