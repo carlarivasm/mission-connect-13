@@ -116,9 +116,10 @@ const ManageMaterials = () => {
   const categoryLabels: Record<string, string> = {
     geral: "Geral",
     oração: "Oração",
-    formação: "Vídeo",
+    formação: "Formação",
     liturgia: "Liturgia",
     evangelização: "Evangelização",
+    atividades: "Atividades",
   };
 
   return (
