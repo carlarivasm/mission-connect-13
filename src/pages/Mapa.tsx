@@ -20,6 +20,7 @@ interface MissionLocation {
 interface UserNote {
   id?: string;
   location_id: string;
+  house_number: string;
   needs: string;
   notes: string;
   user_address: string;
