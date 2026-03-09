@@ -56,8 +56,21 @@ const Galeria = () => {
       .from("gallery_photos")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setItems(data as GalleryItem[]);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    // Generate signed URLs for each item since bucket is now private
+    const itemsWithSignedUrls = await Promise.all(
+      (data || []).map(async (item: any) => {
+        const { data: signedData } = await supabase.storage
+          .from("mission-photos")
+          .createSignedUrl(item.storage_path, 3600);
+        return { ...item, image_url: signedData?.signedUrl || item.image_url } as GalleryItem;
+      })
+    );
+    setItems(itemsWithSignedUrls);
     setLoading(false);
   };
 
@@ -105,10 +118,9 @@ const Galeria = () => {
         const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error: uploadError } = await supabase.storage.from("mission-photos").upload(path, file);
         if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from("mission-photos").getPublicUrl(path);
         const mediaType = isVideoFile(file) ? "video" : "image";
         const { error: insertError } = await supabase.from("gallery_photos").insert({
-          image_url: publicUrl,
+          image_url: path, // Store storage_path; signed URL generated at render time
           storage_path: path,
           uploaded_by: user.id,
           uploaded_by_name: userName,
