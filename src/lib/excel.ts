@@ -56,13 +56,7 @@ export function exportToCsv(
 export async function readExcelFile(file: File): Promise<Record<string, string>[]> {
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
-
-  if (file.name.endsWith(".csv")) {
-    await workbook.csv.load(buffer);
-  } else {
-    await workbook.xlsx.load(buffer);
-  }
-
+  await workbook.xlsx.load(buffer);
   const worksheet = workbook.worksheets[0];
   if (!worksheet || worksheet.rowCount < 2) return [];
 
