@@ -58,6 +58,7 @@ const Perfil = () => {
           setNotifyReminder30min(d.notify_reminder_30min ?? true);
           setNotifyReminder10min(d.notify_reminder_10min ?? true);
           setNotifyReminder5min(d.notify_reminder_5min ?? true);
+          setShowPhoneInOrg(d.show_phone_in_org ?? false);
         }
         setLoading(false);
       });
