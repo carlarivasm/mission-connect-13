@@ -380,7 +380,19 @@ const ManageMissionaries = () => {
                      </span>
                    )}
                 </div>
-                <div className="flex gap-1 flex-wrap">
+                 <div className="flex gap-1 flex-wrap">
+                   {!p.is_admin && (
+                     <Button
+                       size="sm"
+                       variant={p.approved ? "outline" : "default"}
+                       className={`text-xs gap-1 ${!p.approved ? "gradient-mission text-primary-foreground" : ""}`}
+                       disabled={actionLoading === p.id + "_approve"}
+                       onClick={() => handleToggleApproval(p.id, p.approved)}
+                     >
+                       {p.approved ? <ShieldOff size={14} /> : <UserCheck size={14} />}
+                       {p.approved ? "Restringir" : "Aprovar Acesso"}
+                     </Button>
+                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
