@@ -157,6 +157,7 @@ const MaterialsTab = () => {
     formação: "Formação",
     liturgia: "Liturgia",
     evangelização: "Evangelização",
+    responsaveis: "Material dos Responsáveis",
     atividades: "Atividades",
   };
 
