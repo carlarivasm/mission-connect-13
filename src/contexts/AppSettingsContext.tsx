@@ -31,17 +31,22 @@ export const useAppSettings = () => useContext(AppSettingsContext);
 
 const applyColors = (primary: string, secondary: string) => {
   const root = document.documentElement;
+  // Light mode primary
   root.style.setProperty("--primary", primary);
   root.style.setProperty("--ring", primary);
-  root.style.setProperty("--sidebar-background", primary.replace(/25%$/, "20%"));
-  root.style.setProperty("--secondary", secondary);
   root.style.setProperty("--accent", secondary);
   root.style.setProperty("--sidebar-primary", secondary);
   root.style.setProperty("--sidebar-ring", secondary);
-  // Update gradient
-  const [h, s] = primary.split(" ");
-  root.style.setProperty("--gradient-mission", `linear-gradient(135deg, hsl(${primary}), hsl(${h} ${s} 35%))`);
+
+  // Parse HSL parts
+  const [h, s, l] = primary.split(" ");
   const [h2, s2] = secondary.split(" ");
+
+  // Sidebar background from primary hue
+  root.style.setProperty("--sidebar-background", `${h} 80% 20%`);
+
+  // Gradients (adapt for dark mode automatically via CSS, but set light defaults)
+  root.style.setProperty("--gradient-mission", `linear-gradient(135deg, hsl(${primary}), hsl(${h2} ${s2} 55%))`);
   root.style.setProperty("--gradient-gold", `linear-gradient(135deg, hsl(${secondary}), hsl(${h2} ${s2} 65%))`);
 };
 
