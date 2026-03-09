@@ -42,6 +42,8 @@ const Dashboard = () => {
       <AppHeader onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-6">
+        {/* Pending surveys alert */}
+        <PendingSurveyAlert />
         {/* Welcome */}
         <div className="animate-fade-in">
           <h2 className="text-2xl font-display font-bold text-foreground">
