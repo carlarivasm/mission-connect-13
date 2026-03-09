@@ -163,7 +163,7 @@ const Mapa = () => {
         ...prev,
         [locationId]: [newNote, ...(prev[locationId] || [])],
       }));
-      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" } }));
+      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" } }));
       toast({ title: "Salvo!", description: "Observação registrada com sucesso." });
     }
     setSavingId(null);
