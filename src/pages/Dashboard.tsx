@@ -106,7 +106,7 @@ const Dashboard = () => {
 
         {/* Upcoming Events */}
         <section className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Próximas Atividades</h3>
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">{eventsLabel}</h3>
           <div className="space-y-3">
             {events.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-4">Nenhuma atividade próxima.</p>
