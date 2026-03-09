@@ -69,7 +69,7 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
 const CategorySection = ({ label, positions, profiles, catLabels, defaultOpen = true }: {
   label: string; positions: OrgPosition[]; profiles: Map<string, Profile>; catLabels: Record<string, string>; defaultOpen?: boolean;
 }) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   if (positions.length === 0) return null;
 
   return (
