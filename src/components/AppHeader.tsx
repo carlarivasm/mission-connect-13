@@ -33,6 +33,7 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
           <h1 className="text-lg font-bold text-primary-foreground font-display">{displayTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <CartButton />
           <NotificationBell />
           <UserAvatarMenu onLogout={handleLogout} />
         </div>
