@@ -56,8 +56,21 @@ const Galeria = () => {
       .from("gallery_photos")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setItems(data as GalleryItem[]);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    // Generate signed URLs for each item since bucket is now private
+    const itemsWithSignedUrls = await Promise.all(
+      (data || []).map(async (item: any) => {
+        const { data: signedData } = await supabase.storage
+          .from("mission-photos")
+          .createSignedUrl(item.storage_path, 3600);
+        return { ...item, image_url: signedData?.signedUrl || item.image_url } as GalleryItem;
+      })
+    );
+    setItems(itemsWithSignedUrls);
     setLoading(false);
   };
 
