@@ -36,6 +36,18 @@ const Calendario = () => {
   const today = new Date();
 
   useEffect(() => {
+    if (!isApproved) {
+      // Unapproved users only see upcoming events (same as dashboard)
+      supabase
+        .from("events")
+        .select("*")
+        .gte("event_date", new Date().toISOString().split("T")[0])
+        .order("event_date", { ascending: true })
+        .limit(5)
+        .then(({ data }) => { if (data) setEvents(data); });
+      return;
+    }
+
     const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${daysInMonth}`;
 
@@ -48,7 +60,7 @@ const Calendario = () => {
       .then(({ data }) => {
         if (data) setEvents(data);
       });
-  }, [year, month, daysInMonth]);
+  }, [year, month, daysInMonth, isApproved]);
 
   const prevMonth = () => { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDay(null); };
   const nextMonth = () => { setCurrentDate(new Date(year, month + 1, 1)); setSelectedDay(null); };
