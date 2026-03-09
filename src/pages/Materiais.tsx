@@ -77,7 +77,7 @@ const Materiais = () => {
         <Tabs defaultValue="materiais" className="w-full">
           <TabsList className="w-full grid grid-cols-2 mb-4">
             <TabsTrigger value="materiais">Materiais de Apoio</TabsTrigger>
-            <TabsTrigger value="formacao">Vídeos</TabsTrigger>
+            <TabsTrigger value="formacao">Formação</TabsTrigger>
           </TabsList>
 
           {/* Materials Tab */}
