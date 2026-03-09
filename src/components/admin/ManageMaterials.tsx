@@ -265,6 +265,7 @@ const VideosTab = () => {
   const [videoDesc, setVideoDesc] = useState("");
   const [videoCategoryId, setVideoCategoryId] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoLinkUrl, setVideoLinkUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>("all");
