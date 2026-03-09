@@ -45,12 +45,18 @@ const AdminBroadcast = () => {
       toast({ title: "Mensagem enviada!", description: `Enviada para ${profiles.length} usuários.` });
 
       // Send push notification
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), body: message.trim(), link: "/dashboard" }),
-      }).catch(console.error);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ title: title.trim(), body: message.trim(), link: "/dashboard" }),
+        }).catch(console.error);
+      }
 
       setTitle("");
       setMessage("");
