@@ -20,7 +20,7 @@ interface EventData {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { signOut, user, role } = useAuth();
+  const { signOut, user, role, approved } = useAuth();
   const [events, setEvents] = useState<EventData[]>([]);
 
   useEffect(() => {
