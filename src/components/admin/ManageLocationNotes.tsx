@@ -11,6 +11,7 @@ interface NoteRow {
   user_name: string;
   user_email: string;
   house_number: string;
+  resident_name: string;
   user_address: string;
   needs: string;
   notes: string;
