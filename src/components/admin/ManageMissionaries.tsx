@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck } from "lucide-react";
-import * as XLSX from "xlsx";
+import { readExcelFile } from "@/lib/excel";
 
 interface AuthorizedMissionary {
   id: string;
