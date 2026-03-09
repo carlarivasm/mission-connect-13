@@ -28,7 +28,7 @@ const categoryColors: Record<string, string> = {
   evangelização: "bg-destructive/10 text-destructive",
 };
 const categoryLabels: Record<string, string> = {
-  geral: "Geral", oração: "Oração", formação: "Vídeo", liturgia: "Liturgia", evangelização: "Evangelização",
+  geral: "Geral", oração: "Oração", formação: "Formação", liturgia: "Liturgia", evangelização: "Evangelização", atividades: "Atividades",
 };
 
 const Materiais = () => {
