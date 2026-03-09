@@ -308,22 +308,32 @@ const VideosTab = () => {
   };
 
   const handleUploadVideo = async () => {
-    if (!videoFile || !videoCategoryId || !videoTitle.trim() || !user) return;
+    if (!videoCategoryId || !videoTitle.trim() || !user) return;
+    if (!videoFile && !videoLinkUrl.trim()) return;
     setUploading(true);
     try {
-      const ext = videoFile.name.split(".").pop();
-      const path = `${videoCategoryId}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("formation-videos").upload(path, videoFile);
-      if (upErr) throw upErr;
+      let publicUrl = "";
+      let storagePath = "";
 
-      const { data: { publicUrl } } = supabase.storage.from("formation-videos").getPublicUrl(path);
+      if (videoFile) {
+        const ext = videoFile.name.split(".").pop();
+        const path = `${videoCategoryId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("formation-videos").upload(path, videoFile);
+        if (upErr) throw upErr;
+        const { data: { publicUrl: url } } = supabase.storage.from("formation-videos").getPublicUrl(path);
+        publicUrl = url;
+        storagePath = path;
+      } else {
+        publicUrl = videoLinkUrl.trim();
+        storagePath = "external-link";
+      }
 
       const { error: insErr } = await supabase.from("formation_videos").insert({
         category_id: videoCategoryId,
         title: videoTitle.trim(),
         description: videoDesc.trim() || null,
         video_url: publicUrl,
-        storage_path: path,
+        storage_path: storagePath,
         created_by: user.id,
       } as any);
       if (insErr) throw insErr;
