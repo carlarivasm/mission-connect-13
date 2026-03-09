@@ -73,13 +73,13 @@ const Familia = () => {
 
     // Load family group
     const { data: memberData } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .select("family_group_id")
       .eq("user_id", user.id)
       .limit(1);
 
-    if (memberData && (memberData as any[]).length > 0) {
-      const groupId = (memberData as any[])[0].family_group_id;
+    if (memberData && memberData.length > 0) {
+      const groupId = memberData[0].family_group_id;
       setFamilyGroupId(groupId);
       await loadLinkedUsers(groupId);
     }
