@@ -90,12 +90,12 @@ const Familia = () => {
   const loadLinkedUsers = async (groupId: string) => {
     if (!user) return;
     const { data: membersData } = await supabase
-      .from("family_group_members" as any)
+      .from("family_group_members")
       .select("user_id")
       .eq("family_group_id", groupId);
 
     if (membersData) {
-      const userIds = (membersData as any[]).map((m: any) => m.user_id).filter((id: string) => id !== user.id);
+      const userIds = membersData.map((m) => m.user_id).filter((id) => id !== user.id);
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
