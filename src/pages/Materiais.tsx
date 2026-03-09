@@ -26,9 +26,10 @@ const categoryColors: Record<string, string> = {
   formação: "bg-primary/10 text-primary",
   liturgia: "bg-accent/20 text-accent-foreground",
   evangelização: "bg-destructive/10 text-destructive",
+  responsaveis: "bg-primary/20 text-primary",
 };
 const categoryLabels: Record<string, string> = {
-  geral: "Geral", oração: "Oração", formação: "Formação", liturgia: "Liturgia", evangelização: "Evangelização", atividades: "Atividades",
+  geral: "Geral", oração: "Oração", formação: "Formação", liturgia: "Liturgia", evangelização: "Evangelização", atividades: "Atividades", responsaveis: "Material dos Responsáveis",
 };
 
 const Materiais = () => {
