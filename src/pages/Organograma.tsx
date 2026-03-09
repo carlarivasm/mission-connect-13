@@ -56,7 +56,7 @@ const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; pr
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{name}</p>
         {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
-        {profile?.phone && (
+        {profile?.show_phone_in_org && profile?.phone && (
           <a href={`tel:${profile.phone}`} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
             <Phone size={10} /> {profile.phone}
           </a>
