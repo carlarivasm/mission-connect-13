@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Shield, ClipboardList, Network } from "lucide-react";
+import { Calendar, BookOpen, Camera, MapPin, ShoppingBag, Shield, Network } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
