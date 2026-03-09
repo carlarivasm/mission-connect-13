@@ -24,6 +24,7 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <PWAUpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
           <AppSettingsProvider>
