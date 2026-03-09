@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, MapPin, ShoppingBag, Shield, Network } from "lucide-react";
+import { BookOpen, MapPin, ShoppingBag, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
