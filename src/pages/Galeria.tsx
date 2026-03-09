@@ -120,7 +120,7 @@ const Galeria = () => {
         if (uploadError) throw uploadError;
         const mediaType = isVideoFile(file) ? "video" : "image";
         const { error: insertError } = await supabase.from("gallery_photos").insert({
-          image_url: publicUrl,
+          image_url: path, // Store storage_path; signed URL generated at render time
           storage_path: path,
           uploaded_by: user.id,
           uploaded_by_name: userName,
