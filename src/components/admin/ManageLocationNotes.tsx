@@ -11,6 +11,7 @@ interface NoteRow {
   user_name: string;
   user_email: string;
   house_number: string;
+  resident_name: string;
   user_address: string;
   needs: string;
   notes: string;
@@ -27,7 +28,7 @@ const ManageLocationNotes = () => {
       // Get all notes with location and user info
       const { data: notes } = await supabase
         .from("location_user_notes")
-        .select("location_id, user_id, house_number, needs, notes, user_address, updated_at")
+        .select("location_id, user_id, house_number, resident_name, needs, notes, user_address, updated_at")
         .order("updated_at", { ascending: false });
 
       if (!notes || notes.length === 0) { setLoading(false); return; }
@@ -52,6 +53,7 @@ const ManageLocationNotes = () => {
         user_name: userMap[n.user_id]?.name || "",
         user_email: userMap[n.user_id]?.email || "",
         house_number: n.house_number || "",
+        resident_name: n.resident_name || "",
         user_address: n.user_address || "",
         needs: n.needs || "",
         notes: n.notes || "",
@@ -70,6 +72,7 @@ const ManageLocationNotes = () => {
       "Missionário": r.user_name,
       "Email": r.user_email,
       "Nº Casa": r.house_number,
+      "Morador": r.resident_name,
       "Complemento": r.user_address,
       "Necessidades": r.needs,
       "Observações": r.notes,
@@ -110,6 +113,7 @@ const ManageLocationNotes = () => {
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Local</th>
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Missionário</th>
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Nº Casa</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium">Morador</th>
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Complemento</th>
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Necessidades</th>
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium">Observações</th>
@@ -127,6 +131,7 @@ const ManageLocationNotes = () => {
                     <p className="text-xs text-muted-foreground">{r.user_email}</p>
                   </td>
                   <td className="py-2 px-2 text-foreground text-xs">{r.house_number || "—"}</td>
+                  <td className="py-2 px-2 text-foreground text-xs">{r.resident_name || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs">{r.user_address || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs max-w-[150px] truncate">{r.needs || "—"}</td>
                   <td className="py-2 px-2 text-foreground text-xs max-w-[150px] truncate">{r.notes || "—"}</td>

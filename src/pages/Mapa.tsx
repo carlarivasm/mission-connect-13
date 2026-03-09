@@ -21,6 +21,7 @@ interface UserNote {
   id?: string;
   location_id: string;
   house_number: string;
+  resident_name: string;
   needs: string;
   notes: string;
   user_address: string;
@@ -69,7 +70,7 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("id, location_id, house_number, needs, notes, user_address, created_at")
+          .select("id, location_id, house_number, resident_name, needs, notes, user_address, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -82,6 +83,7 @@ const Mapa = () => {
               id: n.id,
               location_id: locId,
               house_number: n.house_number || "",
+              resident_name: n.resident_name || "",
               needs: n.needs || "",
               notes: n.notes || "",
               user_address: n.user_address || "",
@@ -99,20 +101,20 @@ const Mapa = () => {
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
   const getDraft = (locationId: string): UserNote => {
-    return drafts[locationId] || { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" };
+    return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" };
   };
 
-  const updateDraft = (locationId: string, field: "house_number" | "needs" | "notes" | "user_address", value: string) => {
+  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" }),
+        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" }),
         [field]: value,
       },
     }));
   };
 
-  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "needs" | "notes" | "user_address", value: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: (prev[locationId] || []).map((n) =>
@@ -136,11 +138,12 @@ const Mapa = () => {
         location_id: locationId,
         user_id: user.id,
         house_number: draft.house_number.trim() || null,
+        resident_name: draft.resident_name.trim() || null,
         needs: draft.needs.trim() || null,
         notes: draft.notes.trim() || null,
         user_address: draft.user_address.trim() || null,
       } as any)
-      .select("id, location_id, house_number, needs, notes, user_address, created_at")
+      .select("id, location_id, house_number, resident_name, needs, notes, user_address, created_at")
       .single();
 
     if (error) {
@@ -150,6 +153,7 @@ const Mapa = () => {
         id: (data as any).id,
         location_id: locationId,
         house_number: (data as any).house_number || "",
+        resident_name: (data as any).resident_name || "",
         needs: (data as any).needs || "",
         notes: (data as any).notes || "",
         user_address: (data as any).user_address || "",
@@ -159,7 +163,7 @@ const Mapa = () => {
         ...prev,
         [locationId]: [newNote, ...(prev[locationId] || [])],
       }));
-      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", needs: "", notes: "", user_address: "" } }));
+      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" } }));
       toast({ title: "Salvo!", description: "Observação registrada com sucesso." });
     }
     setSavingId(null);
@@ -175,6 +179,7 @@ const Mapa = () => {
       .from("location_user_notes")
       .update({
         house_number: note.house_number.trim() || null,
+        resident_name: note.resident_name.trim() || null,
         needs: note.needs.trim() || null,
         notes: note.notes.trim() || null,
         user_address: note.user_address.trim() || null,
@@ -367,6 +372,7 @@ const Mapa = () => {
                           {notes.slice(0, 2).map((note, idx) => (
                             <div key={note.id || idx} className="space-y-0.5">
                               {note.house_number && <p><span className="font-semibold">Nº Casa:</span> {note.house_number}</p>}
+                              {note.resident_name && <p><span className="font-semibold">Morador:</span> {note.resident_name}</p>}
                               {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
                               {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
                               {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
@@ -391,6 +397,16 @@ const Mapa = () => {
                                   value={note.house_number || ""}
                                   onChange={(e) => updateExistingNote(loc.id, note.id!, "house_number", e.target.value)}
                                   placeholder="Ex: 123, 45A, S/N..."
+                                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Nome do morador</label>
+                                <input
+                                  type="text"
+                                  value={note.resident_name || ""}
+                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "resident_name", e.target.value)}
+                                  placeholder="Nome de quem mora na casa..."
                                   className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                 />
                               </div>
@@ -459,6 +475,16 @@ const Mapa = () => {
                                 value={draft.house_number || ""}
                                 onChange={(e) => updateDraft(loc.id, "house_number", e.target.value)}
                                 placeholder="Ex: 123, 45A, S/N..."
+                                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">Nome do morador</label>
+                              <input
+                                type="text"
+                                value={draft.resident_name || ""}
+                                onChange={(e) => updateDraft(loc.id, "resident_name", e.target.value)}
+                                placeholder="Nome de quem mora na casa..."
                                 className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               />
                             </div>
