@@ -136,20 +136,20 @@ const Familia = () => {
     // Create family group if doesn't exist
     if (!groupId) {
       const { data: newGroup, error: groupErr } = await supabase
-        .from("family_groups" as any)
-        .insert({ name: familyName || "Minha Família", created_by: user.id } as any)
+        .from("family_groups")
+        .insert({ name: familyName || "Minha Família", created_by: user.id })
         .select("id")
         .single();
 
       if (groupErr || !newGroup) {
-        toast({ title: "Erro", description: "Não foi possível criar o grupo familiar.", variant: "destructive" });
+        toast({ title: "Erro", description: groupErr?.message || "Não foi possível criar o grupo familiar.", variant: "destructive" });
         return;
       }
-      groupId = (newGroup as any).id;
+      groupId = newGroup.id;
       setFamilyGroupId(groupId);
 
       // Add current user as member
-      await supabase.from("family_group_members" as any).insert({ family_group_id: groupId, user_id: user.id } as any);
+      await supabase.from("family_group_members").insert({ family_group_id: groupId, user_id: user.id });
     }
 
     // Add target user
