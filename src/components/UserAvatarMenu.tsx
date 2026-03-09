@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Users, Moon, Sun, LogOut, Network } from "lucide-react";
+import { User, Users, Moon, Sun, LogOut, Network, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -71,6 +71,9 @@ const UserAvatarMenu = ({ onLogout }: UserAvatarMenuProps) => {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate("/organograma")} className="gap-2 cursor-pointer">
           <Network size={16} /> Organograma
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate("/pesquisas")} className="gap-2 cursor-pointer">
+          <ClipboardList size={16} /> Pesquisas
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={toggleDarkMode} className="gap-2 cursor-pointer">
