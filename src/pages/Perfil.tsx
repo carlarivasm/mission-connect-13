@@ -185,6 +185,13 @@ const Perfil = () => {
                 <div className="space-y-1">
                   <Label className="flex items-center gap-1"><Phone size={12} /> Telefone</Label>
                   <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" />
+                  <div className="flex items-center justify-between mt-2 p-2 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">Exibir telefone no Organograma</p>
+                      <p className="text-[10px] text-muted-foreground">Outros membros poderão ver seu telefone</p>
+                    </div>
+                    <Switch checked={showPhoneInOrg} onCheckedChange={setShowPhoneInOrg} />
+                  </div>
                 </div>
               </div>
             </section>
