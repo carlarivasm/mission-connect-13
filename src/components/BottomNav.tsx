@@ -13,7 +13,8 @@ const BottomNav = () => {
     { icon: Calendar, label: "Calendário", path: "/calendario", restricted: false },
     { icon: MapPin, label: "Mapa", path: "/mapa", restricted: false },
     { icon: Home, label: "Início", path: "/dashboard", isCenter: true, restricted: false },
-    { icon: Camera, label: "Fotos", path: "/galeria", restricted: true },
+    //{ icon: Camera, label: "Fotos", path: "/galeria", restricted: true },
+    { icon: ShoppingCart, label: "Loja", path: "/loja", restricted: true },
     { icon: BookOpen, label: "Materiais", path: "/materiais", restricted: true },
   ];
 
@@ -31,11 +32,10 @@ const BottomNav = () => {
                 onClick={() => navigate(path)}
                 className="flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-200"
               >
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center -mt-5 shadow-elevated transition-all duration-200 ${
-                  isActive
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center -mt-5 shadow-elevated transition-all duration-200 ${isActive
                     ? "gradient-gold text-white scale-110"
                     : "bg-secondary text-white hover:scale-105"
-                }`}>
+                  }`}>
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 <span className={`text-[10px] leading-tight ${isActive ? "text-secondary font-bold" : "text-muted-foreground"}`}>{label}</span>
@@ -46,11 +46,10 @@ const BottomNav = () => {
             <button
               key={path}
               onClick={() => navigate(path)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                isActive
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${isActive
                   ? "text-secondary font-bold"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
               <span className="text-[10px] leading-tight">{label}</span>
