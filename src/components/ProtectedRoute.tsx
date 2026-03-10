@@ -21,8 +21,23 @@ const ProtectedRoute = ({ children, requiredRole, requireApproval }: ProtectedRo
   if (!user) return <Navigate to="/" replace />;
 
   if (!role) {
-    // Caso de edge-case: usuário está logado mas perdeu a role/conexão no DB
-    return <Navigate to="/loja" replace />;
+    // Caso de edge-case / fallback do AuthContext: usuário está logado mas falhou a busca no DB
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="bg-card rounded-2xl shadow-elevated p-8 max-w-sm text-center">
+          <h2 className="text-xl font-bold text-foreground mb-2">Erro de Conexão</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Não conseguimos resgatar as informações do seu perfil. Verifique sua internet, ou o servidor pode estar temporariamente fora do ar.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (requiredRole && role !== requiredRole) {

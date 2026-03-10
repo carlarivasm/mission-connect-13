@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 type AppRole = "admin" | "missionary" | null;
 
@@ -37,40 +36,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         supabase.rpc("get_user_role", { _user_id: userId }),
         supabase.from("profiles").select("approved").eq("id", userId).single(),
       ]);
+      // Nunca chamamos signOut aqui — só setamos o que vier, sem punir o usuário
       setRole((roleRes.data as AppRole) || null);
       setApproved(profileRes.data?.approved ?? true);
     } catch (error) {
-      console.error("Erro ao buscar papel:", error);
+      // Em caso de falha de rede ou timeout, deixamos role = null mas NUNCA fazemos signOut
+      // O ProtectedRoute vai mostrar tela de erro com botão "Tentar Novamente"
       setRole(null);
     }
   };
 
   useEffect(() => {
+    // O padrão recomendado pelo Supabase: escutar onAuthStateChange PRIMEIRO,
+    // depois chamar getSession — isso evita o race condition de lock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchRoleAndApproval(session.user.id);
+      async (_event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          // Usa setTimeout(0) para deixar o Supabase finalizar a troca de token antes de buscar o perfil.
+          // Isso evita completamente o AbortError de Lock concorrente.
+          setTimeout(() => {
+            fetchRoleAndApproval(currentSession.user.id).finally(() => setLoading(false));
+          }, 0);
         } else {
           setRole(null);
           setApproved(true);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchRoleAndApproval(session.user.id);
+    // Dispara a leitura inicial da sessão existente
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      // onAuthStateChange já vai disparar INITIAL_SESSION; se não houver sessão, desligamos o loading aqui
+      if (!initialSession) {
+        setLoading(false);
       }
-      setLoading(false);
-    };
-
-    initializeAuth();
+    });
 
     return () => subscription.unsubscribe();
   }, []);
