@@ -32,12 +32,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchRoleAndApproval = async (userId: string) => {
-    const [roleRes, profileRes] = await Promise.all([
-      supabase.rpc("get_user_role", { _user_id: userId }),
-      supabase.from("profiles").select("approved").eq("id", userId).single(),
-    ]);
-    setRole((roleRes.data as AppRole) || null);
-    setApproved(profileRes.data?.approved ?? true);
+    try {
+      const [roleRes, profileRes] = await Promise.all([
+        supabase.rpc("get_user_role", { _user_id: userId }),
+        supabase.from("profiles").select("approved").eq("id", userId).single(),
+      ]);
+      setRole((roleRes.data as AppRole) || null);
+      setApproved(profileRes.data?.approved ?? true);
+    } catch (error) {
+      console.error("Erro ao buscar papel:", error);
+      setRole(null);
+    }
   };
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchRoleAndApproval(session.user.id), 0);
+          await fetchRoleAndApproval(session.user.id);
         } else {
           setRole(null);
           setApproved(true);
@@ -55,14 +60,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRoleAndApproval(session.user.id);
+        await fetchRoleAndApproval(session.user.id);
       }
       setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);

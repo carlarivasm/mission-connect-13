@@ -18,7 +18,12 @@ const ProtectedRoute = ({ children, requiredRole, requireApproval }: ProtectedRo
     );
   }
 
-  if (!user || !role) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+
+  if (!role) {
+    // Caso de edge-case: usuário está logado mas perdeu a role/conexão no DB
+    return <Navigate to="/loja" replace />;
+  }
 
   if (requiredRole && role !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
