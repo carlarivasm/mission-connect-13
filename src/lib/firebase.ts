@@ -15,7 +15,10 @@ const VAPID_KEY = "BBJE6qW1flHcz-2xebO8x5R3cCE_ZanbIjAR-3KxYi-kJew3f0nhszWPJf59p
 
 const app = initializeApp(firebaseConfig);
 
-export const requestNotificationPermission = async (userId: string) => {
+export const requestNotificationPermission = async (
+  userId: string,
+  swRegistration?: ServiceWorkerRegistration
+) => {
   try {
     const supported = await isSupported();
     if (!supported) {
@@ -32,7 +35,7 @@ export const requestNotificationPermission = async (userId: string) => {
     const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js"),
+      serviceWorkerRegistration: swRegistration,
     });
 
     if (token) {

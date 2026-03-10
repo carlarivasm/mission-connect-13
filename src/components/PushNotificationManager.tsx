@@ -3,6 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
+const FIREBASE_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
+
 const PushNotificationManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -19,28 +21,36 @@ const PushNotificationManager = () => {
       }
 
       try {
-        // Check if SW already registered
-        let registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
-        
+        // Register Firebase SW with a dedicated scope to avoid conflict with PWA SW
+        let registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+
         if (!registration) {
           console.log("[Push] Registering firebase SW...");
-          registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+          registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js",
+            { scope: FIREBASE_SW_SCOPE }
+          );
           console.log("[Push] Firebase SW registered:", registration.scope);
         } else {
           console.log("[Push] Firebase SW already registered:", registration.scope);
         }
 
         // Wait for SW to be active
-        if (registration.installing) {
+        const sw = registration.installing || registration.waiting;
+        if (sw) {
           await new Promise<void>((resolve) => {
-            registration!.installing!.addEventListener("statechange", (e) => {
+            if (registration!.active) {
+              resolve();
+              return;
+            }
+            sw.addEventListener("statechange", (e) => {
               if ((e.target as ServiceWorker).state === "activated") resolve();
             });
           });
         }
 
         console.log("[Push] Requesting notification permission...");
-        const token = await requestNotificationPermission(user.id);
+        const token = await requestNotificationPermission(user.id, registration);
         if (token) {
           console.log("[Push] Token obtained successfully:", token.substring(0, 20) + "...");
         } else {
