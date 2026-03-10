@@ -13,32 +13,66 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Handle background messages (when app is not in foreground)
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, data } = payload.notification || {};
-  const notificationTitle = title || "JFM";
-  const notificationOptions = {
-    body: body || "",
+  console.log("[SW] Background message received:", payload);
+
+  const notificationData = payload.notification || {};
+  const title = notificationData.title || "JFM";
+  const options = {
+    body: notificationData.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     data: payload.data || {},
-    tag: "jfm-notification",
+    tag: payload.data?.tag || "jfm-notification-" + Date.now(),
+    renotify: true,
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(title, options);
 });
 
+// Handle notification click
 self.addEventListener("notificationclick", (event) => {
+  console.log("[SW] Notification click:", event.notification.data);
   event.notification.close();
-  const link = event.notification.data?.link || "/";
+
+  const link = event.notification.data?.link || "/dashboard";
+  
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      // Try to focus an existing window
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           client.navigate(link);
           return client.focus();
         }
       }
+      // Open new window if none found
       return clients.openWindow(link);
     })
   );
+});
+
+// Handle push event directly (fallback for browsers that need it)
+self.addEventListener("push", (event) => {
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      // Only show if not already handled by onBackgroundMessage
+      if (!payload.notification) {
+        const data = payload.data || {};
+        const title = data.title || "JFM";
+        const options = {
+          body: data.body || "",
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+          data: data,
+          tag: "jfm-push-" + Date.now(),
+        };
+        event.waitUntil(self.registration.showNotification(title, options));
+      }
+    } catch (e) {
+      console.error("[SW] Push event parse error:", e);
+    }
+  }
 });

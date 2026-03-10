@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { isSupported, getMessaging, getToken } from "firebase/messaging";
+import { getApps, initializeApp } from "firebase/app";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, CheckCircle, XCircle, AlertTriangle, RefreshCw, Copy } from "lucide-react";
@@ -13,6 +14,8 @@ interface DiagnosticItem {
   detail: string;
 }
 
+const FIREBASE_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
+
 const PushDiagnostics = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -20,28 +23,77 @@ const PushDiagnostics = () => {
   const [running, setRunning] = useState(false);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
 
+  const detectBrowser = () => {
+    const ua = navigator.userAgent;
+    if (/SamsungBrowser/i.test(ua)) return "Samsung Internet";
+    if (/CriOS/i.test(ua)) return "Chrome iOS";
+    if (/FxiOS/i.test(ua)) return "Firefox iOS";
+    if (/EdgiOS/i.test(ua)) return "Edge iOS";
+    if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "Safari";
+    if (/Chrome/i.test(ua)) return "Chrome";
+    if (/Firefox/i.test(ua)) return "Firefox";
+    return "Desconhecido";
+  };
+
+  const isIOSSafari = () => {
+    const ua = navigator.userAgent;
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  };
+
+  const isStandalone = () => {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true;
+  };
+
   const runDiagnostics = async () => {
     setRunning(true);
     setFcmToken(null);
     const results: DiagnosticItem[] = [];
 
-    // 1. Check browser support
+    // 0. Browser info
+    const browser = detectBrowser();
+    const ios = isIOSSafari();
+    const standalone = isStandalone();
+    results.push({
+      label: "Navegador",
+      status: "ok",
+      detail: `${browser}${ios ? " (iOS)" : ""}${standalone ? " — PWA instalado ✓" : ""}`,
+    });
+
+    // iOS standalone check
+    if (ios && !standalone) {
+      results.push({
+        label: "PWA (iOS)",
+        status: "error",
+        detail: "No iOS, push só funciona com o app instalado na tela inicial. Toque em Compartilhar → Adicionar à Tela de Início.",
+      });
+    }
+
+    // 1. Service Worker
     const hasSW = "serviceWorker" in navigator;
     results.push({
       label: "Service Worker",
       status: hasSW ? "ok" : "error",
-      detail: hasSW ? "Suportado pelo navegador" : "Não suportado — push não funcionará",
+      detail: hasSW ? "Suportado" : "Não suportado — push não funcionará neste navegador",
     });
 
-    // 2. Check Notification API
+    // 2. Notification API
     const hasNotifAPI = "Notification" in window;
     results.push({
       label: "Notification API",
       status: hasNotifAPI ? "ok" : "error",
-      detail: hasNotifAPI ? "Disponível" : "Não disponível (iOS requer PWA na tela inicial)",
+      detail: hasNotifAPI ? "Disponível" : "Não disponível" + (ios ? " — instale como PWA primeiro" : ""),
     });
 
-    // 3. Check permission
+    // 3. PushManager
+    const hasPush = "PushManager" in window;
+    results.push({
+      label: "PushManager",
+      status: hasPush ? "ok" : "error",
+      detail: hasPush ? "Disponível" : "Não disponível neste navegador",
+    });
+
+    // 4. Permission
     if (hasNotifAPI) {
       const perm = Notification.permission;
       results.push({
@@ -56,7 +108,7 @@ const PushDiagnostics = () => {
       });
     }
 
-    // 4. Check Firebase messaging support
+    // 5. Firebase messaging support
     let supported = false;
     try {
       supported = await isSupported();
@@ -69,14 +121,18 @@ const PushDiagnostics = () => {
       detail: supported ? "Suportado" : "Não suportado neste navegador/contexto",
     });
 
-    // 5. Check SW registration
+    // 6. SW registration
     if (hasSW) {
       try {
-        const reg = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope");
+        const allRegs = await navigator.serviceWorker.getRegistrations();
+        const firebaseReg = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+        
         results.push({
           label: "Firebase SW",
-          status: reg ? "ok" : "warning",
-          detail: reg ? `Registrado (scope: ${reg.scope})` : "Não registrado — recarregue a página após login",
+          status: firebaseReg ? "ok" : "warning",
+          detail: firebaseReg
+            ? `Ativo (scope: ${firebaseReg.scope})`
+            : `Não encontrado (${allRegs.length} SW(s) registrado(s)). Recarregue após login.`,
         });
       } catch (err: any) {
         results.push({
@@ -87,10 +143,9 @@ const PushDiagnostics = () => {
       }
     }
 
-    // 6. Try to get FCM token
-    if (supported && hasNotifAPI && Notification.permission === "granted") {
+    // 7. FCM token
+    if (supported && hasNotifAPI && Notification.permission === "granted" && hasPush) {
       try {
-        const { initializeApp, getApps } = await import("firebase/app");
         const firebaseConfig = {
           apiKey: "AIzaSyASM3oAyOQ8lYN0iVAIWP0gwwA1_UTY0KE",
           authDomain: "missoes-semana-santa-app.firebaseapp.com",
@@ -101,11 +156,16 @@ const PushDiagnostics = () => {
         };
         const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-        const swReg = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope");
-        const token = await getToken(messaging, {
+        const swReg = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+        
+        const tokenOptions: any = {
           vapidKey: "BBJE6qW1flHcz-2xebO8x5R3cCE_ZanbIjAR-3KxYi-kJew3f0nhszWPJf59phF7lb4fJ_tYyY7u4MknQuNx9qU",
-          serviceWorkerRegistration: swReg,
-        });
+        };
+        if (swReg) {
+          tokenOptions.serviceWorkerRegistration = swReg;
+        }
+
+        const token = await getToken(messaging, tokenOptions);
 
         if (token) {
           setFcmToken(token);
@@ -132,11 +192,11 @@ const PushDiagnostics = () => {
       results.push({
         label: "Token FCM",
         status: "warning",
-        detail: "Não é possível obter — pré-requisitos não atendidos acima",
+        detail: "Pré-requisitos não atendidos (verifique itens acima)",
       });
     }
 
-    // 7. Check saved tokens in DB
+    // 8. Tokens in DB
     if (user) {
       const { data, error } = await supabase
         .from("fcm_tokens")
@@ -145,18 +205,18 @@ const PushDiagnostics = () => {
 
       if (error) {
         results.push({
-          label: "Tokens salvos no banco",
+          label: "Tokens no banco",
           status: "error",
           detail: `Erro: ${error.message}`,
         });
       } else {
         results.push({
-          label: "Tokens salvos no banco",
+          label: "Tokens no banco",
           status: data && data.length > 0 ? "ok" : "warning",
           detail:
             data && data.length > 0
               ? `${data.length} token(s) — último: ${new Date(data[0].updated_at).toLocaleString("pt-BR")}`
-              : "Nenhum token salvo — o token será salvo ao conceder permissão",
+              : "Nenhum token salvo",
         });
       }
     }
@@ -215,9 +275,10 @@ const PushDiagnostics = () => {
       )}
 
       <div className="text-[10px] text-muted-foreground space-y-0.5">
-        <p>• iOS: push só funciona com o app instalado na tela inicial (PWA)</p>
-        <p>• Se a permissão está "bloqueada", altere nas configurações do navegador</p>
-        <p>• Após conceder permissão, recarregue a página</p>
+        <p>• <strong>iOS Safari</strong>: push só funciona com o app instalado na tela inicial (PWA)</p>
+        <p>• <strong>Chrome Android</strong>: deve funcionar automaticamente após conceder permissão</p>
+        <p>• <strong>Samsung Internet</strong>: verifique se notificações estão habilitadas nas configurações do navegador</p>
+        <p>• Se a permissão está "bloqueada", altere nas configurações do navegador/sistema</p>
       </div>
     </section>
   );

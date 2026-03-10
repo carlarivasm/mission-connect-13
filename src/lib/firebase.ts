@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -13,7 +13,8 @@ const firebaseConfig = {
 
 const VAPID_KEY = "BBJE6qW1flHcz-2xebO8x5R3cCE_ZanbIjAR-3KxYi-kJew3f0nhszWPJf59phF7lb4fJ_tYyY7u4MknQuNx9qU";
 
-const app = initializeApp(firebaseConfig);
+// Ensure single Firebase app instance
+const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
 
 export const requestNotificationPermission = async (
   userId: string,
@@ -22,35 +23,56 @@ export const requestNotificationPermission = async (
   try {
     const supported = await isSupported();
     if (!supported) {
-      console.log("Firebase Messaging not supported in this browser");
+      console.warn("[Firebase] Messaging not supported in this browser");
       return null;
     }
 
+    // Request permission
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      console.log("Notification permission denied");
+      console.warn("[Firebase] Notification permission:", permission);
       return null;
     }
 
     const messaging = getMessaging(app);
-    const token = await getToken(messaging, {
+
+    // If no registration was passed, try to find the Firebase SW
+    if (!swRegistration) {
+      swRegistration = await navigator.serviceWorker.getRegistration(
+        "/firebase-cloud-messaging-push-scope"
+      ) || undefined;
+    }
+
+    const tokenOptions: { vapidKey: string; serviceWorkerRegistration?: ServiceWorkerRegistration } = {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: swRegistration,
-    });
+    };
+
+    if (swRegistration) {
+      tokenOptions.serviceWorkerRegistration = swRegistration;
+    }
+
+    const token = await getToken(messaging, tokenOptions);
 
     if (token) {
-      // Save token to Supabase
+      // Save token to database
       const { supabase } = await import("@/integrations/supabase/client");
-      await supabase.from("fcm_tokens").upsert(
+      
+      // Use upsert to avoid duplicates
+      const { error } = await supabase.from("fcm_tokens").upsert(
         { user_id: userId, token, updated_at: new Date().toISOString() },
         { onConflict: "user_id,token" }
       );
-      console.log("FCM token saved successfully");
+      
+      if (error) {
+        console.error("[Firebase] Error saving token:", error.message);
+      } else {
+        console.log("[Firebase] Token saved successfully");
+      }
     }
 
     return token;
-  } catch (error) {
-    console.error("Error getting FCM token:", error);
+  } catch (error: any) {
+    console.error("[Firebase] Error getting FCM token:", error?.message || error);
     return null;
   }
 };
@@ -58,7 +80,11 @@ export const requestNotificationPermission = async (
 export const onForegroundMessage = (callback: (payload: any) => void) => {
   isSupported().then((supported) => {
     if (!supported) return;
-    const messaging = getMessaging(app);
-    onMessage(messaging, callback);
+    try {
+      const messaging = getMessaging(app);
+      onMessage(messaging, callback);
+    } catch (err) {
+      console.error("[Firebase] Error setting up foreground listener:", err);
+    }
   });
 };
