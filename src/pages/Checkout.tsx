@@ -8,6 +8,8 @@ import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle, Copy, Check } from "lucide-react";
 
@@ -35,6 +37,8 @@ const Checkout = () => {
   const [sending, setSending] = useState(false);
   const [observation, setObservation] = useState("");
   const [copied, setCopied] = useState(false);
+  const [payLater, setPayLater] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   useEffect(() => {
     supabase
@@ -102,7 +106,7 @@ const Checkout = () => {
     }
   };
 
-  const saveOrderToDb = async () => {
+  const saveOrderToDb = async (receiptUrl: string | null) => {
     if (!user) return;
 
     const { data: order, error: orderErr } = await supabase
@@ -114,6 +118,8 @@ const Checkout = () => {
         observation: observation.trim() || null,
         total_price: totalPrice,
         status: "confirmed",
+        pay_later: payLater,
+        receipt_url: receiptUrl,
       } as any)
       .select("id")
       .single();
@@ -139,8 +145,35 @@ const Checkout = () => {
     if (items.length === 0) return;
     setSending(true);
 
+    let receiptUrl = null;
+
+    if (!payLater && receiptFile) {
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${user?.id}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('payment_receipts')
+        .upload(fileName, receiptFile);
+
+      if (uploadError) {
+        toast({
+          title: "Erro ao fazer upload",
+          description: "Não foi possível enviar o comprovante. Tente novamente.",
+          variant: "destructive",
+        });
+        setSending(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('payment_receipts')
+        .getPublicUrl(fileName);
+
+      receiptUrl = publicUrlData.publicUrl;
+    }
+
     // Save to database
-    await saveOrderToDb();
+    await saveOrderToDb(receiptUrl);
 
     // Decrease stock
     await decreaseStock();
@@ -258,7 +291,7 @@ const Checkout = () => {
             id="observation"
             value={observation}
             onChange={(e) => setObservation(e.target.value)}
-            placeholder="Número do quarto, pedido especial, etc."
+            placeholder="Adicione informações relevantes sobre o seu pedido."
             rows={2}
           />
         </div>
@@ -325,6 +358,40 @@ const Checkout = () => {
               O administrador ainda não configurou as opções de pagamento.
             </p>
           )}
+
+          <div className="pt-4 border-t space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="payLater"
+                checked={payLater}
+                onCheckedChange={(checked) => setPayLater(checked as boolean)}
+              />
+              <label
+                htmlFor="payLater"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Pagarei depois
+              </label>
+            </div>
+
+            {!payLater && (
+              <div className="space-y-2">
+                <Label htmlFor="receipt" className="text-sm font-bold text-foreground">
+                  Comprovante de Pagamento
+                </Label>
+                <Input
+                  id="receipt"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  className="text-sm cursor-pointer file:cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A seguir, envie a sua lista de produtos pelo WhatsApp para o responsável, com o comprovante de pagamento.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Confirm */}
@@ -334,12 +401,9 @@ const Checkout = () => {
           className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
         >
           <CheckCircle size={20} />
-          {sending ? "Enviando..." : "Já Paguei — Enviar Pedido"}
+          {sending ? "Enviando..." : "Enviar pedido"}
         </Button>
 
-        <p className="text-[10px] text-muted-foreground text-center">
-          Ao confirmar, sua lista de produtos será enviada pelo WhatsApp para o responsável.
-        </p>
       </main>
 
       <BottomNav />
