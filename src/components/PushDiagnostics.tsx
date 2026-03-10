@@ -72,7 +72,7 @@ const PushDiagnostics = () => {
     // 5. Check SW registration
     if (hasSW) {
       try {
-        const reg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        const reg = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope");
         results.push({
           label: "Firebase SW",
           status: reg ? "ok" : "warning",
