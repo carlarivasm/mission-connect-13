@@ -1,4 +1,4 @@
-import { Home, Calendar, BookOpen, Camera, MapPin } from "lucide-react";
+import { Home, Calendar, BookOpen, ShoppingBag, Camera, MapPin } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,7 +14,7 @@ const BottomNav = () => {
     { icon: MapPin, label: "Mapa", path: "/mapa", restricted: false },
     { icon: Home, label: "Início", path: "/dashboard", isCenter: true, restricted: false },
     //{ icon: Camera, label: "Fotos", path: "/galeria", restricted: true },
-    { icon: ShoppingCart, label: "Loja", path: "/loja", restricted: true },
+    { icon: ShoppingBag, label: "Loja", path: "/loja", restricted: true },
     { icon: BookOpen, label: "Materiais", path: "/materiais", restricted: true },
   ];
 
@@ -33,8 +33,8 @@ const BottomNav = () => {
                 className="flex flex-col items-center gap-0.5 px-3 py-1.5 transition-all duration-200"
               >
                 <div className={`w-11 h-11 rounded-full flex items-center justify-center -mt-5 shadow-elevated transition-all duration-200 ${isActive
-                    ? "gradient-gold text-white scale-110"
-                    : "bg-secondary text-white hover:scale-105"
+                  ? "gradient-gold text-white scale-110"
+                  : "bg-secondary text-white hover:scale-105"
                   }`}>
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
@@ -47,8 +47,8 @@ const BottomNav = () => {
               key={path}
               onClick={() => navigate(path)}
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${isActive
-                  ? "text-secondary font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+                ? "text-secondary font-bold"
+                : "text-muted-foreground hover:text-foreground"
                 }`}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
