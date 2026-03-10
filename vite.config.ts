@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "prompt",
       includeAssets: ["favicon.ico"],
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/firebase-messaging-sw\.js/],
+        globIgnores: ["**/firebase-messaging-sw.js"],
       },
       manifest: {
         name: "Juventude e Família Missionária",

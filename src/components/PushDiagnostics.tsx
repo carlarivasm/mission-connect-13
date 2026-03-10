@@ -72,7 +72,7 @@ const PushDiagnostics = () => {
     // 5. Check SW registration
     if (hasSW) {
       try {
-        const reg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        const reg = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope");
         results.push({
           label: "Firebase SW",
           status: reg ? "ok" : "warning",
@@ -101,7 +101,7 @@ const PushDiagnostics = () => {
         };
         const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-        const swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        const swReg = await navigator.serviceWorker.getRegistration("/firebase-cloud-messaging-push-scope");
         const token = await getToken(messaging, {
           vapidKey: "BBJE6qW1flHcz-2xebO8x5R3cCE_ZanbIjAR-3KxYi-kJew3f0nhszWPJf59phF7lb4fJ_tYyY7u4MknQuNx9qU",
           serviceWorkerRegistration: swReg,
