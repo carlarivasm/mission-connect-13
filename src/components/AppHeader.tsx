@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShoppingCart, DownloadCloud } from "lucide-react";
 import logo from "@/assets/logo-jfm.png";
 import NotificationBell from "@/components/NotificationBell";
 import UserAvatarMenu from "@/components/UserAvatarMenu";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
 import { useCart } from "@/contexts/CartContext";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 interface AppHeaderProps {
   title?: string;
@@ -12,7 +13,7 @@ interface AppHeaderProps {
 }
 
 const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
-  const handleLogout = onLogout || (() => {});
+  const handleLogout = onLogout || (() => { });
   const { totalItems } = useCart();
   const navigate2 = useNavigate();
   const { settings } = useAppSettings();
@@ -21,6 +22,7 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === "/dashboard";
+  const { installPWA, isInstalled, isInstallable } = usePWAInstall();
 
   return (
     <header className="sticky top-0 z-40 gradient-mission safe-top">
@@ -44,6 +46,15 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-secondary text-[10px] font-bold flex items-center justify-center text-secondary-foreground">
                 {totalItems}
               </span>
+            </button>
+          )}
+          {!isInstalled && isInstallable && (
+            <button
+              onClick={installPWA}
+              className="bg-white hover:bg-white/90 text-primary p-1.5 rounded-full shadow-sm transition-all"
+              title="Instalar Aplicativo"
+            >
+              <DownloadCloud size={20} />
             </button>
           )}
           <NotificationBell />
