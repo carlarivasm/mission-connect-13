@@ -36,11 +36,9 @@ export const requestNotificationPermission = async (
 
     const messaging = getMessaging(app);
 
-    // If no registration was passed, try to find the Firebase SW
+    // If no registration was passed, use the global ready SW
     if (!swRegistration) {
-      swRegistration = await navigator.serviceWorker.getRegistration(
-        "/firebase-cloud-messaging-push-scope"
-      ) || undefined;
+      swRegistration = await navigator.serviceWorker.ready;
     }
 
     const tokenOptions: { vapidKey: string; serviceWorkerRegistration?: ServiceWorkerRegistration } = {
@@ -56,13 +54,13 @@ export const requestNotificationPermission = async (
     if (token) {
       // Save token to database
       const { supabase } = await import("@/integrations/supabase/client");
-      
+
       // Use upsert to avoid duplicates
       const { error } = await supabase.from("fcm_tokens").upsert(
         { user_id: userId, token, updated_at: new Date().toISOString() },
         { onConflict: "user_id,token" }
       );
-      
+
       if (error) {
         console.error("[Firebase] Error saving token:", error.message);
       } else {

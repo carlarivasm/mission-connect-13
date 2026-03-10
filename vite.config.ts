@@ -16,11 +16,14 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "prompt",
       includeAssets: ["favicon.ico"],
-      workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/firebase-messaging-sw\.js/],
-        globIgnores: ["**/firebase-messaging-sw.js"],
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp}"],
+        maximumFileSizeToCacheInBytes: 5000000,
       },
       manifest: {
         name: "Juventude e Família Missionária",

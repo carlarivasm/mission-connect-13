@@ -14,8 +14,6 @@ interface DiagnosticItem {
   detail: string;
 }
 
-const FIREBASE_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
-
 const PushDiagnostics = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -103,8 +101,8 @@ const PushDiagnostics = () => {
           perm === "granted"
             ? "Concedida ✓"
             : perm === "denied"
-            ? "Bloqueada — vá em Configurações do navegador para desbloquear"
-            : "Ainda não solicitada — recarregue a página",
+              ? "Bloqueada — vá em Configurações do navegador para desbloquear"
+              : "Ainda não solicitada — recarregue a página",
       });
     }
 
@@ -125,14 +123,14 @@ const PushDiagnostics = () => {
     if (hasSW) {
       try {
         const allRegs = await navigator.serviceWorker.getRegistrations();
-        const firebaseReg = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
-        
+        const swReg = await navigator.serviceWorker.ready;
+
         results.push({
-          label: "Firebase SW",
-          status: firebaseReg ? "ok" : "warning",
-          detail: firebaseReg
-            ? `Ativo (scope: ${firebaseReg.scope})`
-            : `Não encontrado (${allRegs.length} SW(s) registrado(s)). Recarregue após login.`,
+          label: "Service Worker Unificado",
+          status: swReg ? "ok" : "warning",
+          detail: swReg
+            ? `Ativo (scope: ${swReg.scope})`
+            : `Não encontrado (${allRegs.length} SW(s) registrado(s)). Recarregue a página.`,
         });
       } catch (err: any) {
         results.push({
@@ -156,8 +154,8 @@ const PushDiagnostics = () => {
         };
         const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-        const swReg = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
-        
+        const swReg = await navigator.serviceWorker.ready;
+
         const tokenOptions: any = {
           vapidKey: "BBJE6qW1flHcz-2xebO8x5R3cCE_ZanbIjAR-3KxYi-kJew3f0nhszWPJf59phF7lb4fJ_tYyY7u4MknQuNx9qU",
         };

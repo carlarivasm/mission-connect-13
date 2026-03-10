@@ -3,8 +3,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { requestNotificationPermission, onForegroundMessage } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
-const FIREBASE_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
-
 const PushNotificationManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -30,23 +28,9 @@ const PushNotificationManager = () => {
       }
 
       try {
-        // Register Firebase SW with dedicated scope (avoids PWA SW conflict)
-        let registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
-
-        if (!registration) {
-          console.log("[Push] Registering firebase SW...");
-          registration = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js",
-            { scope: FIREBASE_SW_SCOPE }
-          );
-          console.log("[Push] Firebase SW registered, scope:", registration.scope);
-        } else {
-          console.log("[Push] Firebase SW already registered, scope:", registration.scope);
-        }
-
-        // Wait for SW to become active
-        await waitForSWActive(registration);
-        console.log("[Push] Firebase SW is active");
+        // Use the unified PWA Service Worker for Firebase Push
+        const registration = await navigator.serviceWorker.ready;
+        console.log("[Push] Unified SW is ready, scope:", registration.scope);
 
         // Request permission and get token
         console.log("[Push] Requesting notification permission...");
