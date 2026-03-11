@@ -498,12 +498,9 @@ const Mapa = () => {
                             </div>
                             <div className="space-y-1">
                               <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                              <Textarea
+                              <NeedsCheckboxes
                                 value={draft.needs}
-                                onChange={(e) => updateDraft(loc.id, "needs", e.target.value)}
-                                placeholder="Descreva as necessidades..."
-                                rows={2}
-                                className="text-xs"
+                                onChange={(val) => updateDraft(loc.id, "needs", val)}
                               />
                             </div>
                             <div className="space-y-1">
