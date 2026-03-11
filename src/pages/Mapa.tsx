@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import NeedsCheckboxes from "@/components/NeedsCheckboxes";
 
 interface MissionLocation {
   id: string;
