@@ -29,6 +29,7 @@ interface MissionLocation {
   id: string;
   name: string;
   address: string;
+  category: string;
   status: string;
   google_maps_url: string | null;
 }
@@ -54,6 +55,7 @@ const ManageLocations = () => {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [category, setCategory] = useState("reference_point");
   const [status, setStatus] = useState("pendente");
   const [googleMapsUrl, setGoogleMapsUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,7 +69,7 @@ const ManageLocations = () => {
   const fetchLocations = async () => {
     const { data, error } = await supabase
       .from("mission_locations")
-      .select("id, name, address, status, google_maps_url")
+      .select("id, name, address, category, status, google_maps_url")
       .order("created_at", { ascending: false });
     if (data) setLocations(data as MissionLocation[]);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -77,7 +79,7 @@ const ManageLocations = () => {
   useEffect(() => { fetchLocations(); }, []);
 
   const resetForm = () => {
-    setName(""); setAddress(""); setStatus("pendente"); setGoogleMapsUrl(""); setEditingId(null);
+    setName(""); setAddress(""); setCategory("reference_point"); setStatus("pendente"); setGoogleMapsUrl(""); setEditingId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,6 +89,7 @@ const ManageLocations = () => {
     const payload = {
       name: name.trim(),
       address: address.trim(),
+      category,
       status,
       google_maps_url: googleMapsUrl.trim() || null,
       created_by: user?.id,
@@ -128,6 +131,7 @@ const ManageLocations = () => {
     setEditingId(loc.id);
     setName(loc.name);
     setAddress(loc.address);
+    setCategory(loc.category);
     setStatus(loc.status);
     setGoogleMapsUrl(loc.google_maps_url || "");
   };
@@ -222,6 +226,16 @@ const ManageLocations = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label>Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reference_point">Ponto de referência</SelectItem>
+                  <SelectItem value="mission_zone">Zona de missão</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-1">
             <Label>Endereço</Label>
@@ -276,10 +290,15 @@ const ManageLocations = () => {
                   </a>
                 )}
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}>
-                {loc.status}
-              </span>
-              <div className="flex gap-1">
+              <div className="flex flex-col gap-1 shrink-0 items-end">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${loc.category === 'mission_zone' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                  {loc.category === "mission_zone" ? "Zona" : "Referência"}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}>
+                  {loc.status}
+                </span>
+              </div>
+              <div className="flex gap-1 shrink-0">
                 <button onClick={() => handleEdit(loc)} className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                   <Pencil size={16} />
                 </button>

@@ -1,32 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, ExternalLink, Save, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2 } from "lucide-react";
+import { Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-interface MissionLocation {
-  id: string;
-  name: string;
-  address: string;
-  status: string;
-  google_maps_url: string | null;
-}
-
-interface UserNote {
-  id?: string;
-  location_id: string;
-  house_number: string;
-  resident_name: string;
-  needs: string;
-  notes: string;
-  user_address: string;
-  created_at?: string;
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LocationCard, MissionLocation, UserNote } from "@/components/map/LocationCard";
 
 const statusColors: Record<string, string> = {
   visitado: "bg-green-100 text-green-700",
@@ -50,7 +31,6 @@ const Mapa = () => {
   const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
   const [userNotes, setUserNotes] = useState<Record<string, UserNote[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
 
@@ -58,7 +38,7 @@ const Mapa = () => {
     const fetchData = async () => {
       const { data: locs } = await supabase
         .from("mission_locations")
-        .select("id, name, address, status, google_maps_url")
+        .select("id, name, address, category, status, google_maps_url")
         .order("created_at", { ascending: false });
 
       if (locs) {
@@ -215,11 +195,14 @@ const Mapa = () => {
     ? locations.filter((l) => l.status === selectedStatus)
     : locations;
 
-  const stats = {
-    visitado: locations.filter((l) => l.status === "visitado").length,
-    pendente: locations.filter((l) => l.status === "pendente").length,
-    emAndamento: locations.filter((l) => l.status === "em andamento").length,
-  };
+  const getStats = (locs: MissionLocation[]) => ({
+    visitado: locs.filter((l) => l.status === "visitado").length,
+    pendente: locs.filter((l) => l.status === "pendente").length,
+    emAndamento: locs.filter((l) => l.status === "em andamento").length,
+  });
+
+  const referencePoints = filteredLocations.filter((l) => l.category === "reference_point");
+  const missionZones = filteredLocations.filter((l) => l.category === "mission_zone");
 
   // Build Google Maps embed URL
   const getEmbedUrl = (loc: MissionLocation | null) => {
@@ -278,289 +261,102 @@ const Mapa = () => {
           </a>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 animate-fade-in">
-          <button
-            onClick={() => setSelectedStatus(selectedStatus === "visitado" ? null : "visitado")}
-            className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "visitado" ? "ring-2 ring-green-500" : ""} bg-card shadow-card`}
-          >
-            <p className="text-xl font-bold text-green-600">{stats.visitado}</p>
-            <p className="text-[10px] text-muted-foreground font-semibold">Visitados</p>
-          </button>
-          <button
-            onClick={() => setSelectedStatus(selectedStatus === "em andamento" ? null : "em andamento")}
-            className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "em andamento" ? "ring-2 ring-blue-500" : ""} bg-card shadow-card`}
-          >
-            <p className="text-xl font-bold text-blue-600">{stats.emAndamento}</p>
-            <p className="text-[10px] text-muted-foreground font-semibold">Em andamento</p>
-          </button>
-          <button
-            onClick={() => setSelectedStatus(selectedStatus === "pendente" ? null : "pendente")}
-            className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "pendente" ? "ring-2 ring-amber-500" : ""} bg-card shadow-card`}
-          >
-            <p className="text-xl font-bold text-amber-600">{stats.pendente}</p>
-            <p className="text-[10px] text-muted-foreground font-semibold">Pendentes</p>
-          </button>
-        </div>
+        <Tabs defaultValue="reference_point" className="w-full">
+          <TabsList className="w-full grid grid-cols-2 mb-4">
+            <TabsTrigger value="reference_point">Pontos de Referência</TabsTrigger>
+            <TabsTrigger value="mission_zone">Zonas de Missão</TabsTrigger>
+          </TabsList>
 
-        {/* Locations */}
-        <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">
-            Locais de Missão {selectedStatus && `(${statusLabels[selectedStatus]})`}
-          </h3>
+          <TabsContent value="reference_point" className="space-y-5">
 
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            {/* Locations */}
+            <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : referencePoints.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">Nenhum ponto de referência cadastrado.</p>
+              ) : (
+                <div className="space-y-3">
+                  {referencePoints.map((loc) => (
+                    <LocationCard
+                      key={loc.id}
+                      loc={loc}
+                      notes={userNotes[loc.id] || []}
+                      isSelected={selectedLocation?.id === loc.id}
+                      onSelect={() => setSelectedLocation(loc)}
+                      draft={getDraft(loc.id)}
+                      updateDraft={updateDraft}
+                      saveNewNote={saveNewNote}
+                      updateExistingNote={updateExistingNote}
+                      saveExistingNote={saveExistingNote}
+                      deleteNote={deleteNote}
+                      savingId={savingId}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </TabsContent>
+
+          <TabsContent value="mission_zone" className="space-y-5">
+            {/* Stats Mission Zones */}
+            <div className="grid grid-cols-3 gap-2 animate-fade-in">
+              <button
+                onClick={() => setSelectedStatus(selectedStatus === "visitado" ? null : "visitado")}
+                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "visitado" ? "ring-2 ring-green-500" : ""} bg-card shadow-card`}
+              >
+                <p className="text-xl font-bold text-green-600">{getStats(locations.filter(l => l.category === 'mission_zone')).visitado}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Visitados</p>
+              </button>
+              <button
+                onClick={() => setSelectedStatus(selectedStatus === "em andamento" ? null : "em andamento")}
+                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "em andamento" ? "ring-2 ring-blue-500" : ""} bg-card shadow-card`}
+              >
+                <p className="text-xl font-bold text-blue-600">{getStats(locations.filter(l => l.category === 'mission_zone')).emAndamento}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Em andamento</p>
+              </button>
+              <button
+                onClick={() => setSelectedStatus(selectedStatus === "pendente" ? null : "pendente")}
+                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "pendente" ? "ring-2 ring-amber-500" : ""} bg-card shadow-card`}
+              >
+                <p className="text-xl font-bold text-amber-600">{getStats(locations.filter(l => l.category === 'mission_zone')).pendente}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Pendentes</p>
+              </button>
             </div>
-          ) : filteredLocations.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Nenhum local cadastrado.</p>
-          ) : (
-            <div className="space-y-3">
-              {filteredLocations.map((loc) => {
-                const notes = userNotes[loc.id] || [];
-                const draft = getDraft(loc.id);
-                const isSelected = selectedLocation?.id === loc.id;
-                return (
-                  <div
-                    key={loc.id}
-                    className={`p-4 bg-card rounded-xl shadow-card space-y-3 transition-all cursor-pointer ${isSelected ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => setSelectedLocation(loc)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5">
-                        <MapPin size={16} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-sm text-foreground">{loc.name}</p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}>
-                            {statusLabels[loc.status] || loc.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
-                        {loc.google_maps_url && (
-                          <a
-                            href={loc.google_maps_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink size={10} /> Abrir direção no Maps
-                          </a>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Expand/collapse notes toggle */}
-                    <div className="pt-2 border-t border-border space-y-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setExpandedNotes(prev => ({ ...prev, [loc.id]: !prev[loc.id] }))}
-                        className="flex items-center gap-2 w-full text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                      >
-                        <FileText size={14} />
-                        {notes.length > 0
-                          ? `Ver observações (${notes.length})`
-                          : "Adicionar observações"}
-                        {expandedNotes[loc.id] ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
-                      </button>
-
-                      {/* Saved notes preview (when collapsed) */}
-                      {!expandedNotes[loc.id] && notes.length > 0 && (
-                        <div className="text-xs text-muted-foreground space-y-1 pl-6">
-                          {notes.slice(0, 2).map((note, idx) => (
-                            <div key={note.id || idx} className="space-y-0.5">
-                              {note.house_number && <p><span className="font-semibold">Nº Casa:</span> {note.house_number}</p>}
-                              {note.resident_name && <p><span className="font-semibold">Morador:</span> {note.resident_name}</p>}
-                              {note.user_address && <p><span className="font-semibold">Complemento:</span> {note.user_address}</p>}
-                              {note.needs && <p><span className="font-semibold">Necessidades:</span> {note.needs}</p>}
-                              {note.notes && <p><span className="font-semibold">Observações:</span> {note.notes}</p>}
-                            </div>
-                          ))}
-                          {notes.length > 2 && (
-                            <p className="text-primary font-semibold">+{notes.length - 2} mais...</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Expanded: list existing notes + new note form */}
-                      {expandedNotes[loc.id] && (
-                        <div className="space-y-3">
-                          {/* Existing notes */}
-                          {notes.map((note) => (
-                            <div key={note.id} className="p-3 bg-muted/50 rounded-lg space-y-2 border border-border">
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-muted-foreground">Nº da casa / identificação</label>
-                                <input
-                                  type="text"
-                                  value={note.house_number || ""}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "house_number", e.target.value)}
-                                  placeholder="Ex: 123, 45A, S/N..."
-                                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-muted-foreground">Nome do morador</label>
-                                <input
-                                  type="text"
-                                  value={note.resident_name || ""}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "resident_name", e.target.value)}
-                                  placeholder="Nome de quem mora na casa..."
-                                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
-                                <Textarea
-                                  value={note.user_address || ""}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "user_address", e.target.value)}
-                                  placeholder="Apt, bloco, referência..."
-                                  rows={1}
-                                  className="text-xs"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                                <Textarea
-                                  value={note.needs}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "needs", e.target.value)}
-                                  placeholder="Descreva as necessidades..."
-                                  rows={2}
-                                  className="text-xs"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-xs font-semibold text-muted-foreground">Observações</label>
-                                <Textarea
-                                  value={note.notes}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "notes", e.target.value)}
-                                  placeholder="Anotações adicionais..."
-                                  rows={2}
-                                  className="text-xs"
-                                />
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => saveExistingNote(loc.id, note.id!)}
-                                  disabled={savingId === note.id}
-                                  className="gap-1 gradient-mission text-primary-foreground"
-                                >
-                                  <Save size={12} />
-                                  {savingId === note.id ? "Salvando..." : "Salvar"}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => deleteNote(loc.id, note.id!)}
-                                  disabled={savingId === note.id}
-                                  className="gap-1"
-                                >
-                                  <Trash2 size={12} /> Remover
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* New note form */}
-                          <div className="p-3 bg-primary/5 rounded-lg space-y-2 border-2 border-dashed border-primary/30">
-                            <p className="text-xs font-bold text-primary flex items-center gap-1">
-                              <Plus size={14} /> Nova observação
-                            </p>
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Nº da casa / identificação</label>
-                              <input
-                                type="text"
-                                value={draft.house_number || ""}
-                                onChange={(e) => updateDraft(loc.id, "house_number", e.target.value)}
-                                placeholder="Ex: 123, 45A, S/N..."
-                                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Nome do morador</label>
-                              <input
-                                type="text"
-                                value={draft.resident_name || ""}
-                                onChange={(e) => updateDraft(loc.id, "resident_name", e.target.value)}
-                                placeholder="Nome de quem mora na casa..."
-                                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Complemento do endereço</label>
-                              <Textarea
-                                value={draft.user_address || ""}
-                                onChange={(e) => updateDraft(loc.id, "user_address", e.target.value)}
-                                placeholder="Apt, bloco, referência..."
-                                rows={1}
-                                className="text-xs"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                              <Textarea
-                                value={draft.needs}
-                                onChange={(e) => updateDraft(loc.id, "needs", e.target.value)}
-                                placeholder="Descreva as necessidades..."
-                                rows={2}
-                                className="text-xs"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Observações</label>
-                              <Textarea
-                                value={draft.notes}
-                                onChange={(e) => updateDraft(loc.id, "notes", e.target.value)}
-                                placeholder="Anotações adicionais..."
-                                rows={2}
-                                className="text-xs"
-                              />
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => saveNewNote(loc.id)}
-                              disabled={savingId === `new-${loc.id}`}
-                              className="gap-1 gradient-mission text-primary-foreground"
-                            >
-                              <Plus size={12} />
-                              {savingId === `new-${loc.id}` ? "Salvando..." : "Adicionar observação"}
-                            </Button>
-                          </div>
-
-                          {/* Google Maps link */}
-                          {loc.google_maps_url && (
-                            <a
-                              href={loc.google_maps_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
-                            >
-                              <Navigation size={14} /> Abrir direção no Google Maps
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Google Maps link when collapsed */}
-                      {!expandedNotes[loc.id] && loc.google_maps_url && (
-                        <a
-                          href={loc.google_maps_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors"
-                        >
-                          <Navigation size={14} /> Abrir direção no Google Maps
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+            {/* Locations */}
+            <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : missionZones.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">Nenhuma zona de missão cadastrada.</p>
+              ) : (
+                <div className="space-y-3">
+                  {missionZones.map((loc) => (
+                    <LocationCard
+                      key={loc.id}
+                      loc={loc}
+                      notes={userNotes[loc.id] || []}
+                      isSelected={selectedLocation?.id === loc.id}
+                      onSelect={() => setSelectedLocation(loc)}
+                      draft={getDraft(loc.id)}
+                      updateDraft={updateDraft}
+                      saveNewNote={saveNewNote}
+                      updateExistingNote={updateExistingNote}
+                      saveExistingNote={saveExistingNote}
+                      deleteNote={deleteNote}
+                      savingId={savingId}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </TabsContent>
+        </Tabs>
       </main>
       <BottomNav />
     </div>

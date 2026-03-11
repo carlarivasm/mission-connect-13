@@ -383,6 +383,7 @@ export type Database = {
       mission_locations: {
         Row: {
           address: string
+          category: string
           created_at: string
           created_by: string | null
           google_maps_url: string | null
@@ -397,6 +398,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          category?: string
           created_at?: string
           created_by?: string | null
           google_maps_url?: string | null
@@ -411,6 +413,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          category?: string
           created_at?: string
           created_by?: string | null
           google_maps_url?: string | null
