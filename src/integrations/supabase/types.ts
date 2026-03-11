@@ -383,6 +383,7 @@ export type Database = {
       mission_locations: {
         Row: {
           address: string
+          category: string
           created_at: string
           created_by: string | null
           google_maps_url: string | null
@@ -397,6 +398,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          category?: string
           created_at?: string
           created_by?: string | null
           google_maps_url?: string | null
@@ -411,6 +413,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          category?: string
           created_at?: string
           created_by?: string | null
           google_maps_url?: string | null
@@ -695,6 +698,45 @@ export type Database = {
           phone?: string | null
           show_phone_in_org?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduled_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          link: string | null
+          scheduled_at: string
+          sent: boolean
+          source_id: string | null
+          source_type: string
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link?: string | null
+          scheduled_at: string
+          sent?: boolean
+          source_id?: string | null
+          source_type?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          link?: string | null
+          scheduled_at?: string
+          sent?: boolean
+          source_id?: string | null
+          source_type?: string
+          title?: string
         }
         Relationships: []
       }
