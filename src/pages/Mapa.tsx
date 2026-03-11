@@ -23,7 +23,7 @@ const statusLabels: Record<string, string> = {
 
 const Mapa = () => {
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const { signOut, user, role } = useAuth();
   const { toast } = useToast();
   const [locations, setLocations] = useState<MissionLocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,11 +57,26 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at")
-          .eq("user_id", user.id)
+          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at, user_id")
           .order("created_at", { ascending: false });
 
         if (notes) {
+          const userIds = Array.from(new Set(notes.filter((n) => n.user_id).map((n) => n.user_id)));
+          const profileMap: Record<string, string> = {};
+
+          if (userIds.length > 0) {
+            const { data: profs } = await supabase
+              .from("profiles")
+              .select("id, full_name")
+              .in("id", userIds);
+
+            if (profs) {
+              profs.forEach((p) => {
+                profileMap[p.id] = p.full_name;
+              });
+            }
+          }
+
           const map: Record<string, UserNote[]> = {};
           (notes as any[]).forEach((n) => {
             const locId = n.location_id;
@@ -77,6 +92,8 @@ const Mapa = () => {
               exact_location_url: n.exact_location_url || "",
               summary: n.summary || "",
               created_at: n.created_at,
+              user_id: n.user_id,
+              user_name: profileMap[n.user_id] || "Usuário",
             });
           });
           setUserNotes(map);
@@ -151,6 +168,8 @@ const Mapa = () => {
         exact_location_url: (data as any).exact_location_url || "",
         summary: (data as any).summary || "",
         created_at: (data as any).created_at,
+        user_id: user.id,
+        user_name: "Você",
       };
       setUserNotes((prev) => ({
         ...prev,
@@ -309,6 +328,8 @@ const Mapa = () => {
                       deleteNote={deleteNote}
                       savingId={savingId}
                       needsCategories={needsCategories}
+                      userId={user?.id || ""}
+                      role={role}
                     />
                   ))}
                 </div>
@@ -320,11 +341,11 @@ const Mapa = () => {
             {/* Stats Mission Zones */}
             <div className="grid grid-cols-3 gap-2 animate-fade-in">
               <button
-                onClick={() => setSelectedStatus(selectedStatus === "visitado" ? null : "visitado")}
-                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "visitado" ? "ring-2 ring-green-500" : ""} bg-card shadow-card`}
+                onClick={() => setSelectedStatus(selectedStatus === "pendente" ? null : "pendente")}
+                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "pendente" ? "ring-2 ring-amber-500" : ""} bg-card shadow-card`}
               >
-                <p className="text-xl font-bold text-green-600">{getStats(locations.filter(l => l.category === 'mission_zone')).visitado}</p>
-                <p className="text-[10px] text-muted-foreground font-semibold">Visitados</p>
+                <p className="text-xl font-bold text-amber-600">{getStats(locations.filter(l => l.category === 'mission_zone')).pendente}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Pendentes</p>
               </button>
               <button
                 onClick={() => setSelectedStatus(selectedStatus === "em andamento" ? null : "em andamento")}
@@ -334,11 +355,11 @@ const Mapa = () => {
                 <p className="text-[10px] text-muted-foreground font-semibold">Em andamento</p>
               </button>
               <button
-                onClick={() => setSelectedStatus(selectedStatus === "pendente" ? null : "pendente")}
-                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "pendente" ? "ring-2 ring-amber-500" : ""} bg-card shadow-card`}
+                onClick={() => setSelectedStatus(selectedStatus === "visitado" ? null : "visitado")}
+                className={`p-3 rounded-xl text-center transition-all ${selectedStatus === "visitado" ? "ring-2 ring-green-500" : ""} bg-card shadow-card`}
               >
-                <p className="text-xl font-bold text-amber-600">{getStats(locations.filter(l => l.category === 'mission_zone')).pendente}</p>
-                <p className="text-[10px] text-muted-foreground font-semibold">Pendentes</p>
+                <p className="text-xl font-bold text-green-600">{getStats(locations.filter(l => l.category === 'mission_zone')).visitado}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold">Visitados</p>
               </button>
             </div>
 
@@ -367,6 +388,8 @@ const Mapa = () => {
                       deleteNote={deleteNote}
                       savingId={savingId}
                       needsCategories={needsCategories}
+                      userId={user?.id || ""}
+                      role={role}
                     />
                   ))}
                 </div>

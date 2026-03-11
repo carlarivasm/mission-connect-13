@@ -23,6 +23,8 @@ export interface UserNote {
     exact_location_url: string;
     summary: string;
     created_at?: string;
+    user_id?: string;
+    user_name?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -50,6 +52,8 @@ interface LocationCardProps {
     deleteNote: (locId: string, noteId: string) => Promise<void>;
     savingId: string | null;
     needsCategories: any[];
+    userId: string;
+    role: "admin" | "missionary" | null;
 }
 
 export function LocationCard({
@@ -65,6 +69,8 @@ export function LocationCard({
     deleteNote,
     savingId,
     needsCategories = [],
+    userId,
+    role,
 }: LocationCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
@@ -159,78 +165,80 @@ export function LocationCard({
 
                     {isExpanded && notes.length > 0 && (
                         <div className="space-y-3 mt-3">
-                            {notes.map((note) => (
-                                <div key={note.id} className="p-3 bg-muted/30 rounded-lg border border-border/60 relative shadow-sm">
-                                    {editingNoteId === note.id ? (
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Editar observação</span>
-                                                <button
-                                                    onClick={() => setEditingNoteId(null)}
-                                                    className="text-muted-foreground hover:text-destructive bg-background rounded-md p-1 border shadow-sm"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nº da casa / identificação</label>
-                                                <input
-                                                    type="text"
-                                                    value={note.house_number || ""}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "house_number", e.target.value)}
-                                                    placeholder="Ex: 123, 45A, S/N..."
-                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nome do morador</label>
-                                                <input
-                                                    type="text"
-                                                    value={note.resident_name || ""}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "resident_name", e.target.value)}
-                                                    placeholder="Nome de quem mora na casa..."
-                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Complemento</label>
-                                                <Textarea
-                                                    value={note.user_address || ""}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "user_address", e.target.value)}
-                                                    placeholder="Apt, bloco, referência..."
-                                                    rows={1}
-                                                    className="text-xs min-h-[32px] py-2"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Link do local exato (Maps)</label>
-                                                <input
-                                                    type="url"
-                                                    value={note.exact_location_url || ""}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "exact_location_url", e.target.value)}
-                                                    placeholder="https://maps.google.com/..."
-                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Necessidades</label>
-                                                <NeedsMultiSelect
-                                                    options={needsCategories}
-                                                    value={note.needs}
-                                                    onChange={(val) => updateExistingNote(loc.id, note.id!, "needs", val)}
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Observações</label>
-                                                <Textarea
-                                                    value={note.notes}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "notes", e.target.value)}
-                                                    placeholder="Anotações adicionais..."
-                                                    rows={2}
-                                                    className="text-xs"
-                                                />
-                                            </div>
-                                            {/* Funcionalidade de Resumo com IA temporariamente desativada
+                            {notes.map((note) => {
+                                const canEdit = role === "admin" || note.user_id === userId;
+                                return (
+                                    <div key={note.id} className="p-3 bg-muted/30 rounded-lg border border-border/60 relative shadow-sm">
+                                        {(editingNoteId === note.id && canEdit) ? (
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Editar observação</span>
+                                                    <button
+                                                        onClick={() => setEditingNoteId(null)}
+                                                        className="text-muted-foreground hover:text-destructive bg-background rounded-md p-1 border shadow-sm"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nº da casa / identificação</label>
+                                                    <input
+                                                        type="text"
+                                                        value={note.house_number || ""}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "house_number", e.target.value)}
+                                                        placeholder="Ex: 123, 45A, S/N..."
+                                                        className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nome do morador</label>
+                                                    <input
+                                                        type="text"
+                                                        value={note.resident_name || ""}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "resident_name", e.target.value)}
+                                                        placeholder="Nome de quem mora na casa..."
+                                                        className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Complemento</label>
+                                                    <Textarea
+                                                        value={note.user_address || ""}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "user_address", e.target.value)}
+                                                        placeholder="Apt, bloco, referência..."
+                                                        rows={1}
+                                                        className="text-xs min-h-[32px] py-2"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Link do local exato (Maps)</label>
+                                                    <input
+                                                        type="url"
+                                                        value={note.exact_location_url || ""}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "exact_location_url", e.target.value)}
+                                                        placeholder="https://maps.google.com/..."
+                                                        className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Necessidades</label>
+                                                    <NeedsMultiSelect
+                                                        options={needsCategories}
+                                                        value={note.needs}
+                                                        onChange={(val) => updateExistingNote(loc.id, note.id!, "needs", val)}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Observações</label>
+                                                    <Textarea
+                                                        value={note.notes}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "notes", e.target.value)}
+                                                        placeholder="Anotações adicionais..."
+                                                        rows={2}
+                                                        className="text-xs"
+                                                    />
+                                                </div>
+                                                {/* Funcionalidade de Resumo com IA temporariamente desativada
                                             <div className="space-y-1 relative">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
@@ -264,69 +272,79 @@ export function LocationCard({
                                                 </div>
                                             </div>
                                             */}
-                                            <div className="flex gap-2 pt-2">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => handleSaveExisting(note.id!)}
-                                                    disabled={savingId === note.id}
-                                                    className="gap-1 flex-1 shadow-sm"
-                                                >
-                                                    {savingId === note.id ? "Salvando..." : "Salvar"}
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="destructive"
-                                                    onClick={() => deleteNote(loc.id, note.id!)}
-                                                    disabled={savingId === note.id}
-                                                    className="gap-1 flex-1 shadow-sm"
-                                                >
-                                                    <Trash2 size={12} /> Remover
-                                                </Button>
+                                                <div className="flex gap-2 pt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleSaveExisting(note.id!)}
+                                                        disabled={savingId === note.id}
+                                                        className="gap-1 flex-1 shadow-sm"
+                                                    >
+                                                        {savingId === note.id ? "Salvando..." : "Salvar"}
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        onClick={() => deleteNote(loc.id, note.id!)}
+                                                        disabled={savingId === note.id}
+                                                        className="gap-1 flex-1 shadow-sm"
+                                                    >
+                                                        <Trash2 size={12} /> Remover
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="pr-8">
-                                            <button
-                                                onClick={() => setEditingNoteId(note.id!)}
-                                                className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-primary bg-background rounded-md border shadow-sm transition-colors"
-                                            >
-                                                <Pencil size={12} />
-                                            </button>
-                                            <div className="space-y-1.5 text-xs text-muted-foreground">
-                                                {note.house_number && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Nº Casa:</span> <span className="text-foreground">{note.house_number}</span>
-                                                    </p>
+                                        ) : (
+                                            <div className="pr-8">
+                                                {canEdit && (
+                                                    <button
+                                                        onClick={() => setEditingNoteId(note.id!)}
+                                                        className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-primary bg-background rounded-md border shadow-sm transition-colors"
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
                                                 )}
-                                                {note.resident_name && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Morador:</span> <span className="text-foreground">{note.resident_name}</span>
-                                                    </p>
-                                                )}
-                                                {note.user_address && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Complemento:</span> <span className="text-foreground">{note.user_address}</span>
-                                                    </p>
-                                                )}
-                                                {note.exact_location_url && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Link Exato:</span>{" "}
-                                                        <a href={note.exact_location_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                                                            Abrir Maps
-                                                        </a>
-                                                    </p>
-                                                )}
-                                                {note.needs && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Necessidades:</span> <span className="text-foreground">{renderNeedsNames(note.needs, needsCategories)}</span>
-                                                    </p>
-                                                )}
-                                                {note.notes && (
-                                                    <p>
-                                                        <span className="font-semibold text-foreground/80">Observações:</span> <span className="text-foreground">{note.notes}</span>
-                                                    </p>
-                                                )}
-                                                {/* Funcionalidade de Resumo com IA temporariamente desativada
+                                                <div className="space-y-1.5 text-xs text-muted-foreground">
+                                                    <div className="mb-2 pb-2 border-b border-border/50">
+                                                        <span className="font-semibold text-primary">{note.user_name || "Usuário"}</span>
+                                                        {note.created_at && (
+                                                            <span className="text-[10px] ml-2 text-muted-foreground">
+                                                                {new Date(note.created_at).toLocaleDateString('pt-BR')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {note.house_number && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Nº Casa:</span> <span className="text-foreground">{note.house_number}</span>
+                                                        </p>
+                                                    )}
+                                                    {note.resident_name && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Morador:</span> <span className="text-foreground">{note.resident_name}</span>
+                                                        </p>
+                                                    )}
+                                                    {note.user_address && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Complemento:</span> <span className="text-foreground">{note.user_address}</span>
+                                                        </p>
+                                                    )}
+                                                    {note.exact_location_url && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Link Exato:</span>{" "}
+                                                            <a href={note.exact_location_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                                                Abrir Maps
+                                                            </a>
+                                                        </p>
+                                                    )}
+                                                    {note.needs && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Necessidades:</span> <span className="text-foreground">{renderNeedsNames(note.needs, needsCategories)}</span>
+                                                        </p>
+                                                    )}
+                                                    {note.notes && (
+                                                        <p>
+                                                            <span className="font-semibold text-foreground/80">Observações:</span> <span className="text-foreground">{note.notes}</span>
+                                                        </p>
+                                                    )}
+                                                    {/* Funcionalidade de Resumo com IA temporariamente desativada
                                                 note.summary && (
                                                     <div className="p-2 rounded-lg bg-gradient-to-r from-blue-50/50 via-purple-50/50 to-pink-50/50 border border-purple-100 mt-2">
                                                         <p className="font-semibold text-purple-900/80 mb-0.5 flex items-center gap-1">
@@ -336,11 +354,12 @@ export function LocationCard({
                                                     </div>
                                                 )
                                                 */}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
