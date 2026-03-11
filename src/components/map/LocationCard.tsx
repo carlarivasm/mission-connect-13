@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2, Pencil, X } from "lucide-react";
+import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2, Pencil, X, Sparkles, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -20,6 +20,8 @@ export interface UserNote {
     needs: string;
     notes: string;
     user_address: string;
+    exact_location_url: string;
+    summary: string;
     created_at?: string;
 }
 
@@ -41,12 +43,13 @@ interface LocationCardProps {
     isSelected: boolean;
     onSelect: () => void;
     draft: UserNote;
-    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => void;
+    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
     saveNewNote: (locId: string) => Promise<void>;
-    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => void;
+    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
     saveExistingNote: (locId: string, noteId: string) => Promise<void>;
     deleteNote: (locId: string, noteId: string) => Promise<void>;
     savingId: string | null;
+    needsCategories: any[];
 }
 
 export function LocationCard({
@@ -61,10 +64,27 @@ export function LocationCard({
     saveExistingNote,
     deleteNote,
     savingId,
+    needsCategories = [],
 }: LocationCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isAddingNote, setIsAddingNote] = useState(false);
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+    const [summarizingId, setSummarizingId] = useState<string | null>(null);
+
+    const handleSummarize = (isNew: boolean, noteId?: string) => {
+        const idToTrack = isNew ? "new" : noteId!;
+        setSummarizingId(idToTrack);
+
+        setTimeout(() => {
+            if (isNew) {
+                updateDraft(loc.id, "summary", draft.notes);
+            } else if (noteId) {
+                const existing = notes.find(n => n.id === noteId);
+                if (existing) updateExistingNote(loc.id, noteId, "summary", existing.notes);
+            }
+            setSummarizingId(null);
+        }, 3000);
+    };
 
     const handleSaveNew = async () => {
         await saveNewNote(loc.id);
@@ -183,13 +203,21 @@ export function LocationCard({
                                                 />
                                             </div>
                                             <div className="space-y-1">
+                                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Link do local exato (Maps)</label>
+                                                <input
+                                                    type="url"
+                                                    value={note.exact_location_url || ""}
+                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "exact_location_url", e.target.value)}
+                                                    placeholder="https://maps.google.com/..."
+                                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
                                                 <label className="text-[10px] font-semibold text-muted-foreground uppercase">Necessidades</label>
-                                                <Textarea
+                                                <NeedsMultiSelect
+                                                    options={needsCategories}
                                                     value={note.needs}
-                                                    onChange={(e) => updateExistingNote(loc.id, note.id!, "needs", e.target.value)}
-                                                    placeholder="Descreva as necessidades..."
-                                                    rows={2}
-                                                    className="text-xs"
+                                                    onChange={(val) => updateExistingNote(loc.id, note.id!, "needs", val)}
                                                 />
                                             </div>
                                             <div className="space-y-1">
@@ -202,6 +230,40 @@ export function LocationCard({
                                                     className="text-xs"
                                                 />
                                             </div>
+                                            {/* Funcionalidade de Resumo com IA temporariamente desativada
+                                            <div className="space-y-1 relative">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSummarize(false, note.id)}
+                                                        className="relative p-[1px] rounded-full overflow-hidden bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all hover:scale-105 shadow-sm"
+                                                    >
+                                                        <div className="flex items-center gap-1 h-6 px-2 text-[10px] font-bold text-primary bg-background rounded-full hover:bg-muted/50 transition-colors">
+                                                            <Sparkles size={12} className="text-purple-500" /> Resumir com IA
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                                <div className={`relative rounded-md overflow-hidden p-[1px] transition-all ${summarizingId === note.id ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse" : "bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-pink-500/50"}`}>
+                                                    <Textarea
+                                                        value={note.summary || ""}
+                                                        onChange={(e) => updateExistingNote(loc.id, note.id!, "summary", e.target.value)}
+                                                        placeholder="Resumo..."
+                                                        rows={2}
+                                                        className={`text-xs border-0 min-h-[48px] m-0 bg-background relative z-10 transition-opacity ${summarizingId === note.id ? "opacity-30" : "opacity-100"}`}
+                                                        disabled={summarizingId === note.id}
+                                                    />
+                                                    {summarizingId === note.id && (
+                                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
+                                                            <Sparkles className="text-purple-500 mb-1" size={16} />
+                                                            <span className="text-[10px] font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent uppercase tracking-wider">
+                                                                Resumindo
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            */}
                                             <div className="flex gap-2 pt-2">
                                                 <Button
                                                     size="sm"
@@ -246,9 +308,17 @@ export function LocationCard({
                                                         <span className="font-semibold text-foreground/80">Complemento:</span> <span className="text-foreground">{note.user_address}</span>
                                                     </p>
                                                 )}
+                                                {note.exact_location_url && (
+                                                    <p>
+                                                        <span className="font-semibold text-foreground/80">Link Exato:</span>{" "}
+                                                        <a href={note.exact_location_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                                                            Abrir Maps
+                                                        </a>
+                                                    </p>
+                                                )}
                                                 {note.needs && (
                                                     <p>
-                                                        <span className="font-semibold text-foreground/80">Necessidades:</span> <span className="text-foreground">{note.needs}</span>
+                                                        <span className="font-semibold text-foreground/80">Necessidades:</span> <span className="text-foreground">{renderNeedsNames(note.needs, needsCategories)}</span>
                                                     </p>
                                                 )}
                                                 {note.notes && (
@@ -256,6 +326,16 @@ export function LocationCard({
                                                         <span className="font-semibold text-foreground/80">Observações:</span> <span className="text-foreground">{note.notes}</span>
                                                     </p>
                                                 )}
+                                                {/* Funcionalidade de Resumo com IA temporariamente desativada
+                                                note.summary && (
+                                                    <div className="p-2 rounded-lg bg-gradient-to-r from-blue-50/50 via-purple-50/50 to-pink-50/50 border border-purple-100 mt-2">
+                                                        <p className="font-semibold text-purple-900/80 mb-0.5 flex items-center gap-1">
+                                                            <Sparkles size={10} /> Resumo IA:
+                                                        </p>
+                                                        <p className="text-foreground">{note.summary}</p>
+                                                    </div>
+                                                )
+                                                */}
                                             </div>
                                         </div>
                                     )}
@@ -308,13 +388,21 @@ export function LocationCard({
                                 />
                             </div>
                             <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Link do local exato (Maps)</label>
+                                <input
+                                    type="url"
+                                    value={draft.exact_location_url || ""}
+                                    onChange={(e) => updateDraft(loc.id, "exact_location_url", e.target.value)}
+                                    placeholder="https://maps.google.com/..."
+                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                />
+                            </div>
+                            <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-muted-foreground uppercase">Necessidades identificadas</label>
-                                <Textarea
+                                <NeedsMultiSelect
+                                    options={needsCategories}
                                     value={draft.needs}
-                                    onChange={(e) => updateDraft(loc.id, "needs", e.target.value)}
-                                    placeholder="Descreva as necessidades..."
-                                    rows={2}
-                                    className="text-xs"
+                                    onChange={(val) => updateDraft(loc.id, "needs", val)}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -327,6 +415,40 @@ export function LocationCard({
                                     className="text-xs"
                                 />
                             </div>
+                            {/* Funcionalidade de Resumo com IA temporariamente desativada
+                            <div className="space-y-1 relative">
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSummarize(true)}
+                                        className="relative p-[1px] rounded-full overflow-hidden bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all hover:scale-105 shadow-sm"
+                                    >
+                                        <div className="flex items-center gap-1 h-6 px-2 text-[10px] font-bold text-primary bg-background rounded-full hover:bg-muted/50 transition-colors">
+                                            <Sparkles size={12} className="text-purple-500" /> Resumir com IA
+                                        </div>
+                                    </button>
+                                </div>
+                                <div className={`relative rounded-md overflow-hidden p-[1px] transition-all ${summarizingId === "new" ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse" : "bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-pink-500/50"}`}>
+                                    <Textarea
+                                        value={draft.summary || ""}
+                                        onChange={(e) => updateDraft(loc.id, "summary", e.target.value)}
+                                        placeholder="Resumo..."
+                                        rows={2}
+                                        className={`text-xs border-0 min-h-[48px] m-0 bg-background relative z-10 transition-opacity ${summarizingId === "new" ? "opacity-30" : "opacity-100"}`}
+                                        disabled={summarizingId === "new"}
+                                    />
+                                    {summarizingId === "new" && (
+                                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
+                                            <Sparkles className="text-purple-500 animate-spin mb-1" size={16} />
+                                            <span className="text-[10px] font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent uppercase tracking-wider">
+                                                Resumindo
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            */}
                             <Button
                                 size="sm"
                                 onClick={handleSaveNew}
@@ -341,4 +463,98 @@ export function LocationCard({
             )}
         </div>
     );
+}
+
+function NeedsMultiSelect({ options, value, onChange }: { options: any[], value: string, onChange: (v: string) => void }) {
+    const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+        try {
+            return JSON.parse(value || "[]");
+        } catch {
+            return value ? [value] : [];
+        }
+    });
+
+    const updateSelection = (newIds: string[]) => {
+        setSelectedIds(newIds);
+        onChange(JSON.stringify(newIds));
+    };
+
+    const parents = options.filter(o => !o.parent_id);
+
+    const toggleParent = (parentId: string) => {
+        const children = options.filter(o => o.parent_id === parentId).map(o => o.id);
+        const allChildrenSelected = children.length > 0 && children.every(c => selectedIds.includes(c));
+        const parentSelected = selectedIds.includes(parentId);
+
+        const newIds = new Set(selectedIds);
+        if (parentSelected || allChildrenSelected) {
+            newIds.delete(parentId);
+            children.forEach(c => newIds.delete(c));
+        } else {
+            newIds.add(parentId);
+            children.forEach(c => newIds.add(c));
+        }
+        updateSelection(Array.from(newIds));
+    };
+
+    const toggleChild = (childId: string, parentId: string) => {
+        const newIds = new Set(selectedIds);
+        if (newIds.has(childId)) {
+            newIds.delete(childId);
+            newIds.delete(parentId);
+        } else {
+            newIds.add(childId);
+            const children = options.filter(o => o.parent_id === parentId).map(o => o.id);
+            const allSibsNowSelected = children.every(c => newIds.has(c));
+            if (allSibsNowSelected && children.length > 0) {
+                newIds.add(parentId);
+            }
+        }
+        updateSelection(Array.from(newIds));
+    };
+
+    return (
+        <div className="space-y-2 border border-input rounded-md p-2 bg-background">
+            {parents.length === 0 ? <p className="text-xs text-muted-foreground p-1">Nenhuma categoria cadastrada.</p> : null}
+            {parents.map(p => {
+                const children = options.filter(o => o.parent_id === p.id);
+                const parentSelected = selectedIds.includes(p.id) || (children.length > 0 && children.every(c => selectedIds.includes(c)));
+
+                return (
+                    <div key={p.id} className="space-y-1">
+                        <button type="button" onClick={() => toggleParent(p.id)} className="flex items-center gap-1.5 text-xs font-semibold hover:text-primary transition-colors text-left">
+                            {parentSelected ? <CheckSquare size={14} className="text-primary" /> : <Square size={14} className="text-muted-foreground" />}
+                            {p.name}
+                        </button>
+                        {children.length > 0 && (
+                            <div className="pl-5 grid grid-cols-2 gap-1 gap-x-2">
+                                {children.map(c => {
+                                    const childSelected = selectedIds.includes(c.id);
+                                    return (
+                                        <button type="button" key={c.id} onClick={() => toggleChild(c.id, p.id)} className="flex items-start gap-1.5 text-[11px] hover:text-primary transition-colors text-left leading-tight py-0.5">
+                                            <div className="mt-0.5 shrink-0">
+                                                {childSelected ? <CheckSquare size={12} className="text-primary" /> : <Square size={12} className="text-muted-foreground" />}
+                                            </div>
+                                            <span className={childSelected ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function renderNeedsNames(needsStr: string, categories: any[]) {
+    try {
+        const ids = JSON.parse(needsStr || "[]");
+        if (!Array.isArray(ids)) return needsStr;
+        const names = ids.map((id: string) => categories.find(c => c.id === id)?.name).filter(Boolean);
+        return names.join(", ");
+    } catch {
+        return needsStr;
+    }
 }

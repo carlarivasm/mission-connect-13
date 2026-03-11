@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Trash2, MapPinPlus, Pencil, Eye, Download, ExternalLink } from "lucide-react";
+import { ManageNeeds } from "./ManageNeeds";
 import {
   Dialog,
   DialogContent,
@@ -205,6 +206,8 @@ const ManageLocations = () => {
 
   return (
     <div className="space-y-6">
+      <ManageNeeds />
+      <hr className="border-border my-8" />
       <form onSubmit={handleSubmit} className="bg-card rounded-xl p-4 shadow-card space-y-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <MapPinPlus size={18} /> {editingId ? "Editar Local" : "Novo Local de Missão"}

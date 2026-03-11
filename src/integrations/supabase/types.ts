@@ -303,36 +303,42 @@ export type Database = {
       location_user_notes: {
         Row: {
           created_at: string
+          exact_location_url: string | null
           house_number: string | null
           id: string
           location_id: string
           needs: string | null
           notes: string | null
           resident_name: string | null
+          summary: string | null
           updated_at: string
           user_address: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          exact_location_url?: string | null
           house_number?: string | null
           id?: string
           location_id: string
           needs?: string | null
           notes?: string | null
           resident_name?: string | null
+          summary?: string | null
           updated_at?: string
           user_address?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
+          exact_location_url?: string | null
           house_number?: string | null
           id?: string
           location_id?: string
           needs?: string | null
           notes?: string | null
           resident_name?: string | null
+          summary?: string | null
           updated_at?: string
           user_address?: string | null
           user_id?: string
@@ -427,6 +433,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      needs_categories: {
+        Row: {
+          id: string
+          name: string
+          parent_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          parent_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          parent_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "needs_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "needs_categories"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       notifications: {
         Row: {

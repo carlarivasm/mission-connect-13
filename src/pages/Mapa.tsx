@@ -31,6 +31,7 @@ const Mapa = () => {
   const [selectedLocation, setSelectedLocation] = useState<MissionLocation | null>(null);
   const [userNotes, setUserNotes] = useState<Record<string, UserNote[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [needsCategories, setNeedsCategories] = useState<any[]>([]);
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
 
@@ -47,10 +48,16 @@ const Mapa = () => {
         if (typedLocs.length > 0) setSelectedLocation(typedLocs[0]);
       }
 
+      const { data: needsData } = await supabase
+        .from("needs_categories")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (needsData) setNeedsCategories(needsData);
+
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("id, location_id, house_number, resident_name, needs, notes, user_address, created_at")
+          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
@@ -67,6 +74,8 @@ const Mapa = () => {
               needs: n.needs || "",
               notes: n.notes || "",
               user_address: n.user_address || "",
+              exact_location_url: n.exact_location_url || "",
+              summary: n.summary || "",
               created_at: n.created_at,
             });
           });
@@ -81,20 +90,20 @@ const Mapa = () => {
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
   const getDraft = (locationId: string): UserNote => {
-    return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" };
+    return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" };
   };
 
-  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => {
+  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" }),
+        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" }),
         [field]: value,
       },
     }));
   };
 
-  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address", value: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: (prev[locationId] || []).map((n) =>
@@ -122,8 +131,10 @@ const Mapa = () => {
         needs: draft.needs.trim() || null,
         notes: draft.notes.trim() || null,
         user_address: draft.user_address.trim() || null,
+        exact_location_url: draft.exact_location_url.trim() || null,
+        summary: draft.summary.trim() || null,
       } as any)
-      .select("id, location_id, house_number, resident_name, needs, notes, user_address, created_at")
+      .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at")
       .single();
 
     if (error) {
@@ -137,13 +148,15 @@ const Mapa = () => {
         needs: (data as any).needs || "",
         notes: (data as any).notes || "",
         user_address: (data as any).user_address || "",
+        exact_location_url: (data as any).exact_location_url || "",
+        summary: (data as any).summary || "",
         created_at: (data as any).created_at,
       };
       setUserNotes((prev) => ({
         ...prev,
         [locationId]: [newNote, ...(prev[locationId] || [])],
       }));
-      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "" } }));
+      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" } }));
       toast({ title: "Salvo!", description: "Observação registrada com sucesso." });
     }
     setSavingId(null);
@@ -163,6 +176,8 @@ const Mapa = () => {
         needs: note.needs.trim() || null,
         notes: note.notes.trim() || null,
         user_address: note.user_address.trim() || null,
+        exact_location_url: note.exact_location_url.trim() || null,
+        summary: note.summary.trim() || null,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", noteId);
@@ -293,6 +308,7 @@ const Mapa = () => {
                       saveExistingNote={saveExistingNote}
                       deleteNote={deleteNote}
                       savingId={savingId}
+                      needsCategories={needsCategories}
                     />
                   ))}
                 </div>
@@ -350,6 +366,7 @@ const Mapa = () => {
                       saveExistingNote={saveExistingNote}
                       deleteNote={deleteNote}
                       savingId={savingId}
+                      needsCategories={needsCategories}
                     />
                   ))}
                 </div>
