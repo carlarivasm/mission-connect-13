@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import NeedsCheckboxes from "@/components/NeedsCheckboxes";
 
 interface MissionLocation {
   id: string;
@@ -422,12 +423,9 @@ const Mapa = () => {
                               </div>
                               <div className="space-y-1">
                                 <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                                <Textarea
+                                <NeedsCheckboxes
                                   value={note.needs}
-                                  onChange={(e) => updateExistingNote(loc.id, note.id!, "needs", e.target.value)}
-                                  placeholder="Descreva as necessidades..."
-                                  rows={2}
-                                  className="text-xs"
+                                  onChange={(val) => updateExistingNote(loc.id, note.id!, "needs", val)}
                                 />
                               </div>
                               <div className="space-y-1">
@@ -500,12 +498,9 @@ const Mapa = () => {
                             </div>
                             <div className="space-y-1">
                               <label className="text-xs font-semibold text-muted-foreground">Necessidades identificadas</label>
-                              <Textarea
+                              <NeedsCheckboxes
                                 value={draft.needs}
-                                onChange={(e) => updateDraft(loc.id, "needs", e.target.value)}
-                                placeholder="Descreva as necessidades..."
-                                rows={2}
-                                className="text-xs"
+                                onChange={(val) => updateDraft(loc.id, "needs", val)}
                               />
                             </div>
                             <div className="space-y-1">
