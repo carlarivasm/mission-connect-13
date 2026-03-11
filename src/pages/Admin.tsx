@@ -43,63 +43,63 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-2">
       <AppHeader title="Painel Admin" onLogout={handleLogout} />
 
       <main className="px-4 py-5">
         <Tabs defaultValue="missionaries" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-2">
-            <TabsTrigger value="missionaries" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Users size={16} />
-              <span>Missionários</span>
+          <TabsList className="w-full h-auto p-1 grid grid-cols-4 mb-2 gap-1">
+            <TabsTrigger value="missionaries" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Users size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Missionários</span>
             </TabsTrigger>
-            <TabsTrigger value="families" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Heart size={16} />
-              <span>Famílias</span>
+            <TabsTrigger value="families" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Heart size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Famílias</span>
             </TabsTrigger>
-            <TabsTrigger value="events" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Calendar size={16} />
-              <span>Eventos</span>
+            <TabsTrigger value="events" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Calendar size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Eventos</span>
             </TabsTrigger>
-            <TabsTrigger value="materials" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <BookOpen size={16} />
-              <span>Materiais</span>
-            </TabsTrigger>
-          </TabsList>
-          <TabsList className="w-full grid grid-cols-4 mb-2">
-            <TabsTrigger value="locations" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <MapPin size={16} />
-              <span>Locais</span>
-            </TabsTrigger>
-            <TabsTrigger value="location-notes" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <FileText size={16} />
-              <span>Observações</span>
-            </TabsTrigger>
-            <TabsTrigger value="store" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <ShoppingBag size={16} />
-              <span>Loja</span>
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <ShoppingCart size={16} />
-              <span>Pedidos</span>
+            <TabsTrigger value="materials" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <BookOpen size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Materiais</span>
             </TabsTrigger>
           </TabsList>
-          <TabsList className="w-full grid grid-cols-4 mb-2">
-            <TabsTrigger value="surveys" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <ClipboardList size={16} />
-              <span>Pesquisas</span>
+          <TabsList className="w-full h-auto p-1 grid grid-cols-4 mb-2 gap-1">
+            <TabsTrigger value="locations" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <MapPin size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Locais</span>
             </TabsTrigger>
-            <TabsTrigger value="orgchart" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Network size={16} />
-              <span>Organograma</span>
+            <TabsTrigger value="location-notes" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <FileText size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Observações</span>
             </TabsTrigger>
-            <TabsTrigger value="broadcast" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Megaphone size={16} />
-              <span>Mensagens</span>
+            <TabsTrigger value="store" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <ShoppingBag size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Loja</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex flex-col items-center gap-0.5 text-xs py-2">
-              <Settings size={16} />
-              <span>Configurações</span>
+            <TabsTrigger value="orders" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <ShoppingCart size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Pedidos</span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full h-auto p-1 grid grid-cols-4 mb-2 gap-1">
+            <TabsTrigger value="surveys" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <ClipboardList size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Pesquisas</span>
+            </TabsTrigger>
+            <TabsTrigger value="orgchart" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Network size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Organograma</span>
+            </TabsTrigger>
+            <TabsTrigger value="broadcast" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Megaphone size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Mensagens</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Settings size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Configurações</span>
             </TabsTrigger>
           </TabsList>
 
@@ -112,7 +112,7 @@ const Admin = () => {
           <TabsContent value="store"><ManageStore /></TabsContent>
           <TabsContent value="orders"><ManageOrders /></TabsContent>
           <TabsContent value="surveys"><ManageSurveys /></TabsContent>
-          
+
           <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
