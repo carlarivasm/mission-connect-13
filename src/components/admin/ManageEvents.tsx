@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, CalendarPlus, Pencil, Link2, Bell, BellOff } from "lucide-react";
+import { Trash2, CalendarPlus, Pencil, Link2, Bell, BellOff, Clock } from "lucide-react";
 
 interface Event {
   id: string;
@@ -49,6 +49,11 @@ const ManageEvents = () => {
   const [reminder10min, setReminder10min] = useState(true);
   const [reminder5min, setReminder5min] = useState(true);
 
+  // Scheduled push settings
+  const [scheduledPush, setScheduledPush] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+
   const fetchEvents = async () => {
     const { data, error } = await supabase
       .from("events")
@@ -66,10 +71,25 @@ const ManageEvents = () => {
     setEventType("missão"); setLocation(""); setMeetingLink(""); setEditingId(null);
     setNotifyPush(true); setReminder24h(true); setReminder30min(true);
     setReminder10min(true); setReminder5min(true);
+    setScheduledPush(false); setScheduledDate(""); setScheduledTime("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate scheduling
+    if (notifyPush && scheduledPush) {
+      if (!scheduledDate || !scheduledTime) {
+        toast({ title: "Atenção", description: "Defina data e hora para o envio programado da notificação.", variant: "destructive" });
+        return;
+      }
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+      if (scheduledDateTime <= new Date()) {
+        toast({ title: "Atenção", description: "A data e hora programada deve ser no futuro.", variant: "destructive" });
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     const payload = {
@@ -119,12 +139,25 @@ const ManageEvents = () => {
           if (notifyPush) {
             const pushTitle = eventType === "reunião" ? "🤝 Nova reunião agendada" : "📅 Novo evento";
             const pushBody = `"${title.trim()}" em ${dateStr}${timeStr}.`;
-            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-            await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title: pushTitle, body: pushBody, link: "/calendario" }),
-            }).catch(console.error);
+
+            if (scheduledPush) {
+              const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+              const { error: spError } = await (supabase.from as any)("scheduled_push").insert({
+                title: pushTitle,
+                body: pushBody,
+                link: "/calendario",
+                scheduled_at: scheduledDateTime.toISOString(),
+                create_in_app: false, // In app is handled above immediately for events
+              });
+              if (spError) console.error("Error scheduling push:", spError);
+            } else {
+              const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+              await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: pushTitle, body: pushBody, link: "/calendario" }),
+              }).catch(console.error);
+            }
           }
         }
         resetForm();
@@ -148,6 +181,9 @@ const ManageEvents = () => {
     setReminder30min(ev.reminder_30min ?? true);
     setReminder10min(ev.reminder_10min ?? true);
     setReminder5min(ev.reminder_5min ?? true);
+    setScheduledPush(false);
+    setScheduledDate("");
+    setScheduledTime("");
   };
 
   const handleDelete = async (id: string) => {
@@ -217,6 +253,35 @@ const ManageEvents = () => {
               </div>
               <Switch checked={notifyPush} onCheckedChange={setNotifyPush} />
             </div>
+
+            {notifyPush && (
+              <div className="pl-2 border-l-2 border-border/50 ml-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Programar envio</p>
+                      <p className="text-xs text-muted-foreground">Definir data e hora para enviar</p>
+                    </div>
+                  </div>
+                  <Switch checked={scheduledPush} onCheckedChange={setScheduledPush} />
+                </div>
+
+                {scheduledPush && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Data do envio</Label>
+                      <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Hora do envio</Label>
+                      <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="border-t border-border pt-2 space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Lembretes automáticos:</p>
               <div className="flex items-center justify-between">

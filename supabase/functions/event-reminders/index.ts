@@ -143,8 +143,106 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- NEW LOGIC: process scheduled pushes ---
+    const { data: scheduledPushes, error: spError } = await supabase
+      .from("scheduled_push")
+      .select("*")
+      .eq("sent", false)
+      .lte("scheduled_at", now.toISOString());
+
+    if (spError) {
+      console.error("Error fetching scheduled pushes:", spError);
+    } else if (scheduledPushes && scheduledPushes.length > 0) {
+      console.log(`Found ${scheduledPushes.length} scheduled pushes to send.`);
+
+      const spNotificationsToInsert: any[] = [];
+      const scheduledIdsToMark: string[] = [];
+
+      for (const sp of scheduledPushes) {
+        // We will send this push to EVERY user.
+        // Similar to the admin broadcast, we need to gather everyone.
+        // To be safe and since push is handled via send-push-notification (which accepts no user_ids for ALL or a list),
+        // we can just send it globally by omitting user_ids if we want it for everyone.
+        try {
+          // Send Push
+          await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({
+              title: sp.title,
+              body: sp.body,
+              link: sp.link || "/",
+              // no user_ids = send to all tokens
+            }),
+          });
+
+          scheduledIdsToMark.push(sp.id);
+
+          // If create_in_app is true, we should also insert notifications for everyone
+          if (sp.create_in_app && profiles) {
+            for (const profile of profiles) {
+              spNotificationsToInsert.push({
+                user_id: profile.id,
+                title: sp.title,
+                message: sp.body,
+                type: "admin_broadcast",
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`Error sending scheduled push ${sp.id}:`, err);
+        }
+      }
+
+      // Mark as sent
+      if (scheduledIdsToMark.length > 0) {
+        const { error: markError } = await supabase
+          .from("scheduled_push")
+          .update({ sent: true })
+          .in("id", scheduledIdsToMark);
+
+        if (markError) console.error("Error marking scheduled pushes as sent:", markError);
+      }
+
+      // Insert in-app notifications if needed
+      // Note: Admin broadcast usually goes to all profiles, not just those with notify_reminders enabled
+      // Since `profiles` fetched above only has `notify_reminders=true`, we should ideally fetch ALL profiles for admin broadcast
+      // but to optimize, we'll fetch them precisely if needed.
+      if (spNotificationsToInsert.length > 0) {
+        // Re-fetch all profiles for broadcast
+        const { data: allProfiles } = await supabase.from("profiles").select("id");
+        const finalNotifications = [];
+        if (allProfiles) {
+          for (const sp of scheduledPushes) {
+            if (sp.create_in_app && scheduledIdsToMark.includes(sp.id)) {
+              for (const p of allProfiles) {
+                finalNotifications.push({
+                  user_id: p.id,
+                  title: sp.title,
+                  message: sp.body,
+                  type: "admin_broadcast",
+                });
+              }
+            }
+          }
+
+          if (finalNotifications.length > 0) {
+            const { error: spInsertError } = await supabase
+              .from("notifications")
+              .insert(finalNotifications);
+            if (spInsertError) console.error("Error inserting in-app notifications for scheduled push:", spInsertError);
+          }
+        }
+      }
+    }
+
     return new Response(
-      JSON.stringify({ message: `Sent ${notificationsToInsert.length} reminders, push to ${pushUserIds.length} users` }),
+      JSON.stringify({
+        message: `Sent ${notificationsToInsert.length} reminders, push to ${pushUserIds.length} users. ${scheduledPushes?.length || 0} scheduled pushes processed.`
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
