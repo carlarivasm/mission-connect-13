@@ -41,6 +41,7 @@ const ManageMissionaries = () => {
     const { data, error } = await supabase
       .from("authorized_missionaries")
       .select("*")
+      .eq("used", false)
       .order("created_at", { ascending: false });
     if (data) setMissionaries(data);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
