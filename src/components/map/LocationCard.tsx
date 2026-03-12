@@ -373,16 +373,14 @@ export function LocationCard({
                                                             <span className="font-semibold text-foreground/80">Observações:</span> <span className="text-foreground">{note.notes}</span>
                                                         </p>
                                                     )}
-                                                    {/* Funcionalidade de Resumo com IA temporariamente desativada
-                                                note.summary && (
+                                                {note.summary && (
                                                     <div className="p-2 rounded-lg bg-gradient-to-r from-blue-50/50 via-purple-50/50 to-pink-50/50 border border-purple-100 mt-2">
                                                         <p className="font-semibold text-purple-900/80 mb-0.5 flex items-center gap-1">
                                                             <Sparkles size={10} /> Resumo IA:
                                                         </p>
                                                         <p className="text-foreground">{note.summary}</p>
                                                     </div>
-                                                )
-                                                */}
+                                                )}
                                                 </div>
                                             </div>
                                         )}
