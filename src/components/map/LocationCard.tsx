@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2, Pencil, X, Sparkles, CheckSquare, Square } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -77,19 +79,48 @@ export function LocationCard({
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [summarizingId, setSummarizingId] = useState<string | null>(null);
 
-    const handleSummarize = (isNew: boolean, noteId?: string) => {
+    const handleSummarize = async (isNew: boolean, noteId?: string) => {
         const idToTrack = isNew ? "new" : noteId!;
         setSummarizingId(idToTrack);
 
-        setTimeout(() => {
+        try {
+            const noteData = isNew ? draft : notes.find(n => n.id === noteId);
+            if (!noteData) return;
+
+            // Resolve needs IDs to names
+            let needsNames: string[] = [];
+            try {
+                const ids: string[] = JSON.parse(noteData.needs || "[]");
+                needsNames = ids.map(id => {
+                    const cat = needsCategories.find((c: any) => c.id === id);
+                    return cat?.name || "";
+                }).filter(Boolean);
+            } catch { /* ignore */ }
+
+            const { data, error } = await supabase.functions.invoke("summarize-note", {
+                body: {
+                    house_number: noteData.house_number,
+                    resident_name: noteData.resident_name,
+                    user_address: noteData.user_address,
+                    needs_names: needsNames,
+                    notes: noteData.notes,
+                },
+            });
+
+            if (error) throw error;
+
+            const summary = data?.summary || "Não foi possível gerar o resumo.";
             if (isNew) {
-                updateDraft(loc.id, "summary", draft.notes);
+                updateDraft(loc.id, "summary", summary);
             } else if (noteId) {
-                const existing = notes.find(n => n.id === noteId);
-                if (existing) updateExistingNote(loc.id, noteId, "summary", existing.notes);
+                updateExistingNote(loc.id, noteId, "summary", summary);
             }
+        } catch (err: any) {
+            console.error("Erro ao resumir:", err);
+            toast.error("Não foi possível gerar o resumo. Tente novamente.");
+        } finally {
             setSummarizingId(null);
-        }, 3000);
+        }
     };
 
     const handleSaveNew = async () => {
@@ -238,7 +269,6 @@ export function LocationCard({
                                                         className="text-xs"
                                                     />
                                                 </div>
-                                                {/* Funcionalidade de Resumo com IA temporariamente desativada
                                             <div className="space-y-1 relative">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
@@ -271,7 +301,6 @@ export function LocationCard({
                                                     )}
                                                 </div>
                                             </div>
-                                            */}
                                                 <div className="flex gap-2 pt-2">
                                                     <Button
                                                         size="sm"
@@ -344,16 +373,14 @@ export function LocationCard({
                                                             <span className="font-semibold text-foreground/80">Observações:</span> <span className="text-foreground">{note.notes}</span>
                                                         </p>
                                                     )}
-                                                    {/* Funcionalidade de Resumo com IA temporariamente desativada
-                                                note.summary && (
+                                                {note.summary && (
                                                     <div className="p-2 rounded-lg bg-gradient-to-r from-blue-50/50 via-purple-50/50 to-pink-50/50 border border-purple-100 mt-2">
                                                         <p className="font-semibold text-purple-900/80 mb-0.5 flex items-center gap-1">
                                                             <Sparkles size={10} /> Resumo IA:
                                                         </p>
                                                         <p className="text-foreground">{note.summary}</p>
                                                     </div>
-                                                )
-                                                */}
+                                                )}
                                                 </div>
                                             </div>
                                         )}
@@ -434,7 +461,6 @@ export function LocationCard({
                                     className="text-xs"
                                 />
                             </div>
-                            {/* Funcionalidade de Resumo com IA temporariamente desativada
                             <div className="space-y-1 relative">
                                 <div className="flex items-center justify-between mb-1">
                                     <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
@@ -467,7 +493,6 @@ export function LocationCard({
                                     )}
                                 </div>
                             </div>
-                            */}
                             <Button
                                 size="sm"
                                 onClick={handleSaveNew}
