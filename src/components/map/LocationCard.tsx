@@ -269,7 +269,6 @@ export function LocationCard({
                                                         className="text-xs"
                                                     />
                                                 </div>
-                                                {/* Funcionalidade de Resumo com IA temporariamente desativada
                                             <div className="space-y-1 relative">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
@@ -302,7 +301,6 @@ export function LocationCard({
                                                     )}
                                                 </div>
                                             </div>
-                                            */}
                                                 <div className="flex gap-2 pt-2">
                                                     <Button
                                                         size="sm"
