@@ -317,15 +317,15 @@ const ManageMissionaries = () => {
         ) : (
           missionaries.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-              <div className={`w-2 h-2 rounded-full ${m.used ? "bg-green-500" : "bg-amber-500"}`} />
+              <div className="w-2 h-2 rounded-full bg-amber-500" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">{m.full_name}</p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Mail size={12} /> {m.email}
                 </p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${m.used ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                {m.used ? "Cadastrado" : "Pendente"}
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                Aguardando cadastro
               </span>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
