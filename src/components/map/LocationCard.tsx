@@ -79,19 +79,48 @@ export function LocationCard({
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [summarizingId, setSummarizingId] = useState<string | null>(null);
 
-    const handleSummarize = (isNew: boolean, noteId?: string) => {
+    const handleSummarize = async (isNew: boolean, noteId?: string) => {
         const idToTrack = isNew ? "new" : noteId!;
         setSummarizingId(idToTrack);
 
-        setTimeout(() => {
+        try {
+            const noteData = isNew ? draft : notes.find(n => n.id === noteId);
+            if (!noteData) return;
+
+            // Resolve needs IDs to names
+            let needsNames: string[] = [];
+            try {
+                const ids: string[] = JSON.parse(noteData.needs || "[]");
+                needsNames = ids.map(id => {
+                    const cat = needsCategories.find((c: any) => c.id === id);
+                    return cat?.name || "";
+                }).filter(Boolean);
+            } catch { /* ignore */ }
+
+            const { data, error } = await supabase.functions.invoke("summarize-note", {
+                body: {
+                    house_number: noteData.house_number,
+                    resident_name: noteData.resident_name,
+                    user_address: noteData.user_address,
+                    needs_names: needsNames,
+                    notes: noteData.notes,
+                },
+            });
+
+            if (error) throw error;
+
+            const summary = data?.summary || "Não foi possível gerar o resumo.";
             if (isNew) {
-                updateDraft(loc.id, "summary", draft.notes);
+                updateDraft(loc.id, "summary", summary);
             } else if (noteId) {
-                const existing = notes.find(n => n.id === noteId);
-                if (existing) updateExistingNote(loc.id, noteId, "summary", existing.notes);
+                updateExistingNote(loc.id, noteId, "summary", summary);
             }
+        } catch (err: any) {
+            console.error("Erro ao resumir:", err);
+            toast.error("Não foi possível gerar o resumo. Tente novamente.");
+        } finally {
             setSummarizingId(null);
-        }, 3000);
+        }
     };
 
     const handleSaveNew = async () => {
