@@ -313,7 +313,7 @@ const ManageMissionaries = () => {
         {loading ? (
           <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>
         ) : missionaries.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-4">Nenhum missionário autorizado ainda.</p>
+          <p className="text-muted-foreground text-sm text-center py-4">Todos os missionários autorizados já se cadastraram.</p>
         ) : (
           missionaries.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
