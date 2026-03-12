@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Trash2, Pencil, X, Sparkles, CheckSquare, Square } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
