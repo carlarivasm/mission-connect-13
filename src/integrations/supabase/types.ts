@@ -436,22 +436,22 @@ export type Database = {
       }
       needs_categories: {
         Row: {
+          created_at: string
           id: string
           name: string
           parent_id: string | null
-          created_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
           name: string
           parent_id?: string | null
-          created_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
           name?: string
           parent_id?: string | null
-          created_at?: string
         }
         Relationships: [
           {
@@ -460,7 +460,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "needs_categories"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       notifications: {
@@ -771,6 +771,39 @@ export type Database = {
           sent?: boolean
           source_id?: string | null
           source_type?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      scheduled_push: {
+        Row: {
+          body: string
+          create_in_app: boolean
+          created_at: string
+          id: string
+          link: string | null
+          scheduled_at: string
+          sent: boolean
+          title: string
+        }
+        Insert: {
+          body: string
+          create_in_app?: boolean
+          created_at?: string
+          id?: string
+          link?: string | null
+          scheduled_at: string
+          sent?: boolean
+          title: string
+        }
+        Update: {
+          body?: string
+          create_in_app?: boolean
+          created_at?: string
+          id?: string
+          link?: string | null
+          scheduled_at?: string
+          sent?: boolean
           title?: string
         }
         Relationships: []
