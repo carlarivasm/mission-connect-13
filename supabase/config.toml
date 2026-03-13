@@ -9,3 +9,5 @@ project_id = "yefsuhdzjdhnobabtmky"
     verify_jwt = false
   [functions.summarize-note]
     verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = false
