@@ -125,11 +125,10 @@ const Loja = () => {
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-              !selectedCategory
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!selectedCategory
                 ? "gradient-mission text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
+              }`}
           >
             Todos
           </button>
@@ -137,11 +136,10 @@ const Loja = () => {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                selectedCategory === cat
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${selectedCategory === cat
                   ? "gradient-mission text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               {categoryEmojis[cat] || "📦"} {categoryLabels[cat] || cat}
             </button>
@@ -347,13 +345,12 @@ const ProductCard = ({
                           key={s}
                           onClick={() => setSelectedSize(s)}
                           disabled={outOfStock}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                            outOfStock
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
                               ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
                               : selectedSize === s
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground hover:bg-muted/80"
-                          }`}
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-foreground hover:bg-muted/80"
+                            }`}
                         >
                           {s}
                           {sStock !== null && (
@@ -378,13 +375,12 @@ const ProductCard = ({
                           key={c}
                           onClick={() => setSelectedColor(c)}
                           disabled={outOfStock}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                            outOfStock
+                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
                               ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
                               : selectedColor === c
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground hover:bg-muted/80"
-                          }`}
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-foreground hover:bg-muted/80"
+                            }`}
                         >
                           {c}
                           {cStock !== null && (
