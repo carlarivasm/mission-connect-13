@@ -262,7 +262,41 @@ const Mapa = () => {
     emAndamento: locs.filter((l) => l.status === "em andamento").length,
   });
 
-  const referencePoints = filteredLocations.filter((l) => l.category === "reference_point");
+  const referencePointsRaw = filteredLocations.filter((l) => l.category === "reference_point");
+  
+  // Sort reference points: pinned first, then custom order, then default
+  const sortedReferencePoints = [...referencePointsRaw].sort((a, b) => {
+    const aPinned = pinnedIds.includes(a.id);
+    const bPinned = pinnedIds.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    const aOrder = customOrder.indexOf(a.id);
+    const bOrder = customOrder.indexOf(b.id);
+    if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
+    if (aOrder !== -1) return -1;
+    if (bOrder !== -1) return 1;
+    return 0;
+  });
+
+  const handleTogglePin = (id: string) => {
+    if (pinnedIds.includes(id)) {
+      savePinned(pinnedIds.filter((p) => p !== id));
+    } else if (pinnedIds.length < 2) {
+      savePinned([...pinnedIds, id]);
+    }
+  };
+
+  const handleMoveRef = (id: string, direction: "up" | "down") => {
+    const currentIds = sortedReferencePoints.map((l) => l.id);
+    const idx = currentIds.indexOf(id);
+    if (direction === "up" && idx > 0) {
+      [currentIds[idx - 1], currentIds[idx]] = [currentIds[idx], currentIds[idx - 1]];
+    } else if (direction === "down" && idx < currentIds.length - 1) {
+      [currentIds[idx + 1], currentIds[idx]] = [currentIds[idx], currentIds[idx + 1]];
+    }
+    saveOrder(currentIds);
+  };
+
   const missionZones = filteredLocations.filter((l) => l.category === "mission_zone");
 
   // Build Google Maps embed URL
