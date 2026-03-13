@@ -104,10 +104,10 @@ const Loja = () => {
   const uniqueCategories = [...new Set(products.map((p) => p.category))];
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 flex flex-col">
       <AppHeader title="Loja Missionária" onLogout={handleLogout} />
 
-      <main className="px-4 py-5 space-y-5">
+      <main className="px-4 pt-0 pb-5 space-y-3">
         {/* Cart button */}
         <button
           onClick={() => navigate("/checkout")}
@@ -122,12 +122,12 @@ const Loja = () => {
         </button>
 
         {/* Category filters */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-0 -mx-1 px-1 scrollbar-hide">
           <button
             onClick={() => setSelectedCategory(null)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!selectedCategory
-                ? "gradient-mission text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
+              ? "gradient-mission text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
           >
             Todos
@@ -137,8 +137,8 @@ const Loja = () => {
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${selectedCategory === cat
-                  ? "gradient-mission text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                ? "gradient-mission text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
             >
               {categoryEmojis[cat] || "📦"} {categoryLabels[cat] || cat}
@@ -191,17 +191,37 @@ const ProductCard = ({
   getVariantStock: (size: string | null, color: string | null) => number | null;
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    if (showDetails) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showDetails]);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes.length > 0 ? product.sizes[0] : undefined
   );
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
     product.colors.length > 0 ? product.colors[0] : undefined
   );
+  const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
   const { toast } = useToast();
 
   const currentVariantStock = getVariantStock(selectedSize ?? null, selectedColor ?? null);
   const variantOutOfStock = currentVariantStock !== null && currentVariantStock <= 0;
+
+  // Clamp quantity whenever the selected variant changes so it never exceeds available stock
+  useEffect(() => {
+    if (currentVariantStock !== null) {
+      setQuantity((q) => Math.min(q, Math.max(1, currentVariantStock)));
+    }
+  }, [currentVariantStock]);
 
   const handleWhatsApp = () => {
     if (!whatsapp) return;
@@ -213,25 +233,39 @@ const ProductCard = ({
   const handleAddToCart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!isAvailable || variantOutOfStock) return;
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: product.image_url,
-      category: product.category,
-      selectedSize,
-      selectedColor,
-    });
-    toast({ title: "Adicionado ao carrinho!", description: product.name });
+    // Final guard: never add more than what's in stock
+    const safeQty = currentVariantStock !== null ? Math.min(quantity, currentVariantStock) : quantity;
+    if (safeQty <= 0) return;
+    for (let i = 0; i < safeQty; i++) {
+      addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image_url: product.image_url,
+        category: product.category,
+        selectedSize,
+        selectedColor,
+      });
+    }
+    toast({ title: `${safeQty}x adicionado ao carrinho!`, description: product.name });
     setShowDetails(false);
+    setQuantity(1);
   };
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAvailable) return;
-    // Check default variant stock
-    const defaultSize = product.sizes.length > 0 ? product.sizes[0] : null;
-    const defaultColor = product.colors.length > 0 ? product.colors[0] : null;
+    // If product has MULTIPLE size or color options, open modal to let user pick
+    const hasMultipleSizes = product.sizes.length > 1;
+    const hasMultipleColors = product.colors.length > 1;
+    if (hasMultipleSizes || hasMultipleColors) {
+      setQuantity(1);
+      setShowDetails(true);
+      return;
+    }
+    // Single variant (or no variant): add directly with the only available option
+    const defaultSize = product.sizes.length === 1 ? product.sizes[0] : null;
+    const defaultColor = product.colors.length === 1 ? product.colors[0] : null;
     const defaultStock = getVariantStock(defaultSize, defaultColor);
     if (defaultStock !== null && defaultStock <= 0) {
       toast({ title: "Esgotado", description: "Este item está fora de estoque.", variant: "destructive" });
@@ -346,10 +380,10 @@ const ProductCard = ({
                           onClick={() => setSelectedSize(s)}
                           disabled={outOfStock}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
-                              ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
-                              : selectedSize === s
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-foreground hover:bg-muted/80"
+                            ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                            : selectedSize === s
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground hover:bg-muted/80"
                             }`}
                         >
                           {s}
@@ -376,10 +410,10 @@ const ProductCard = ({
                           onClick={() => setSelectedColor(c)}
                           disabled={outOfStock}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
-                              ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
-                              : selectedColor === c
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-foreground hover:bg-muted/80"
+                            ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                            : selectedColor === c
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground hover:bg-muted/80"
                             }`}
                         >
                           {c}
@@ -402,13 +436,34 @@ const ProductCard = ({
             </div>
 
             {isAvailable && !variantOutOfStock ? (
-              <Button
-                onClick={() => handleAddToCart()}
-                className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
-              >
-                <ShoppingCart size={20} />
-                Adicionar ao Carrinho
-              </Button>
+              <div className="space-y-3">
+                {/* Quantity selector */}
+                <div className="flex items-center justify-between bg-muted rounded-xl px-4 py-2">
+                  <span className="text-sm font-semibold text-foreground">Quantidade</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center text-lg font-bold text-foreground hover:bg-muted transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center font-bold text-foreground">{quantity}</span>
+                    <button
+                      onClick={() => setQuantity((q) => currentVariantStock !== null ? Math.min(q + 1, currentVariantStock) : q + 1)}
+                      className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center text-lg font-bold text-foreground hover:bg-muted transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleAddToCart()}
+                  className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
+                >
+                  <ShoppingCart size={20} />
+                  Adicionar ao Carrinho
+                </Button>
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-center text-sm text-destructive font-semibold">Produto indisponível</p>
