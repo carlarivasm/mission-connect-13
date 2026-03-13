@@ -363,34 +363,26 @@ const Mapa = () => {
           </TabsList>
 
           <TabsContent value="reference_point" className="space-y-5">
-
-            {/* Locations */}
             <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-              ) : referencePoints.length === 0 ? (
+              ) : sortedReferencePoints.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-4">Nenhum ponto de referência cadastrado.</p>
               ) : (
                 <div className="space-y-3">
-                  {referencePoints.map((loc) => (
-                    <LocationCard
+                  {sortedReferencePoints.map((loc, idx) => (
+                    <ReferencePointCard
                       key={loc.id}
                       loc={loc}
-                      notes={userNotes[loc.id] || []}
                       isSelected={selectedLocation?.id === loc.id}
                       onSelect={() => setSelectedLocation(loc)}
-                      draft={getDraft(loc.id)}
-                      updateDraft={updateDraft}
-                      saveNewNote={saveNewNote}
-                      updateExistingNote={updateExistingNote}
-                      saveExistingNote={saveExistingNote}
-                      deleteNote={deleteNote}
-                      savingId={savingId}
-                      needsCategories={needsCategories}
-                      userId={user?.id || ""}
-                      role={role}
+                      isPinned={pinnedIds.includes(loc.id)}
+                      onTogglePin={() => handleTogglePin(loc.id)}
+                      canPinMore={pinnedIds.length < 2}
+                      onMoveUp={idx > 0 ? () => handleMoveRef(loc.id, "up") : null}
+                      onMoveDown={idx < sortedReferencePoints.length - 1 ? () => handleMoveRef(loc.id, "down") : null}
                     />
                   ))}
                 </div>
