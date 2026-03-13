@@ -61,8 +61,10 @@ const Materiais = () => {
   }, []);
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
-  const filteredMaterials = selectedCategory ? materials.filter((m) => m.category === selectedCategory) : materials;
-  const uniqueCategories = [...new Set(materials.map((m) => m.category))];
+  const missionaryMaterials = materials.filter((m) => m.category !== "responsaveis");
+  const responsaveisMaterials = materials.filter((m) => m.category === "responsaveis");
+  const filteredMaterials = selectedCategory ? missionaryMaterials.filter((m) => m.category === selectedCategory) : missionaryMaterials;
+  const uniqueCategories = [...new Set(missionaryMaterials.map((m) => m.category))];
   const filteredVideos = fSelectedCat === "all" ? fVideos : fVideos.filter((v) => v.category_id === fSelectedCat);
   const getCatName = (id: string) => fCategories.find((c) => c.id === id)?.name || "";
 
@@ -76,9 +78,10 @@ const Materiais = () => {
         </div>
 
         <Tabs defaultValue="materiais" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 mb-4">
-            <TabsTrigger value="materiais">Material de Apoio Missionários</TabsTrigger>
-            <TabsTrigger value="formacao">Vídeos</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-3 mb-4">
+            <TabsTrigger value="materiais" className="text-xs px-1">Material Missionários</TabsTrigger>
+            <TabsTrigger value="responsaveis" className="text-xs px-1">Material Responsáveis</TabsTrigger>
+            <TabsTrigger value="formacao" className="text-xs px-1">Vídeos</TabsTrigger>
           </TabsList>
 
           {/* Materials Tab */}
@@ -129,7 +132,37 @@ const Materiais = () => {
             )}
           </TabsContent>
 
-          {/* Formation Tab */}
+          {/* Responsáveis Tab */}
+          <TabsContent value="responsaveis" className="space-y-4">
+            {responsaveisMaterials.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível para responsáveis.</p>
+            ) : (
+              <div className="space-y-3 animate-fade-in">
+                {responsaveisMaterials.map((mat) => (
+                  <div key={mat.id} className="flex items-center gap-4 p-4 bg-card rounded-xl shadow-card">
+                    <div className="p-3 rounded-lg gradient-mission text-primary-foreground"><FileText size={20} /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-foreground truncate">{mat.title}</p>
+                      {mat.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{mat.description}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {mat.file_url && (
+                        <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Baixar documento">
+                          <FileText size={18} />
+                        </a>
+                      )}
+                      {mat.link_url && (
+                        <a href={mat.link_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Abrir link">
+                          <ExternalLink size={18} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="formacao" className="space-y-4">
             {fCategories.length > 0 && (
               <div className="flex gap-2 flex-wrap">
