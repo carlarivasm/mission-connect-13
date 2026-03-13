@@ -35,6 +35,32 @@ const Mapa = () => {
   const [needsCategories, setNeedsCategories] = useState<any[]>([]);
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
+  // Reference point ordering & pinning
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [customOrder, setCustomOrder] = useState<string[]>([]);
+
+  const STORAGE_KEY_PINNED = `ref_pinned_${user?.id || "anon"}`;
+  const STORAGE_KEY_ORDER = `ref_order_${user?.id || "anon"}`;
+
+  // Load pinned/order from localStorage
+  useEffect(() => {
+    try {
+      const savedPinned = localStorage.getItem(STORAGE_KEY_PINNED);
+      const savedOrder = localStorage.getItem(STORAGE_KEY_ORDER);
+      if (savedPinned) setPinnedIds(JSON.parse(savedPinned));
+      if (savedOrder) setCustomOrder(JSON.parse(savedOrder));
+    } catch { /* ignore */ }
+  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER]);
+
+  const savePinned = useCallback((ids: string[]) => {
+    setPinnedIds(ids);
+    localStorage.setItem(STORAGE_KEY_PINNED, JSON.stringify(ids));
+  }, [STORAGE_KEY_PINNED]);
+
+  const saveOrder = useCallback((ids: string[]) => {
+    setCustomOrder(ids);
+    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(ids));
+  }, [STORAGE_KEY_ORDER]);
 
   useEffect(() => {
     const fetchData = async () => {
