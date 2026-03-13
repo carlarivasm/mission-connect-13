@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LocationCard, MissionLocation, UserNote } from "@/components/map/LocationCard";
+import { ReferencePointCard } from "@/components/map/ReferencePointCard";
 
 const statusColors: Record<string, string> = {
   visitado: "bg-green-100 text-green-700",
@@ -34,6 +35,32 @@ const Mapa = () => {
   const [needsCategories, setNeedsCategories] = useState<any[]>([]);
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
+  // Reference point ordering & pinning
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [customOrder, setCustomOrder] = useState<string[]>([]);
+
+  const STORAGE_KEY_PINNED = `ref_pinned_${user?.id || "anon"}`;
+  const STORAGE_KEY_ORDER = `ref_order_${user?.id || "anon"}`;
+
+  // Load pinned/order from localStorage
+  useEffect(() => {
+    try {
+      const savedPinned = localStorage.getItem(STORAGE_KEY_PINNED);
+      const savedOrder = localStorage.getItem(STORAGE_KEY_ORDER);
+      if (savedPinned) setPinnedIds(JSON.parse(savedPinned));
+      if (savedOrder) setCustomOrder(JSON.parse(savedOrder));
+    } catch { /* ignore */ }
+  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER]);
+
+  const savePinned = useCallback((ids: string[]) => {
+    setPinnedIds(ids);
+    localStorage.setItem(STORAGE_KEY_PINNED, JSON.stringify(ids));
+  }, [STORAGE_KEY_PINNED]);
+
+  const saveOrder = useCallback((ids: string[]) => {
+    setCustomOrder(ids);
+    localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(ids));
+  }, [STORAGE_KEY_ORDER]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -235,7 +262,41 @@ const Mapa = () => {
     emAndamento: locs.filter((l) => l.status === "em andamento").length,
   });
 
-  const referencePoints = filteredLocations.filter((l) => l.category === "reference_point");
+  const referencePointsRaw = filteredLocations.filter((l) => l.category === "reference_point");
+  
+  // Sort reference points: pinned first, then custom order, then default
+  const sortedReferencePoints = [...referencePointsRaw].sort((a, b) => {
+    const aPinned = pinnedIds.includes(a.id);
+    const bPinned = pinnedIds.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    const aOrder = customOrder.indexOf(a.id);
+    const bOrder = customOrder.indexOf(b.id);
+    if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
+    if (aOrder !== -1) return -1;
+    if (bOrder !== -1) return 1;
+    return 0;
+  });
+
+  const handleTogglePin = (id: string) => {
+    if (pinnedIds.includes(id)) {
+      savePinned(pinnedIds.filter((p) => p !== id));
+    } else if (pinnedIds.length < 2) {
+      savePinned([...pinnedIds, id]);
+    }
+  };
+
+  const handleMoveRef = (id: string, direction: "up" | "down") => {
+    const currentIds = sortedReferencePoints.map((l) => l.id);
+    const idx = currentIds.indexOf(id);
+    if (direction === "up" && idx > 0) {
+      [currentIds[idx - 1], currentIds[idx]] = [currentIds[idx], currentIds[idx - 1]];
+    } else if (direction === "down" && idx < currentIds.length - 1) {
+      [currentIds[idx + 1], currentIds[idx]] = [currentIds[idx], currentIds[idx + 1]];
+    }
+    saveOrder(currentIds);
+  };
+
   const missionZones = filteredLocations.filter((l) => l.category === "mission_zone");
 
   // Build Google Maps embed URL
@@ -302,34 +363,26 @@ const Mapa = () => {
           </TabsList>
 
           <TabsContent value="reference_point" className="space-y-5">
-
-            {/* Locations */}
             <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-              ) : referencePoints.length === 0 ? (
+              ) : sortedReferencePoints.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-4">Nenhum ponto de referência cadastrado.</p>
               ) : (
                 <div className="space-y-3">
-                  {referencePoints.map((loc) => (
-                    <LocationCard
+                  {sortedReferencePoints.map((loc, idx) => (
+                    <ReferencePointCard
                       key={loc.id}
                       loc={loc}
-                      notes={userNotes[loc.id] || []}
                       isSelected={selectedLocation?.id === loc.id}
                       onSelect={() => setSelectedLocation(loc)}
-                      draft={getDraft(loc.id)}
-                      updateDraft={updateDraft}
-                      saveNewNote={saveNewNote}
-                      updateExistingNote={updateExistingNote}
-                      saveExistingNote={saveExistingNote}
-                      deleteNote={deleteNote}
-                      savingId={savingId}
-                      needsCategories={needsCategories}
-                      userId={user?.id || ""}
-                      role={role}
+                      isPinned={pinnedIds.includes(loc.id)}
+                      onTogglePin={() => handleTogglePin(loc.id)}
+                      canPinMore={pinnedIds.length < 2}
+                      onMoveUp={idx > 0 ? () => handleMoveRef(loc.id, "up") : null}
+                      onMoveDown={idx < sortedReferencePoints.length - 1 ? () => handleMoveRef(loc.id, "down") : null}
                     />
                   ))}
                 </div>
