@@ -61,8 +61,10 @@ const Materiais = () => {
   }, []);
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
-  const filteredMaterials = selectedCategory ? materials.filter((m) => m.category === selectedCategory) : materials;
-  const uniqueCategories = [...new Set(materials.map((m) => m.category))];
+  const missionaryMaterials = materials.filter((m) => m.category !== "responsaveis");
+  const responsaveisMaterials = materials.filter((m) => m.category === "responsaveis");
+  const filteredMaterials = selectedCategory ? missionaryMaterials.filter((m) => m.category === selectedCategory) : missionaryMaterials;
+  const uniqueCategories = [...new Set(missionaryMaterials.map((m) => m.category))];
   const filteredVideos = fSelectedCat === "all" ? fVideos : fVideos.filter((v) => v.category_id === fSelectedCat);
   const getCatName = (id: string) => fCategories.find((c) => c.id === id)?.name || "";
 
