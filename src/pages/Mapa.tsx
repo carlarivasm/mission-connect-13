@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LocationCard, MissionLocation, UserNote } from "@/components/map/LocationCard";
+import { ReferencePointCard } from "@/components/map/ReferencePointCard";
 
 const statusColors: Record<string, string> = {
   visitado: "bg-green-100 text-green-700",
