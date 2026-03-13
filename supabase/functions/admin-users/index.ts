@@ -49,9 +49,9 @@ serve(async (req) => {
     }
 
     if (action === "resend_confirmation") {
-      // Use admin API to generate a new confirmation link
+      // Use admin API to generate a magic link for existing users
       const { data, error } = await supabase.auth.admin.generateLink({
-        type: "signup",
+        type: "magiclink",
         email,
         options: { redirectTo: `${req.headers.get("origin") || "https://app-missoes-familia.lovable.app"}` },
       });
