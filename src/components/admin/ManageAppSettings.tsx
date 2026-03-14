@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Upload, X, Save, Palette } from "lucide-react";
+import ColorPaletteSelector from "@/components/ColorPaletteSelector";
 
 const ManageAppSettings = () => {
   const { user } = useAuth();
@@ -22,17 +23,6 @@ const ManageAppSettings = () => {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-
-  const colorPresets = [
-    { label: "Azul Missão", primary: "220 60% 25%", secondary: "38 80% 55%" },
-    { label: "Verde Esperança", primary: "150 50% 25%", secondary: "45 90% 55%" },
-    { label: "Roxo Fé", primary: "270 50% 30%", secondary: "38 80% 55%" },
-    { label: "Vermelho Caridade", primary: "0 60% 35%", secondary: "38 80% 55%" },
-    { label: "Marrom Terra", primary: "30 40% 25%", secondary: "45 80% 55%" },
-    { label: "Laranja Missão", primary: "25 80% 45%", secondary: "38 80% 55%" },
-    { label: "Amarelo Luz", primary: "45 85% 45%", secondary: "220 60% 25%" },
-    { label: "Vermelho Fogo", primary: "0 75% 45%", secondary: "45 90% 55%" },
-  ];
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,30 +126,13 @@ const ManageAppSettings = () => {
 
       {/* Colors */}
       <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
-        <div className="flex items-center gap-2">
-          <Palette size={16} className="text-foreground" />
-          <Label>Paleta de Cores</Label>
-        </div>
+        <ColorPaletteSelector
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+          onChangeColors={(p, s) => { setPrimaryColor(p); setSecondaryColor(s); }}
+        />
 
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground font-semibold">Presets</p>
-          <div className="flex flex-wrap gap-2">
-            {colorPresets.map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => { setPrimaryColor(preset.primary); setSecondaryColor(preset.secondary); }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                  primaryColor === preset.primary ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground"
-                }`}
-              >
-                <span className="w-4 h-4 rounded-full" style={{ background: `hsl(${preset.primary})` }} />
-                <span className="w-4 h-4 rounded-full" style={{ background: `hsl(${preset.secondary})` }} />
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+        {/* Admin custom HSL inputs */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs">Cor Primária (HSL)</Label>
@@ -176,16 +149,6 @@ const ManageAppSettings = () => {
             </div>
           </div>
         </div>
-
-        {/* Preview */}
-        <div className="mt-3 p-3 rounded-xl" style={{ background: `linear-gradient(135deg, hsl(${primaryColor}), hsl(${primaryColor.split(" ")[0]} ${primaryColor.split(" ")[1]} 35%))` }}>
-          <p className="text-sm font-bold" style={{ color: `hsl(40 50% 95%)` }}>Preview do Header</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: `hsl(${secondaryColor})`, color: `hsl(${primaryColor})` }}>
-              Destaque
-            </span>
-          </div>
-        </div>
       </div>
 
       <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
@@ -197,3 +160,4 @@ const ManageAppSettings = () => {
 };
 
 export default ManageAppSettings;
+

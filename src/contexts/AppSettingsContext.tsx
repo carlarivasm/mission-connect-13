@@ -29,7 +29,7 @@ const AppSettingsContext = createContext<AppSettingsContextType>({
 
 export const useAppSettings = () => useContext(AppSettingsContext);
 
-const applyColors = (primary: string, secondary: string) => {
+export const applyColors = (primary: string, secondary: string) => {
   const root = document.documentElement;
   // Light mode primary
   root.style.setProperty("--primary", primary);
@@ -68,7 +68,15 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
         login_subtitle: map.login_subtitle || defaults.login_subtitle,
       };
       setSettings(s);
-      applyColors(s.primary_color, s.secondary_color);
+
+      // User override from localStorage takes priority
+      const userPrimary = localStorage.getItem("user_primary_color");
+      const userSecondary = localStorage.getItem("user_secondary_color");
+      if (userPrimary && userSecondary) {
+        applyColors(userPrimary, userSecondary);
+      } else {
+        applyColors(s.primary_color, s.secondary_color);
+      }
     }
   };
 
@@ -80,3 +88,4 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     </AppSettingsContext.Provider>
   );
 };
+
