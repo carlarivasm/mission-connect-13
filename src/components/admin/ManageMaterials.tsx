@@ -5,17 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, FolderPlus, X } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, Music, File, Link2, X } from "lucide-react";
 
 interface Material {
   id: string;
@@ -24,39 +17,74 @@ interface Material {
   category: string;
   file_url: string | null;
   link_url: string | null;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  description: string | null;
-  sort_order: number;
-}
-
-interface Video {
-  id: string;
-  category_id: string;
-  title: string;
-  description: string | null;
-  video_url: string;
-  storage_path: string;
+  material_type: string;
+  storage_path: string | null;
   created_at: string;
 }
 
+const MISSIONARY_CATEGORIES: Record<string, string> = {
+  formacao_missionarios: "Formação dos Missionários",
+  geral: "Geral",
+  oração: "Oração",
+  formação: "Formação",
+  liturgia: "Liturgia",
+  evangelização: "Evangelização",
+  atividades: "Atividades",
+};
+
+const RESPONSAVEIS_CATEGORIES: Record<string, string> = {
+  formacao_responsaveis: "Formação dos Responsáveis",
+  outros_responsaveis: "Outros Materiais",
+};
+
+const MATERIAL_TYPES: Record<string, string> = {
+  pdf: "PDF",
+  document: "Documento",
+  audio: "Áudio",
+  video: "Vídeo",
+  link: "Link Externo",
+};
+
+const materialTypeIcon = (type: string) => {
+  switch (type) {
+    case "pdf": return <FileText size={16} />;
+    case "video": return <Film size={16} />;
+    case "audio": return <Music size={16} />;
+    case "link": return <Link2 size={16} />;
+    default: return <File size={16} />;
+  }
+};
+
+const fileAcceptByType: Record<string, string> = {
+  pdf: ".pdf",
+  document: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt",
+  audio: "audio/*",
+  video: "video/*",
+};
+
 const ManageMaterials = () => {
   return (
-    <Tabs defaultValue="materiais" className="w-full">
+    <Tabs defaultValue="missionarios" className="w-full">
       <TabsList className="w-full grid grid-cols-2 mb-4">
-        <TabsTrigger value="materiais">Materiais</TabsTrigger>
-        <TabsTrigger value="videos">Vídeo</TabsTrigger>
+        <TabsTrigger value="missionarios">Missionários</TabsTrigger>
+        <TabsTrigger value="responsaveis">Responsáveis</TabsTrigger>
       </TabsList>
-      <TabsContent value="materiais"><MaterialsTab /></TabsContent>
-      <TabsContent value="videos"><VideosTab /></TabsContent>
+      <TabsContent value="missionarios">
+        <MaterialsSection area="missionarios" categories={MISSIONARY_CATEGORIES} />
+      </TabsContent>
+      <TabsContent value="responsaveis">
+        <MaterialsSection area="responsaveis" categories={RESPONSAVEIS_CATEGORIES} />
+      </TabsContent>
     </Tabs>
   );
 };
 
-const MaterialsTab = () => {
+interface MaterialsSectionProps {
+  area: "missionarios" | "responsaveis";
+  categories: Record<string, string>;
+}
+
+const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -65,18 +93,29 @@ const MaterialsTab = () => {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("geral");
+  const [category, setCategory] = useState(Object.keys(categories)[0]);
+  const [materialType, setMaterialType] = useState("document");
   const [linkUrl, setLinkUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filterCat, setFilterCat] = useState<string | null>(null);
+
+  const categoryKeys = Object.keys(categories);
+  const respKeys = Object.keys(RESPONSAVEIS_CATEGORIES);
 
   const fetchMaterials = async () => {
     const { data, error } = await supabase
       .from("materials")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setMaterials(data);
+    if (data) {
+      const filtered = (data as Material[]).filter((m) =>
+        area === "responsaveis" ? respKeys.includes(m.category) : !respKeys.includes(m.category)
+      );
+      setMaterials(filtered);
+    }
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
     setLoading(false);
   };
@@ -84,46 +123,46 @@ const MaterialsTab = () => {
   useEffect(() => { fetchMaterials(); }, []);
 
   const resetForm = () => {
-    setTitle(""); setDescription(""); setCategory("geral"); setLinkUrl(""); setEditingId(null);
+    setTitle(""); setDescription(""); setCategory(categoryKeys[0]); setMaterialType("document");
+    setLinkUrl(""); setEditingId(null); setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingFile(true);
-    const ext = file.name.split(".").pop();
-    const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: uploadError } = await supabase.storage.from("material-documents").upload(filePath, file);
-    if (uploadError) {
-      toast({ title: "Erro ao enviar arquivo", description: uploadError.message, variant: "destructive" });
-      setUploadingFile(false);
-      return;
-    }
-    const { data: urlData } = supabase.storage.from("material-documents").getPublicUrl(filePath);
-    setUploadingFile(false);
-    return urlData.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim()) return;
     setSubmitting(true);
 
     let fileUrl: string | null = null;
-    const fileInput = fileInputRef.current;
-    if (fileInput?.files?.[0]) {
-      const url = await handleFileUpload({ target: fileInput } as any);
-      if (url) fileUrl = url;
+    let storagePath: string | null = null;
+
+    if (selectedFile) {
+      setUploadingFile(true);
+      const ext = selectedFile.name.split(".").pop();
+      const bucket = materialType === "video" ? "formation-videos" : "material-documents";
+      const filePath = `${area}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, selectedFile);
+      if (uploadError) {
+        toast({ title: "Erro ao enviar arquivo", description: uploadError.message, variant: "destructive" });
+        setUploadingFile(false);
+        setSubmitting(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+      fileUrl = urlData.publicUrl;
+      storagePath = filePath;
+      setUploadingFile(false);
     }
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       title: title.trim(),
       description: description.trim() || null,
       category,
+      material_type: materialType,
       link_url: linkUrl.trim() || null,
       created_by: user?.id,
     };
-    if (fileUrl) payload.file_url = fileUrl;
+    if (fileUrl) { payload.file_url = fileUrl; payload.storage_path = storagePath; }
 
     if (editingId) {
       const { error } = await supabase.from("materials").update(payload).eq("id", editingId);
@@ -142,24 +181,24 @@ const MaterialsTab = () => {
     setTitle(m.title);
     setDescription(m.description || "");
     setCategory(m.category);
+    setMaterialType(m.material_type || "document");
     setLinkUrl(m.link_url || "");
+    setSelectedFile(null);
   };
 
   const handleDelete = async (id: string) => {
+    const mat = materials.find((m) => m.id === id);
+    if (mat?.storage_path) {
+      const bucket = mat.material_type === "video" ? "formation-videos" : "material-documents";
+      await supabase.storage.from(bucket).remove([mat.storage_path]);
+    }
     const { error } = await supabase.from("materials").delete().eq("id", id);
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
     else fetchMaterials();
   };
 
-  const categoryLabels: Record<string, string> = {
-    geral: "Geral",
-    oração: "Oração",
-    formação: "Formação",
-    liturgia: "Liturgia",
-    evangelização: "Evangelização",
-    responsaveis: "Material dos Responsáveis",
-    atividades: "Atividades",
-  };
+  const showFileUpload = materialType !== "link";
+  const filteredMaterials = filterCat ? materials.filter((m) => m.category === filterCat) : materials;
 
   return (
     <div className="space-y-6">
@@ -182,26 +221,57 @@ const MaterialsTab = () => {
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="geral">Geral</SelectItem>
-                  <SelectItem value="oração">Oração</SelectItem>
-                  <SelectItem value="formação">Formação</SelectItem>
-                  <SelectItem value="liturgia">Liturgia</SelectItem>
-                  <SelectItem value="evangelização">Evangelização</SelectItem>
-                  <SelectItem value="responsaveis">Material dos Responsáveis</SelectItem>
-                  <SelectItem value="atividades">Atividades</SelectItem>
+                  {Object.entries(categories).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Link (vídeo, Google Drive, etc.)</Label>
-              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." />
+              <Label>Tipo de Material</Label>
+              <Select value={materialType} onValueChange={(v) => { setMaterialType(v); setSelectedFile(null); setLinkUrl(""); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(MATERIAL_TYPES).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="flex items-center gap-1"><Upload size={12} /> Documento (.pdf, .doc, .docx, etc.)</Label>
-            <Input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" />
-            {uploadingFile && <p className="text-xs text-muted-foreground">Enviando arquivo...</p>}
-          </div>
+
+          {materialType === "link" ? (
+            <div className="space-y-1">
+              <Label>Link externo</Label>
+              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1"><Upload size={12} /> Arquivo</Label>
+                {selectedFile ? (
+                  <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                    {materialTypeIcon(materialType)}
+                    <span className="text-sm text-foreground truncate flex-1">{selectedFile.name}</span>
+                    <button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="text-muted-foreground">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors">
+                    {materialTypeIcon(materialType)}
+                    <span className="text-sm text-muted-foreground">Selecionar arquivo</span>
+                    <input ref={fileInputRef} type="file" accept={fileAcceptByType[materialType] || "*"} onChange={(e) => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); }} className="hidden" />
+                  </label>
+                )}
+                {uploadingFile && <p className="text-xs text-muted-foreground">Enviando arquivo...</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Link externo (opcional)</Label>
+                <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://youtube.com/... ou outro link" />
+              </div>
+            </>
+          )}
         </div>
         <div className="flex gap-2">
           <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
@@ -211,20 +281,41 @@ const MaterialsTab = () => {
         </div>
       </form>
 
+      {/* Category Filter */}
+      {categoryKeys.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button onClick={() => setFilterCat(null)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!filterCat ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+            Todos
+          </button>
+          {categoryKeys.map((key) => (
+            <button key={key} onClick={() => setFilterCat(key)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${filterCat === key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+              {categories[key]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Materials List */}
       <div className="space-y-2">
         {loading ? (
           <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>
-        ) : materials.length === 0 ? (
+        ) : filteredMaterials.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-4">Nenhum material cadastrado.</p>
         ) : (
-          materials.map((m) => (
+          filteredMaterials.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                {materialTypeIcon(m.material_type)}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">{m.title}</p>
-                <p className="text-xs text-muted-foreground">{categoryLabels[m.category] || m.category}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground">{categories[m.category] || m.category}</span>
+                  <span className="text-[10px] text-primary font-semibold">• {MATERIAL_TYPES[m.material_type] || m.material_type}</span>
+                </div>
                 {m.file_url && (
                   <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                    <FileText size={10} /> Baixar documento
+                    <FileText size={10} /> Abrir arquivo
                   </a>
                 )}
                 {m.link_url && (
@@ -245,287 +336,6 @@ const MaterialsTab = () => {
           ))
         )}
       </div>
-    </div>
-  );
-};
-
-const VideosTab = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [showCatDialog, setShowCatDialog] = useState(false);
-  const [catName, setCatName] = useState("");
-  const [catDesc, setCatDesc] = useState("");
-
-  const [showVideoDialog, setShowVideoDialog] = useState(false);
-  const [videoTitle, setVideoTitle] = useState("");
-  const [videoDesc, setVideoDesc] = useState("");
-  const [videoCategoryId, setVideoCategoryId] = useState("");
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoLinkUrl, setVideoLinkUrl] = useState("");
-  const [uploading, setUploading] = useState(false);
-
-  const [selectedCatFilter, setSelectedCatFilter] = useState<string>("all");
-
-  const fetchData = async () => {
-    const [catRes, vidRes] = await Promise.all([
-      supabase.from("formation_categories").select("*").order("sort_order"),
-      supabase.from("formation_videos").select("*").order("created_at", { ascending: false }),
-    ]);
-    if (catRes.data) setCategories(catRes.data as Category[]);
-    if (vidRes.data) setVideos(vidRes.data as Video[]);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  const handleAddCategory = async () => {
-    if (!catName.trim()) return;
-    const { error } = await supabase.from("formation_categories").insert({
-      name: catName.trim(),
-      description: catDesc.trim() || null,
-      sort_order: categories.length,
-      created_by: user?.id,
-    } as any);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Categoria criada!" });
-      setCatName("");
-      setCatDesc("");
-      setShowCatDialog(false);
-      fetchData();
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    const { error } = await supabase.from("formation_categories").delete().eq("id", id);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    else { toast({ title: "Categoria excluída" }); fetchData(); }
-  };
-
-  const handleUploadVideo = async () => {
-    if (!videoCategoryId || !videoTitle.trim() || !user) return;
-    if (!videoFile && !videoLinkUrl.trim()) return;
-    setUploading(true);
-    try {
-      let publicUrl = "";
-      let storagePath = "";
-
-      if (videoFile) {
-        const ext = videoFile.name.split(".").pop();
-        const path = `${videoCategoryId}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("formation-videos").upload(path, videoFile);
-        if (upErr) throw upErr;
-        const { data: { publicUrl: url } } = supabase.storage.from("formation-videos").getPublicUrl(path);
-        publicUrl = url;
-        storagePath = path;
-      } else {
-        publicUrl = videoLinkUrl.trim();
-        storagePath = "external-link";
-      }
-
-      const { error: insErr } = await supabase.from("formation_videos").insert({
-        category_id: videoCategoryId,
-        title: videoTitle.trim(),
-        description: videoDesc.trim() || null,
-        video_url: publicUrl,
-        storage_path: storagePath,
-        created_by: user.id,
-      } as any);
-      if (insErr) throw insErr;
-
-      toast({ title: "Vídeo adicionado!" });
-      resetVideoForm();
-      fetchData();
-    } catch (err: any) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
-    }
-    setUploading(false);
-  };
-
-  const handleDeleteVideo = async (video: Video) => {
-    if (video.storage_path && video.storage_path !== "external-link") {
-      await supabase.storage.from("formation-videos").remove([video.storage_path]);
-    }
-    const { error } = await supabase.from("formation_videos").delete().eq("id", video.id);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    else { toast({ title: "Vídeo excluído" }); fetchData(); }
-  };
-
-  const resetVideoForm = () => {
-    setShowVideoDialog(false);
-    setVideoTitle("");
-    setVideoDesc("");
-    setVideoCategoryId("");
-    setVideoFile(null);
-    setVideoLinkUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const filteredVideos = selectedCatFilter === "all"
-    ? videos
-    : videos.filter((v) => v.category_id === selectedCatFilter);
-
-  const getCatName = (id: string) => categories.find((c) => c.id === id)?.name || "";
-
-  if (loading) return <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>;
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-foreground">Categorias</h3>
-        <Button size="sm" variant="outline" onClick={() => setShowCatDialog(true)} className="gap-1">
-          <FolderPlus size={14} /> Nova Categoria
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => (
-          <div key={cat.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-card rounded-lg shadow-card text-sm">
-            <span className="text-foreground font-medium">{cat.name}</span>
-            <button onClick={() => handleDeleteCategory(cat.id)} className="text-destructive hover:bg-destructive/10 rounded p-0.5">
-              <Trash2 size={12} />
-            </button>
-          </div>
-        ))}
-        {categories.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma categoria criada.</p>}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-foreground">Vídeos</h3>
-        <Button size="sm" onClick={() => setShowVideoDialog(true)} className="gap-1 gradient-mission text-primary-foreground" disabled={categories.length === 0}>
-          <Upload size={14} /> Adicionar Vídeo
-        </Button>
-      </div>
-
-      {categories.length > 1 && (
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setSelectedCatFilter("all")} className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${selectedCatFilter === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-            Todos
-          </button>
-          {categories.map((cat) => (
-            <button key={cat.id} onClick={() => setSelectedCatFilter(cat.id)} className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${selectedCatFilter === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {filteredVideos.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum vídeo adicionado.</p>
-        ) : (
-          filteredVideos.map((video) => {
-            const isLink = video.storage_path === "external-link";
-            return (
-            <div key={video.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                {isLink ? <ExternalLink size={18} className="text-muted-foreground" /> : <Film size={18} className="text-muted-foreground" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm truncate">{video.title}</p>
-                <p className="text-xs text-muted-foreground">{getCatName(video.category_id)}</p>
-                {isLink && (
-                  <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary flex items-center gap-1 mt-0.5 truncate">
-                    <ExternalLink size={10} /> {video.video_url}
-                  </a>
-                )}
-              </div>
-              <button onClick={() => handleDeleteVideo(video)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
-                <Trash2 size={16} />
-              </button>
-            </div>
-            );
-          })
-        )}
-      </div>
-
-      <Dialog open={showCatDialog} onOpenChange={setShowCatDialog}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Nome</Label>
-              <Input value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Ex: Formação Espiritual" />
-            </div>
-            <div className="space-y-1">
-              <Label>Descrição (opcional)</Label>
-              <Textarea value={catDesc} onChange={(e) => setCatDesc(e.target.value)} placeholder="Descrição da categoria" />
-            </div>
-            <Button onClick={handleAddCategory} disabled={!catName.trim()} className="w-full gradient-mission text-primary-foreground">
-              Criar Categoria
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showVideoDialog} onOpenChange={(open) => { if (!open) resetVideoForm(); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload size={18} /> Adicionar Vídeo / Podcast</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Categoria</Label>
-              <Select value={videoCategoryId} onValueChange={setVideoCategoryId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Título</Label>
-              <Input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="Título do vídeo ou podcast" />
-            </div>
-            <div className="space-y-1">
-              <Label>Descrição (opcional)</Label>
-              <Textarea value={videoDesc} onChange={(e) => setVideoDesc(e.target.value)} placeholder="Descrição do conteúdo" />
-            </div>
-            <div className="space-y-1">
-              <Label>Link (YouTube, Spotify, podcast, etc.)</Label>
-              <Input
-                value={videoLinkUrl}
-                onChange={(e) => setVideoLinkUrl(e.target.value)}
-                placeholder="https://youtube.com/... ou https://open.spotify.com/..."
-                disabled={!!videoFile}
-              />
-              <p className="text-[10px] text-muted-foreground">Cole o link do YouTube, Spotify ou qualquer plataforma de podcast.</p>
-            </div>
-            <div className="relative flex items-center justify-center py-1">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-              <span className="relative bg-card px-3 text-xs text-muted-foreground">ou</span>
-            </div>
-            <div className="space-y-1">
-              <Label>Upload de arquivo de vídeo</Label>
-              {videoFile ? (
-                <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
-                  <Film size={16} className="text-muted-foreground" />
-                  <span className="text-sm text-foreground truncate flex-1">{videoFile.name}</span>
-                  <button onClick={() => { setVideoFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="text-muted-foreground">
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <label className={`flex items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/30 rounded-xl cursor-pointer hover:border-primary/50 transition-colors ${videoLinkUrl.trim() ? "opacity-50 pointer-events-none" : ""}`}>
-                  <Film size={20} className="text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Selecionar vídeo</span>
-                  <input ref={fileInputRef} type="file" accept="video/*" onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0]); }} className="hidden" />
-                </label>
-              )}
-            </div>
-            <Button onClick={handleUploadVideo} disabled={(!videoFile && !videoLinkUrl.trim()) || !videoCategoryId || !videoTitle.trim() || uploading} className="w-full gradient-mission text-primary-foreground">
-              {uploading ? "Enviando..." : "Adicionar"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
