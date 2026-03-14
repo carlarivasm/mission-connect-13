@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, MapPinPlus, Pencil, Eye, Download, ExternalLink } from "lucide-react";
+import { Trash2, MapPinPlus, Pencil, Eye, Download, ExternalLink, ClipboardList } from "lucide-react";
 import { ManageNeeds } from "./ManageNeeds";
 import {
   Dialog,
@@ -66,6 +66,10 @@ const ManageLocations = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [userNotes, setUserNotes] = useState<UserNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
+
+  // Collapsible sections
+  const [showNeedsManager, setShowNeedsManager] = useState(false);
+  const [showNewLocation, setShowNewLocation] = useState(false);
 
   const fetchLocations = async () => {
     const { data, error } = await supabase
@@ -135,6 +139,7 @@ const ManageLocations = () => {
     setCategory(loc.category);
     setStatus(loc.status);
     setGoogleMapsUrl(loc.google_maps_url || "");
+    setShowNewLocation(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -206,62 +211,77 @@ const ManageLocations = () => {
 
   return (
     <div className="space-y-6">
-      <ManageNeeds />
-      <hr className="border-border my-8" />
-      <form onSubmit={handleSubmit} className="bg-card rounded-xl p-4 shadow-card space-y-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <MapPinPlus size={18} /> {editingId ? "Editar Local" : "Novo Local de Missão"}
-        </h3>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Nome</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do local" required />
+      {/* Gerenciar Necessidades - collapsible */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowNeedsManager(!showNeedsManager)} className="flex items-center gap-2 w-full text-left">
+          <ClipboardList size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Gerenciar Necessidades</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showNeedsManager ? "▲" : "▼"}</span>
+        </button>
+        {showNeedsManager && <ManageNeeds />}
+      </div>
+
+      {/* Novo Local de Missão - collapsible */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowNewLocation(!showNewLocation)} className="flex items-center gap-2 w-full text-left">
+          <MapPinPlus size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">{editingId ? "Editar Local" : "Novo Local de Missão"}</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showNewLocation ? "▲" : "▼"}</span>
+        </button>
+        {showNewLocation && (
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Nome</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do local" required />
+                </div>
+                <div className="space-y-1">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="em andamento">Em Andamento</SelectItem>
+                      <SelectItem value="visitado">Visitado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Categoria</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="reference_point">Ponto de referência</SelectItem>
+                      <SelectItem value="mission_zone">Zona de missão</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Endereço</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, número, bairro, cidade" required />
+              </div>
+              <div className="space-y-1">
+                <Label>Link Google Maps (direção casa de retiro → local)</Label>
+                <Input
+                  value={googleMapsUrl}
+                  onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  type="url"
+                />
+                <p className="text-[10px] text-muted-foreground">Cole o link de direção do Google Maps da casa de retiro até o local de missão.</p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="em andamento">Em Andamento</SelectItem>
-                  <SelectItem value="visitado">Visitado</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
+                {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar Local"}
+              </Button>
+              {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>}
             </div>
-            <div className="space-y-1">
-              <Label>Categoria</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="reference_point">Ponto de referência</SelectItem>
-                  <SelectItem value="mission_zone">Zona de missão</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Endereço</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, número, bairro, cidade" required />
-          </div>
-          <div className="space-y-1">
-            <Label>Link Google Maps (direção casa de retiro → local)</Label>
-            <Input
-              value={googleMapsUrl}
-              onChange={(e) => setGoogleMapsUrl(e.target.value)}
-              placeholder="https://maps.google.com/..."
-              type="url"
-            />
-            <p className="text-[10px] text-muted-foreground">Cole o link de direção do Google Maps da casa de retiro até o local de missão.</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
-            {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar Local"}
-          </Button>
-          {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>}
-        </div>
-      </form>
+          </form>
+        )}
+      </div>
 
       {/* View user notes button */}
       <div className="flex justify-end">

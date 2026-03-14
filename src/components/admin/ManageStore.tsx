@@ -115,10 +115,7 @@ const PaymentSettings = () => {
   };
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
-      <h3 className="font-semibold text-foreground flex items-center gap-2">
-        <CreditCard size={18} /> Configurações de Pagamento
-      </h3>
+    <div className="space-y-4 pt-2">
       <div className="space-y-3">
         <div className="space-y-1">
           <Label>WhatsApp para receber pedidos</Label>
@@ -253,6 +250,10 @@ const ManageStore = () => {
   const [uploading, setUploading] = useState(false);
   const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
 
+  // Collapsible sections
+  const [showPaymentSettings, setShowPaymentSettings] = useState(false);
+  const [showNewProduct, setShowNewProduct] = useState(false);
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("camiseta");
@@ -337,6 +338,7 @@ const ManageStore = () => {
     setColors(p.colors.join(", "));
     setContactInfo(p.contact_info || "");
     setImageUrl(p.image_url || "");
+    setShowNewProduct(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -349,82 +351,97 @@ const ManageStore = () => {
 
   return (
     <div className="space-y-6">
-      <PaymentSettings />
+      {/* Configurações de Pagamento - collapsible */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowPaymentSettings(!showPaymentSettings)} className="flex items-center gap-2 w-full text-left">
+          <CreditCard size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Configurações de Pagamento</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showPaymentSettings ? "▲" : "▼"}</span>
+        </button>
+        {showPaymentSettings && <PaymentSettings />}
+      </div>
 
-      <form onSubmit={handleSubmit} className="bg-card rounded-xl p-4 shadow-card space-y-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <ShoppingBag size={18} /> {editingId ? "Editar Produto" : "Novo Produto"}
-        </h3>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Nome</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" required />
-            </div>
-            <div className="space-y-1">
-              <Label>Categoria</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes do produto" rows={2} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Preço (R$)</Label>
-              <Input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" required />
-            </div>
-            <div className="space-y-1 flex flex-col">
-              <Label>Disponível</Label>
-              <div className="flex items-center gap-2 h-10">
-                <Switch checked={available} onCheckedChange={setAvailable} />
-                <span className="text-sm text-muted-foreground">{available ? "Sim" : "Não"}</span>
+      {/* Novo Produto - collapsible */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowNewProduct(!showNewProduct)} className="flex items-center gap-2 w-full text-left">
+          <ShoppingBag size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">{editingId ? "Editar Produto" : "Novo Produto"}</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showNewProduct ? "▲" : "▼"}</span>
+        </button>
+        {showNewProduct && (
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Nome</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do produto" required />
+                </div>
+                <div className="space-y-1">
+                  <Label>Categoria</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Descrição</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes do produto" rows={2} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Preço (R$)</Label>
+                  <Input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00" required />
+                </div>
+                <div className="space-y-1 flex flex-col">
+                  <Label>Disponível</Label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch checked={available} onCheckedChange={setAvailable} />
+                    <span className="text-sm text-muted-foreground">{available ? "Sim" : "Não"}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Tamanhos</Label>
+                  <Input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="P, M, G, GG" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Cores</Label>
+                  <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="Azul, Branco" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Contato/Pedido</Label>
+                <Input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="WhatsApp ou link para pedido" />
+              </div>
+              <div className="space-y-1">
+                <Label>Imagem</Label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
+                    <ImagePlus size={16} />
+                    {uploading ? "Enviando..." : "Upload"}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
+                  </label>
+                  {imageUrl && (
+                    <img src={imageUrl} alt="Preview" className="h-10 w-10 rounded-lg object-cover" />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Tamanhos</Label>
-              <Input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="P, M, G, GG" />
+            <div className="flex gap-2">
+              <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
+                {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar"}
+              </Button>
+              {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>}
             </div>
-            <div className="space-y-1">
-              <Label>Cores</Label>
-              <Input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="Azul, Branco" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label>Contato/Pedido</Label>
-            <Input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="WhatsApp ou link para pedido" />
-          </div>
-          <div className="space-y-1">
-            <Label>Imagem</Label>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
-                <ImagePlus size={16} />
-                {uploading ? "Enviando..." : "Upload"}
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
-              </label>
-              {imageUrl && (
-                <img src={imageUrl} alt="Preview" className="h-10 w-10 rounded-lg object-cover" />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
-            {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar"}
-          </Button>
-          {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>}
-        </div>
-      </form>
+          </form>
+        )}
+      </div>
 
       <div className="space-y-2">
         {loading ? (

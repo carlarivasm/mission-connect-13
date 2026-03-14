@@ -128,9 +128,7 @@ export const ManageNeeds = () => {
     const parents = categories.filter(c => !c.parent_id);
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="bg-card p-5 rounded-2xl shadow-card">
-                <h3 className="text-lg font-bold text-foreground mb-4">Gerenciar Necessidades (2 Níveis)</h3>
+        <div className="space-y-6 animate-fade-in pt-2">
 
                 <div className="flex gap-2 mb-6">
                     <Input
@@ -235,7 +233,6 @@ export const ManageNeeds = () => {
                         })
                     )}
                 </div>
-            </div>
         </div>
     );
 }

@@ -43,7 +43,7 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-2">
+    <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Painel Admin" onLogout={handleLogout} />
 
       <main className="px-4 py-5">
