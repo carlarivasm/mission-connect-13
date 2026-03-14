@@ -449,6 +449,8 @@ export type Database = {
           file_url: string | null
           id: string
           link_url: string | null
+          material_type: string
+          storage_path: string | null
           title: string
         }
         Insert: {
@@ -459,6 +461,8 @@ export type Database = {
           file_url?: string | null
           id?: string
           link_url?: string | null
+          material_type?: string
+          storage_path?: string | null
           title: string
         }
         Update: {
@@ -469,6 +473,8 @@ export type Database = {
           file_url?: string | null
           id?: string
           link_url?: string | null
+          material_type?: string
+          storage_path?: string | null
           title?: string
         }
         Relationships: []

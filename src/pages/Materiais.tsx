@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, ExternalLink, Film, Play } from "lucide-react";
+import { FileText, ExternalLink, Play, Music, File, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -15,21 +15,44 @@ interface Material {
   category: string;
   file_url: string | null;
   link_url: string | null;
+  material_type: string;
+  storage_path: string | null;
+  created_at: string;
 }
 
-interface Category { id: string; name: string; description: string | null; }
-interface Video { id: string; category_id: string; title: string; description: string | null; video_url: string; created_at: string; }
-
-const categoryColors: Record<string, string> = {
-  geral: "bg-muted text-muted-foreground",
-  oração: "bg-secondary/20 text-secondary-foreground",
-  formação: "bg-primary/10 text-primary",
-  liturgia: "bg-accent/20 text-accent-foreground",
-  evangelização: "bg-destructive/10 text-destructive",
-  responsaveis: "bg-primary/20 text-primary",
+const MISSIONARY_CATEGORIES: Record<string, string> = {
+  formacao_missionarios: "Formação dos Missionários",
+  geral: "Geral",
+  oração: "Oração",
+  formação: "Formação",
+  liturgia: "Liturgia",
+  evangelização: "Evangelização",
+  atividades: "Atividades",
 };
-const categoryLabels: Record<string, string> = {
-  geral: "Geral", oração: "Oração", formação: "Formação", liturgia: "Liturgia", evangelização: "Evangelização", atividades: "Atividades", responsaveis: "Material de Apoio Responsáveis",
+
+const RESPONSAVEIS_CATEGORIES: Record<string, string> = {
+  formacao_responsaveis: "Formação dos Responsáveis",
+  outros_responsaveis: "Outros Materiais",
+};
+
+const materialTypeIcon = (type: string) => {
+  switch (type) {
+    case "pdf": return <FileText size={20} />;
+    case "video": return <Play size={20} />;
+    case "audio": return <Music size={20} />;
+    case "link": return <Link2 size={20} />;
+    default: return <File size={20} />;
+  }
+};
+
+const materialTypeLabel = (type: string) => {
+  switch (type) {
+    case "pdf": return "PDF";
+    case "video": return "Vídeo";
+    case "audio": return "Áudio";
+    case "link": return "Link";
+    default: return "Documento";
+  }
 };
 
 const Materiais = () => {
@@ -37,36 +60,89 @@ const Materiais = () => {
   const { signOut } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  // Formation state
-  const [fCategories, setFCategories] = useState<Category[]>([]);
-  const [fVideos, setFVideos] = useState<Video[]>([]);
-  const [fLoading, setFLoading] = useState(true);
-  const [fSelectedCat, setFSelectedCat] = useState<string>("all");
-  const [playingVideo, setPlayingVideo] = useState<Video | null>(null);
+  const [selectedCatMissionary, setSelectedCatMissionary] = useState<string | null>(null);
+  const [selectedCatResp, setSelectedCatResp] = useState<string | null>(null);
+  const [playingMedia, setPlayingMedia] = useState<Material | null>(null);
 
   useEffect(() => {
     supabase.from("materials").select("*").order("created_at", { ascending: false })
-      .then(({ data }) => { if (data) setMaterials(data); setLoading(false); });
-
-    Promise.all([
-      supabase.from("formation_categories").select("*").order("sort_order"),
-      supabase.from("formation_videos").select("*").order("created_at", { ascending: false }),
-    ]).then(([catRes, vidRes]) => {
-      if (catRes.data) setFCategories(catRes.data as Category[]);
-      if (vidRes.data) setFVideos(vidRes.data as Video[]);
-      setFLoading(false);
-    });
+      .then(({ data }) => { if (data) setMaterials(data as Material[]); setLoading(false); });
   }, []);
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
-  const missionaryMaterials = materials.filter((m) => m.category !== "responsaveis");
-  const responsaveisMaterials = materials.filter((m) => m.category === "responsaveis");
-  const filteredMaterials = selectedCategory ? missionaryMaterials.filter((m) => m.category === selectedCategory) : missionaryMaterials;
-  const uniqueCategories = [...new Set(missionaryMaterials.map((m) => m.category))];
-  const filteredVideos = fSelectedCat === "all" ? fVideos : fVideos.filter((v) => v.category_id === fSelectedCat);
-  const getCatName = (id: string) => fCategories.find((c) => c.id === id)?.name || "";
+
+  const respCategories = Object.keys(RESPONSAVEIS_CATEGORIES);
+  const missionaryMaterials = materials.filter((m) => !respCategories.includes(m.category));
+  const responsaveisMaterials = materials.filter((m) => respCategories.includes(m.category));
+
+  const filteredMissionary = selectedCatMissionary
+    ? missionaryMaterials.filter((m) => m.category === selectedCatMissionary)
+    : missionaryMaterials;
+  const filteredResp = selectedCatResp
+    ? responsaveisMaterials.filter((m) => m.category === selectedCatResp)
+    : responsaveisMaterials;
+
+  const uniqueMissionaryCategories = [...new Set(missionaryMaterials.map((m) => m.category))];
+  const uniqueRespCategories = [...new Set(responsaveisMaterials.map((m) => m.category))];
+
+  const allCategoryLabels = { ...MISSIONARY_CATEGORIES, ...RESPONSAVEIS_CATEGORIES };
+
+  const handleOpenMaterial = (mat: Material) => {
+    if ((mat.material_type === "video" || mat.material_type === "audio") && (mat.file_url || mat.link_url)) {
+      setPlayingMedia(mat);
+    } else if (mat.file_url) {
+      window.open(mat.file_url, "_blank");
+    } else if (mat.link_url) {
+      window.open(mat.link_url, "_blank");
+    }
+  };
+
+  const renderMaterialsList = (items: Material[]) => (
+    <div className="space-y-3 animate-fade-in">
+      {items.map((mat) => (
+        <button key={mat.id} onClick={() => handleOpenMaterial(mat)} className="w-full flex items-center gap-4 p-4 bg-card rounded-xl shadow-card text-left">
+          <div className="p-3 rounded-lg gradient-mission text-primary-foreground shrink-0">
+            {materialTypeIcon(mat.material_type)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-foreground truncate">{mat.title}</p>
+            {mat.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{mat.description}</p>}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                {allCategoryLabels[mat.category] || mat.category}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                {materialTypeLabel(mat.material_type)}
+              </span>
+            </div>
+          </div>
+          <div className="shrink-0 text-primary">
+            {mat.link_url && mat.material_type === "link" ? <ExternalLink size={18} /> : null}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderCategoryFilter = (
+    categories: string[],
+    selected: string | null,
+    onSelect: (cat: string | null) => void,
+    labels: Record<string, string>,
+  ) => (
+    categories.length > 0 && (
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <button onClick={() => onSelect(null)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!selected ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+          Todos
+        </button>
+        {categories.map((cat) => (
+          <button key={cat} onClick={() => onSelect(cat)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${selected === cat ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+            {labels[cat] || cat}
+          </button>
+        ))}
+      </div>
+    )
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -77,141 +153,45 @@ const Materiais = () => {
           <p className="text-sm text-muted-foreground mt-1">Recursos e formação missionária.</p>
         </div>
 
-        <Tabs defaultValue="materiais" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 mb-4">
-            <TabsTrigger value="materiais" className="text-xs px-1">Material Missionários</TabsTrigger>
-            <TabsTrigger value="responsaveis" className="text-xs px-1">Material Responsáveis</TabsTrigger>
-            <TabsTrigger value="formacao" className="text-xs px-1">Vídeos</TabsTrigger>
+        <Tabs defaultValue="missionarios" className="w-full">
+          <TabsList className="w-full grid grid-cols-2 mb-4">
+            <TabsTrigger value="missionarios" className="text-xs px-1">Missionários</TabsTrigger>
+            <TabsTrigger value="responsaveis" className="text-xs px-1">Responsáveis</TabsTrigger>
           </TabsList>
 
-          {/* Materials Tab */}
-          <TabsContent value="materiais" className="space-y-4">
-            {uniqueCategories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                <button onClick={() => setSelectedCategory(null)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!selectedCategory ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  Todos
-                </button>
-                {uniqueCategories.map((cat) => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${selectedCategory === cat ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {categoryLabels[cat] || cat}
-                  </button>
-                ))}
-              </div>
-            )}
+          <TabsContent value="missionarios" className="space-y-4">
+            {renderCategoryFilter(uniqueMissionaryCategories, selectedCatMissionary, setSelectedCatMissionary, MISSIONARY_CATEGORIES)}
             {loading ? (
               <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-            ) : filteredMaterials.length === 0 ? (
+            ) : filteredMissionary.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível.</p>
-            ) : (
-              <div className="space-y-3 animate-fade-in">
-                {filteredMaterials.map((mat) => (
-                  <div key={mat.id} className="flex items-center gap-4 p-4 bg-card rounded-xl shadow-card">
-                    <div className="p-3 rounded-lg gradient-mission text-primary-foreground"><FileText size={20} /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">{mat.title}</p>
-                      {mat.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{mat.description}</p>}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${categoryColors[mat.category] || "bg-muted text-muted-foreground"}`}>
-                        {categoryLabels[mat.category] || mat.category}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      {mat.file_url && (
-                        <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Baixar documento">
-                          <FileText size={18} />
-                        </a>
-                      )}
-                      {mat.link_url && (
-                        <a href={mat.link_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Abrir link">
-                          <ExternalLink size={18} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : renderMaterialsList(filteredMissionary)}
           </TabsContent>
 
-          {/* Responsáveis Tab */}
           <TabsContent value="responsaveis" className="space-y-4">
-            {responsaveisMaterials.length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível para responsáveis.</p>
-            ) : (
-              <div className="space-y-3 animate-fade-in">
-                {responsaveisMaterials.map((mat) => (
-                  <div key={mat.id} className="flex items-center gap-4 p-4 bg-card rounded-xl shadow-card">
-                    <div className="p-3 rounded-lg gradient-mission text-primary-foreground"><FileText size={20} /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">{mat.title}</p>
-                      {mat.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{mat.description}</p>}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      {mat.file_url && (
-                        <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Baixar documento">
-                          <FileText size={18} />
-                        </a>
-                      )}
-                      {mat.link_url && (
-                        <a href={mat.link_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors text-primary" title="Abrir link">
-                          <ExternalLink size={18} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="formacao" className="space-y-4">
-            {fCategories.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => setFSelectedCat("all")} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${fSelectedCat === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  Todos
-                </button>
-                {fCategories.map((cat) => (
-                  <button key={cat.id} onClick={() => setFSelectedCat(cat.id)} className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${fSelectedCat === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {fLoading ? (
+            {renderCategoryFilter(uniqueRespCategories, selectedCatResp, setSelectedCatResp, RESPONSAVEIS_CATEGORIES)}
+            {loading ? (
               <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-            ) : filteredVideos.length === 0 ? (
-              <div className="text-center py-12 space-y-2">
-                <Film size={40} className="mx-auto text-muted-foreground/40" />
-                <p className="text-muted-foreground text-sm">Nenhum vídeo de formação disponível.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 animate-fade-in">
-                {filteredVideos.map((video) => (
-                  <button key={video.id} onClick={() => setPlayingVideo(video)} className="w-full flex items-center gap-4 p-4 bg-card rounded-xl shadow-card text-left">
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <Play size={20} className="text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground text-sm truncate">{video.title}</p>
-                      <p className="text-xs text-muted-foreground">{getCatName(video.category_id)}</p>
-                      {video.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{video.description}</p>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            ) : filteredResp.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível para responsáveis.</p>
+            ) : renderMaterialsList(filteredResp)}
           </TabsContent>
         </Tabs>
 
-        {/* Video Player Dialog */}
-        <Dialog open={!!playingVideo} onOpenChange={(open) => { if (!open) setPlayingVideo(null); }}>
+        {/* Media Player Dialog */}
+        <Dialog open={!!playingMedia} onOpenChange={(open) => { if (!open) setPlayingMedia(null); }}>
           <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
-            {playingVideo && (
+            {playingMedia && (
               <>
-                <video src={playingVideo.video_url} controls autoPlay className="w-full max-h-[60vh] bg-black" />
+                {playingMedia.material_type === "video" ? (
+                  <video src={playingMedia.file_url || playingMedia.link_url || ""} controls autoPlay className="w-full max-h-[60vh] bg-black" />
+                ) : (
+                  <audio src={playingMedia.file_url || playingMedia.link_url || ""} controls autoPlay className="w-full p-4" />
+                )}
                 <div className="p-4">
-                  <p className="text-foreground font-semibold">{playingVideo.title}</p>
-                  <p className="text-xs text-muted-foreground">{getCatName(playingVideo.category_id)}</p>
-                  {playingVideo.description && <p className="text-sm text-muted-foreground mt-1">{playingVideo.description}</p>}
+                  <p className="text-foreground font-semibold">{playingMedia.title}</p>
+                  <p className="text-xs text-muted-foreground">{allCategoryLabels[playingMedia.category] || playingMedia.category}</p>
+                  {playingMedia.description && <p className="text-sm text-muted-foreground mt-1">{playingMedia.description}</p>}
                 </div>
               </>
             )}
