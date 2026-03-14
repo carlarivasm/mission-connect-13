@@ -10,8 +10,18 @@ interface BeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>;
 }
 
+// Captura global: pega o evento ANTES do React montar, evitando race condition
+let _deferredPromptGlobal: BeforeInstallPromptEvent | null = null;
+
+window.addEventListener("beforeinstallprompt", (e: Event) => {
+    e.preventDefault();
+    _deferredPromptGlobal = e as BeforeInstallPromptEvent;
+});
+
 export function usePWAInstall() {
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
+        _deferredPromptGlobal
+    );
     const [isInstalled, setIsInstalled] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
     const { toast } = useToast();
@@ -27,16 +37,23 @@ export function usePWAInstall() {
             setIsInstalled(true);
         }
 
+        // Se o evento já foi capturado globalmente antes do mount, usa ele
+        if (_deferredPromptGlobal) {
+            setDeferredPrompt(_deferredPromptGlobal);
+        }
+
         const handleBeforeInstallPrompt = (e: Event) => {
             // Impede o prompt padrão
             e.preventDefault();
             // Armazena o evento para ser usado mais tarde
+            _deferredPromptGlobal = e as BeforeInstallPromptEvent;
             setDeferredPrompt(e as BeforeInstallPromptEvent);
         };
 
         const handleAppInstalled = () => {
             setIsInstalled(true);
             setDeferredPrompt(null);
+            _deferredPromptGlobal = null;
             console.log("PWA foi instalado");
         };
 

@@ -6,6 +6,13 @@ declare let self: ServiceWorkerGlobalScope;
 // InjectManifest will replace self.__WB_MANIFEST with the precache manifest
 precacheAndRoute(self.__WB_MANIFEST || []);
 
+// Listen for SKIP_WAITING message from the app to activate the new SW
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Load Firebase compat SDKs for Service Worker
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
