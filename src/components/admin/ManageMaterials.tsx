@@ -154,7 +154,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
       setUploadingFile(false);
     }
 
-    const payload: Record<string, unknown> = {
+    const payload: any = {
       title: title.trim(),
       description: description.trim() || null,
       category,
