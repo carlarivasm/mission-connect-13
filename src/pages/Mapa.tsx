@@ -52,8 +52,12 @@ const Mapa = () => {
     try {
       const savedPinned = localStorage.getItem(STORAGE_KEY_PINNED);
       const savedOrder = localStorage.getItem(STORAGE_KEY_ORDER);
+      const savedMzPinned = localStorage.getItem(STORAGE_KEY_MZ_PINNED);
+      const savedMzOrder = localStorage.getItem(STORAGE_KEY_MZ_ORDER);
       if (savedPinned) setPinnedIds(JSON.parse(savedPinned));
       if (savedOrder) setCustomOrder(JSON.parse(savedOrder));
+      if (savedMzPinned) setMzPinnedIds(JSON.parse(savedMzPinned));
+      if (savedMzOrder) setMzCustomOrder(JSON.parse(savedMzOrder));
     } catch { /* ignore */ }
   }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER]);
 
