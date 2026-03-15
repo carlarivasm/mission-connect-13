@@ -54,6 +54,11 @@ interface LocationCardProps {
     needsCategories: any[];
     userId: string;
     role: "admin" | "missionary" | null;
+    isPinned?: boolean;
+    onTogglePin?: () => void;
+    canPinMore?: boolean;
+    onMoveUp?: (() => void) | null;
+    onMoveDown?: (() => void) | null;
 }
 
 export function LocationCard({
@@ -71,6 +76,11 @@ export function LocationCard({
     needsCategories = [],
     userId,
     role,
+    isPinned = false,
+    onTogglePin,
+    canPinMore = true,
+    onMoveUp,
+    onMoveDown,
 }: LocationCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
