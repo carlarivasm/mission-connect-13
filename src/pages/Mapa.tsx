@@ -351,6 +351,12 @@ const Mapa = () => {
   };
 
   const missionZones = sortedMissionZones;
+
+  // Build Google Maps embed URL
+  const getEmbedUrl = (loc: MissionLocation | null) => {
+    if (!loc) return null;
+    const encodedAddress = encodeURIComponent(loc.address);
+    return `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
   };
 
   const embedUrl = getEmbedUrl(selectedLocation);
