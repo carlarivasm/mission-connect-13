@@ -38,19 +38,28 @@ const Mapa = () => {
   // Reference point ordering & pinning
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [customOrder, setCustomOrder] = useState<string[]>([]);
+  // Mission zone ordering & pinning
+  const [mzPinnedIds, setMzPinnedIds] = useState<string[]>([]);
+  const [mzCustomOrder, setMzCustomOrder] = useState<string[]>([]);
 
   const STORAGE_KEY_PINNED = `ref_pinned_${user?.id || "anon"}`;
   const STORAGE_KEY_ORDER = `ref_order_${user?.id || "anon"}`;
+  const STORAGE_KEY_MZ_PINNED = `mz_pinned_${user?.id || "anon"}`;
+  const STORAGE_KEY_MZ_ORDER = `mz_order_${user?.id || "anon"}`;
 
   // Load pinned/order from localStorage
   useEffect(() => {
     try {
       const savedPinned = localStorage.getItem(STORAGE_KEY_PINNED);
       const savedOrder = localStorage.getItem(STORAGE_KEY_ORDER);
+      const savedMzPinned = localStorage.getItem(STORAGE_KEY_MZ_PINNED);
+      const savedMzOrder = localStorage.getItem(STORAGE_KEY_MZ_ORDER);
       if (savedPinned) setPinnedIds(JSON.parse(savedPinned));
       if (savedOrder) setCustomOrder(JSON.parse(savedOrder));
+      if (savedMzPinned) setMzPinnedIds(JSON.parse(savedMzPinned));
+      if (savedMzOrder) setMzCustomOrder(JSON.parse(savedMzOrder));
     } catch { /* ignore */ }
-  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER]);
+  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER, STORAGE_KEY_MZ_PINNED, STORAGE_KEY_MZ_ORDER]);
 
   const savePinned = useCallback((ids: string[]) => {
     setPinnedIds(ids);
@@ -61,6 +70,16 @@ const Mapa = () => {
     setCustomOrder(ids);
     localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(ids));
   }, [STORAGE_KEY_ORDER]);
+
+  const saveMzPinned = useCallback((ids: string[]) => {
+    setMzPinnedIds(ids);
+    localStorage.setItem(STORAGE_KEY_MZ_PINNED, JSON.stringify(ids));
+  }, [STORAGE_KEY_MZ_PINNED]);
+
+  const saveMzOrder = useCallback((ids: string[]) => {
+    setMzCustomOrder(ids);
+    localStorage.setItem(STORAGE_KEY_MZ_ORDER, JSON.stringify(ids));
+  }, [STORAGE_KEY_MZ_ORDER]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -297,13 +316,45 @@ const Mapa = () => {
     saveOrder(currentIds);
   };
 
-  const missionZones = filteredLocations.filter((l) => l.category === "mission_zone");
+  const handleToggleMzPin = (id: string) => {
+    if (mzPinnedIds.includes(id)) {
+      saveMzPinned(mzPinnedIds.filter((p) => p !== id));
+    } else if (mzPinnedIds.length < 2) {
+      saveMzPinned([...mzPinnedIds, id]);
+    }
+  };
+
+  const missionZonesRaw = filteredLocations.filter((l) => l.category === "mission_zone");
+
+  const sortedMissionZones = [...missionZonesRaw].sort((a, b) => {
+    const aPinned = mzPinnedIds.includes(a.id);
+    const bPinned = mzPinnedIds.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    const aOrder = mzCustomOrder.indexOf(a.id);
+    const bOrder = mzCustomOrder.indexOf(b.id);
+    if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
+    if (aOrder !== -1) return -1;
+    if (bOrder !== -1) return 1;
+    return 0;
+  });
+
+  const handleMoveMz = (id: string, direction: "up" | "down") => {
+    const currentIds = sortedMissionZones.map((l) => l.id);
+    const idx = currentIds.indexOf(id);
+    if (direction === "up" && idx > 0) {
+      [currentIds[idx - 1], currentIds[idx]] = [currentIds[idx], currentIds[idx - 1]];
+    } else if (direction === "down" && idx < currentIds.length - 1) {
+      [currentIds[idx + 1], currentIds[idx]] = [currentIds[idx], currentIds[idx + 1]];
+    }
+    saveMzOrder(currentIds);
+  };
+
+  const missionZones = sortedMissionZones;
 
   // Build Google Maps embed URL
   const getEmbedUrl = (loc: MissionLocation | null) => {
     if (!loc) return null;
-    // If admin set a google_maps_url with directions, try to extract and use it
-    // Otherwise embed the address
     const encodedAddress = encodeURIComponent(loc.address);
     return `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
   };
@@ -426,7 +477,7 @@ const Mapa = () => {
                 <p className="text-muted-foreground text-sm text-center py-4">Nenhuma zona de missão cadastrada.</p>
               ) : (
                 <div className="space-y-3">
-                  {missionZones.map((loc) => (
+                  {missionZones.map((loc, idx) => (
                     <LocationCard
                       key={loc.id}
                       loc={loc}
@@ -443,6 +494,11 @@ const Mapa = () => {
                       needsCategories={needsCategories}
                       userId={user?.id || ""}
                       role={role}
+                      isPinned={mzPinnedIds.includes(loc.id)}
+                      onTogglePin={() => handleToggleMzPin(loc.id)}
+                      canPinMore={mzPinnedIds.length < 2}
+                      onMoveUp={idx > 0 ? () => handleMoveMz(loc.id, "up") : null}
+                      onMoveDown={idx < missionZones.length - 1 ? () => handleMoveMz(loc.id, "down") : null}
                     />
                   ))}
                 </div>
