@@ -195,9 +195,11 @@ const ManageMissionaries = () => {
       const rows = await readExcelFile(file);
 
       const findCol = (row: Record<string, string>, patterns: string[]) => {
-        const key = Object.keys(row).find((k) =>
-          patterns.some((p) => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(p))
-        );
+        const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[:\-_]/g, " ").trim();
+        const key = Object.keys(row).find((k) => {
+          const nk = normalize(k);
+          return patterns.some((p) => nk.includes(p));
+        });
         return key ? row[key] : undefined;
       };
 
@@ -206,8 +208,8 @@ const ManageMissionaries = () => {
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        const rowName = findCol(row, ["nome", "name"]);
-        const rowEmail = findCol(row, ["email", "e-mail", "mail"]);
+        const rowName = findCol(row, ["nome completo", "nome", "name", "completo"]);
+        const rowEmail = findCol(row, ["endereco de e", "endereco de email", "e-mail", "email", "mail"]);
 
         if (!rowName || !rowEmail) {
           errors.push(`Linha ${i + 2}: nome ou e-mail não encontrado`);
