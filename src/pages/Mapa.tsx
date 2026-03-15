@@ -59,7 +59,7 @@ const Mapa = () => {
       if (savedMzPinned) setMzPinnedIds(JSON.parse(savedMzPinned));
       if (savedMzOrder) setMzCustomOrder(JSON.parse(savedMzOrder));
     } catch { /* ignore */ }
-  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER]);
+  }, [STORAGE_KEY_PINNED, STORAGE_KEY_ORDER, STORAGE_KEY_MZ_PINNED, STORAGE_KEY_MZ_ORDER]);
 
   const savePinned = useCallback((ids: string[]) => {
     setPinnedIds(ids);
@@ -70,6 +70,16 @@ const Mapa = () => {
     setCustomOrder(ids);
     localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(ids));
   }, [STORAGE_KEY_ORDER]);
+
+  const saveMzPinned = useCallback((ids: string[]) => {
+    setMzPinnedIds(ids);
+    localStorage.setItem(STORAGE_KEY_MZ_PINNED, JSON.stringify(ids));
+  }, [STORAGE_KEY_MZ_PINNED]);
+
+  const saveMzOrder = useCallback((ids: string[]) => {
+    setMzCustomOrder(ids);
+    localStorage.setItem(STORAGE_KEY_MZ_ORDER, JSON.stringify(ids));
+  }, [STORAGE_KEY_MZ_ORDER]);
 
   useEffect(() => {
     const fetchData = async () => {
