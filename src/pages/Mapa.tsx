@@ -477,7 +477,7 @@ const Mapa = () => {
                 <p className="text-muted-foreground text-sm text-center py-4">Nenhuma zona de missão cadastrada.</p>
               ) : (
                 <div className="space-y-3">
-                  {missionZones.map((loc) => (
+                  {missionZones.map((loc, idx) => (
                     <LocationCard
                       key={loc.id}
                       loc={loc}
@@ -494,6 +494,11 @@ const Mapa = () => {
                       needsCategories={needsCategories}
                       userId={user?.id || ""}
                       role={role}
+                      isPinned={mzPinnedIds.includes(loc.id)}
+                      onTogglePin={() => handleToggleMzPin(loc.id)}
+                      canPinMore={mzPinnedIds.length < 2}
+                      onMoveUp={idx > 0 ? () => handleMoveMz(loc.id, "up") : null}
+                      onMoveDown={idx < missionZones.length - 1 ? () => handleMoveMz(loc.id, "down") : null}
                     />
                   ))}
                 </div>
