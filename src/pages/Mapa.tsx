@@ -38,9 +38,14 @@ const Mapa = () => {
   // Reference point ordering & pinning
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [customOrder, setCustomOrder] = useState<string[]>([]);
+  // Mission zone ordering & pinning
+  const [mzPinnedIds, setMzPinnedIds] = useState<string[]>([]);
+  const [mzCustomOrder, setMzCustomOrder] = useState<string[]>([]);
 
   const STORAGE_KEY_PINNED = `ref_pinned_${user?.id || "anon"}`;
   const STORAGE_KEY_ORDER = `ref_order_${user?.id || "anon"}`;
+  const STORAGE_KEY_MZ_PINNED = `mz_pinned_${user?.id || "anon"}`;
+  const STORAGE_KEY_MZ_ORDER = `mz_order_${user?.id || "anon"}`;
 
   // Load pinned/order from localStorage
   useEffect(() => {
