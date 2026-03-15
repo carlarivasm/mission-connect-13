@@ -316,15 +316,41 @@ const Mapa = () => {
     saveOrder(currentIds);
   };
 
-  const missionZones = filteredLocations.filter((l) => l.category === "mission_zone");
+  const handleToggleMzPin = (id: string) => {
+    if (mzPinnedIds.includes(id)) {
+      saveMzPinned(mzPinnedIds.filter((p) => p !== id));
+    } else if (mzPinnedIds.length < 2) {
+      saveMzPinned([...mzPinnedIds, id]);
+    }
+  };
 
-  // Build Google Maps embed URL
-  const getEmbedUrl = (loc: MissionLocation | null) => {
-    if (!loc) return null;
-    // If admin set a google_maps_url with directions, try to extract and use it
-    // Otherwise embed the address
-    const encodedAddress = encodeURIComponent(loc.address);
-    return `https://maps.google.com/maps?q=${encodedAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  const missionZonesRaw = filteredLocations.filter((l) => l.category === "mission_zone");
+
+  const sortedMissionZones = [...missionZonesRaw].sort((a, b) => {
+    const aPinned = mzPinnedIds.includes(a.id);
+    const bPinned = mzPinnedIds.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    const aOrder = mzCustomOrder.indexOf(a.id);
+    const bOrder = mzCustomOrder.indexOf(b.id);
+    if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
+    if (aOrder !== -1) return -1;
+    if (bOrder !== -1) return 1;
+    return 0;
+  });
+
+  const handleMoveMz = (id: string, direction: "up" | "down") => {
+    const currentIds = sortedMissionZones.map((l) => l.id);
+    const idx = currentIds.indexOf(id);
+    if (direction === "up" && idx > 0) {
+      [currentIds[idx - 1], currentIds[idx]] = [currentIds[idx], currentIds[idx - 1]];
+    } else if (direction === "down" && idx < currentIds.length - 1) {
+      [currentIds[idx + 1], currentIds[idx]] = [currentIds[idx], currentIds[idx + 1]];
+    }
+    saveMzOrder(currentIds);
+  };
+
+  const missionZones = sortedMissionZones;
   };
 
   const embedUrl = getEmbedUrl(selectedLocation);
