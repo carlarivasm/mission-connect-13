@@ -54,16 +54,31 @@ export function exportToCsv(
  * Read an Excel or CSV file and return rows as array of objects.
  */
 export async function readExcelFile(file: File): Promise<Record<string, string>[]> {
+  // Handle CSV files
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    const text = await file.text();
+    return parseCsvText(text);
+  }
+
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
-  await workbook.xlsx.load(buffer);
+
+  // Try xlsx first, then xls-compatible
+  try {
+    await workbook.xlsx.load(buffer);
+  } catch {
+    // If xlsx fails, try csv interpretation
+    const text = await file.text();
+    return parseCsvText(text);
+  }
+
   const worksheet = workbook.worksheets[0];
   if (!worksheet || worksheet.rowCount < 2) return [];
 
   const headerRow = worksheet.getRow(1);
   const headers: string[] = [];
   headerRow.eachCell((cell, colNumber) => {
-    headers[colNumber] = String(cell.value ?? "").trim();
+    headers[colNumber] = getCellString(cell);
   });
 
   const rows: Record<string, string>[] = [];
@@ -73,13 +88,67 @@ export async function readExcelFile(file: File): Promise<Record<string, string>[
     let hasValue = false;
     row.eachCell((cell, colNumber) => {
       if (headers[colNumber]) {
-        obj[headers[colNumber]] = String(cell.value ?? "").trim();
+        obj[headers[colNumber]] = getCellString(cell);
         if (obj[headers[colNumber]]) hasValue = true;
       }
     });
     if (hasValue) rows.push(obj);
   }
 
+  return rows;
+}
+
+/** Extract string from an ExcelJS cell, handling RichText and hyperlinks */
+function getCellString(cell: ExcelJS.Cell): string {
+  const val = cell.value;
+  if (val == null) return "";
+  // RichText object: { richText: [{ text: "..." }, ...] }
+  if (typeof val === "object" && "richText" in (val as any)) {
+    return ((val as any).richText as { text: string }[])
+      .map((r) => r.text)
+      .join("")
+      .trim();
+  }
+  // Hyperlink object: { text: "...", hyperlink: "..." }
+  if (typeof val === "object" && "text" in (val as any)) {
+    return String((val as any).text).trim();
+  }
+  // Formula result
+  if (typeof val === "object" && "result" in (val as any)) {
+    return String((val as any).result ?? "").trim();
+  }
+  return String(val).trim();
+}
+
+/** Parse CSV text into rows */
+function parseCsvText(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const parseRow = (line: string) => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if ((ch === "," || ch === ";") && !inQuotes) { result.push(current.trim()); current = ""; continue; }
+      current += ch;
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = parseRow(lines[0]);
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseRow(lines[i]);
+    const obj: Record<string, string> = {};
+    let hasValue = false;
+    headers.forEach((h, idx) => {
+      if (h && cols[idx]) { obj[h] = cols[idx]; hasValue = true; }
+    });
+    if (hasValue) rows.push(obj);
+  }
   return rows;
 }
 
