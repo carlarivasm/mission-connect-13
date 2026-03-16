@@ -10,25 +10,36 @@ interface OrgCategorySectionProps {
   profiles: Map<string, OrgProfile>;
   icon?: React.ReactNode;
   defaultOpen?: boolean;
+  subcategoryLabels?: Record<string, string>;
 }
 
-const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = false }: OrgCategorySectionProps) => {
+const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = false, subcategoryLabels }: OrgCategorySectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
 
   if (positions.length === 0) return null;
 
-  // Group positions by function_name
   const grouped = new Map<string, OrgPosition[]>();
   const ungrouped: OrgPosition[] = [];
-  positions.forEach(p => {
-    const fn = p.function_name?.trim();
-    if (fn) {
-      if (!grouped.has(fn)) grouped.set(fn, []);
-      grouped.get(fn)!.push(p);
-    } else {
-      ungrouped.push(p);
-    }
-  });
+
+  if (subcategoryLabels) {
+    Object.keys(subcategoryLabels).forEach(key => grouped.set(subcategoryLabels[key], []));
+    positions.forEach(p => {
+      const lbl = subcategoryLabels[p.category];
+      if (lbl) grouped.get(lbl)!.push(p);
+      else ungrouped.push(p);
+    });
+    grouped.forEach((v, k) => { if (v.length === 0) grouped.delete(k); });
+  } else {
+    positions.forEach(p => {
+      const fn = p.function_name?.trim();
+      if (fn) {
+        if (!grouped.has(fn)) grouped.set(fn, []);
+        grouped.get(fn)!.push(p);
+      } else {
+        ungrouped.push(p);
+      }
+    });
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
@@ -59,11 +70,10 @@ const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = fa
         )}
       >
         <div className="px-4 pb-4 space-y-4">
-          {/* Grouped by function */}
-          {Array.from(grouped.entries()).map(([funcName, items]) => (
-            <div key={funcName} className="space-y-2">
+          {Array.from(grouped.entries()).map(([groupLabel, items]) => (
+            <div key={groupLabel} className="space-y-2">
               <p className="text-xs font-semibold text-primary uppercase tracking-wider border-b border-border/50 pb-1">
-                {funcName}
+                {groupLabel}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {items.map(p => (
@@ -77,7 +87,6 @@ const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = fa
             </div>
           ))}
 
-          {/* Ungrouped */}
           {ungrouped.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ungrouped.map(p => (
