@@ -119,6 +119,14 @@ const ManageOrgChart = () => {
     toast({ title: "Categoria removida!" });
   };
 
+  const handleMoveCategory = async (index: number, direction: "up" | "down") => {
+    const newArr = [...categoryOptions];
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= newArr.length) return;
+    [newArr[index], newArr[swapIndex]] = [newArr[swapIndex], newArr[index]];
+    await saveCategories(newArr);
+  };
+
   const handleAdd = async () => {
     if (!title.trim()) {
       toast({ title: "Preencha o título", variant: "destructive" });
