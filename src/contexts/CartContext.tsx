@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface CartItem {
-  id: string;
+  id: string; // product_id
   name: string;
   price: number;
   image_url: string | null;
@@ -31,9 +33,11 @@ export const useCart = () => {
 
 const CART_KEY = "jfm_cart";
 
-const getCartKey = (item: CartItem) => `${item.id}_${item.selectedSize || ""}_${item.selectedColor || ""}`;
+const getCartKey = (item: CartItem | { id: string; selectedSize?: string; selectedColor?: string }) => 
+  `${item.id}_${item.selectedSize || ""}_${item.selectedColor || ""}`;
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const stored = localStorage.getItem(CART_KEY);
@@ -43,28 +47,103 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   });
 
+  // Sync with localStorage
   useEffect(() => {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
   }, [items]);
 
+  // Sync with Supabase on Login
+  useEffect(() => {
+    if (user) {
+      const fetchCart = async () => {
+        const { data, error } = await (supabase
+          .from("cart_items" as any)
+          .select("*")
+          .eq("user_id", user.id) as any);
+        
+        if (data && data.length > 0) {
+          const mappedItems: CartItem[] = data.map((d: any) => ({
+            id: d.product_id,
+            name: d.product_name,
+            price: Number(d.price),
+            category: d.category,
+            quantity: d.quantity,
+            selectedSize: d.selected_size || undefined,
+            selectedColor: d.selected_color || undefined,
+            image_url: d.image_url,
+          }));
+          setItems(mappedItems);
+        } else if (items.length > 0) {
+          // If Supabase is empty but local has items, sync to Supabase
+          for (const item of items) {
+            await syncItem(item);
+          }
+        }
+      };
+      fetchCart();
+    }
+  }, [user?.id]);
+
+  const syncItem = async (item: CartItem) => {
+    if (!user) return;
+    const { error } = await (supabase
+      .from("cart_items" as any)
+      .upsert({
+        user_id: user.id,
+        product_id: item.id,
+        product_name: item.name,
+        category: item.category,
+        price: item.price,
+        quantity: item.quantity,
+        selected_size: item.selectedSize || null,
+        selected_color: item.selectedColor || null,
+        image_url: item.image_url,
+      } as any, { onConflict: "user_id, product_id, selected_size, selected_color" }) as any);
+  };
+
+  const removeSyncItem = async (id: string, size?: string, color?: string) => {
+    if (!user) return;
+    await (supabase
+      .from("cart_items" as any)
+      .delete()
+      .match({
+        user_id: user.id,
+        product_id: id,
+        selected_size: size || null,
+        selected_color: color || null,
+      } as any) as any);
+  };
+
   const addItem = (item: Omit<CartItem, "quantity">, quantity = 1) => {
+    const key = getCartKey(item);
     setItems((prev) => {
-      const key = getCartKey({ ...item, quantity: 0 } as CartItem);
-      const existing = prev.find(
-        (i) => getCartKey(i) === key
-      );
+      const existing = prev.find((i) => getCartKey(i) === key);
+      let newItems;
       if (existing) {
-        return prev.map((i) =>
+        newItems = prev.map((i) =>
           getCartKey(i) === key ? { ...i, quantity: i.quantity + quantity } : i
         );
+      } else {
+        newItems = [...prev, { ...item, quantity }];
       }
-      return [...prev, { ...item, quantity }];
+      
+      // Background sync
+      if (user) {
+        const newItem = newItems.find(i => getCartKey(i) === key)!;
+        syncItem(newItem);
+      }
+      
+      return newItems;
     });
   };
 
   const removeItem = (id: string, selectedSize?: string, selectedColor?: string) => {
     const key = `${id}_${selectedSize || ""}_${selectedColor || ""}`;
-    setItems((prev) => prev.filter((i) => getCartKey(i) !== key));
+    setItems((prev) => {
+      const newItems = prev.filter((i) => getCartKey(i) !== key);
+      if (user) removeSyncItem(id, selectedSize, selectedColor);
+      return newItems;
+    });
   };
 
   const updateQuantity = (id: string, quantity: number, selectedSize?: string, selectedColor?: string) => {
@@ -73,10 +152,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     const key = `${id}_${selectedSize || ""}_${selectedColor || ""}`;
-    setItems((prev) => prev.map((i) => getCartKey(i) === key ? { ...i, quantity } : i));
+    setItems((prev) => {
+      const newItems = prev.map((i) => getCartKey(i) === key ? { ...i, quantity } : i);
+      if (user) {
+        const item = newItems.find(i => getCartKey(i) === key)!;
+        syncItem(item);
+      }
+      return newItems;
+    });
   };
 
-  const clearCart = () => setItems([]);
+  const clearCart = () => {
+    setItems([]);
+    if (user) {
+      (supabase.from("cart_items" as any).delete().eq("user_id", user.id) as any).then();
+    }
+  };
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);

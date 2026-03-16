@@ -26,7 +26,8 @@ interface Order {
   user_id: string;
   observation: string | null;
   total_price: number;
-  status: string;
+  status: string; // Used for Logistics
+  payment_status: string; // Used for Payment
   created_at: string;
   receipt_url: string | null;
   pay_later: boolean | null;
@@ -42,15 +43,30 @@ interface PendingCart {
   user_email: string;
   item_count: number;
   total_estimate: number;
+  items?: any[];
 }
 
-/** Derive a display status for an order */
-const getOrderStatus = (order: Order) => {
-  if (order.status === "cancelled") return { label: "Cancelado", color: "text-muted-foreground", bg: "bg-muted", icon: XCircle };
-  if (order.status === "delivered") return { label: "Entregue", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-900/40", icon: CheckCircle2 };
-  if (order.status === "separated") return { label: "Separado", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-900/40", icon: Package };
-  if (order.receipt_url) return { label: "Pago", color: "text-green-700 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/40", icon: CircleDollarSign };
-  return { label: "A pagar", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-100 dark:bg-amber-900/40", icon: CircleDollarSign };
+/** Derive display statuses for an order */
+const getOrderStatuses = (order: Order) => {
+  const logistics = {
+    cancelled: { label: "Cancelado", color: "text-muted-foreground", bg: "bg-muted", icon: XCircle },
+    delivered: { label: "Entregue", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-900/40", icon: CheckCircle2 },
+    separated: { label: "Separado", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-900/40", icon: Package },
+    to_separate: { label: "A separar", color: "text-orange-700 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40", icon: Package },
+  };
+
+  const payment = {
+    paid: { label: "Pago", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-900/40", icon: CircleDollarSign },
+    pending: { label: "A pagar", color: "text-orange-700 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40", icon: CircleDollarSign },
+  };
+
+  const logKey = (order.status in logistics) ? order.status as keyof typeof logistics : "to_separate";
+  const payKey = (order.payment_status === "paid" || order.receipt_url) ? "paid" : "pending";
+
+  return {
+    logistics: logistics[logKey],
+    payment: payment[payKey],
+  };
 };
 
 const ManageOrders = () => {
@@ -92,46 +108,52 @@ const ManageOrders = () => {
 
   const fetchPendingCarts = async () => {
     setPendingLoading(true);
-    // Get all confirmed order user_ids so we can find users without recent orders
-    // For "pending", we look at fcm_tokens (active users) cross-referenced with profiles
-    // Since we don't have a carts table, we show all approved profiles minus those
-    // who placed an order in the last 24h as a heuristic. We'll just show profiles
-    // that have FCM tokens (active users) as potential pending cart holders.
+
+    // Fetch all cart items
+    const { data: cartData, error: cartError } = await (supabase
+      .from("cart_items" as any)
+      .select("*") as any);
+
+    if (cartError) {
+      toast({ title: "Erro ao buscar carrinhos", variant: "destructive" });
+      setPendingLoading(false);
+      return;
+    }
+
+    if (!cartData || cartData.length === 0) {
+      setPendingCarts([]);
+      setPendingLoading(false);
+      return;
+    }
+
+    // Group items by user
+    const userIds = Array.from(new Set(cartData.map((d: any) => d.user_id)));
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, email")
-      .eq("approved", true);
+      .in("id", userIds as any[]);
 
-    if (!profiles) { setPendingLoading(false); return; }
-
-    // Users who placed an order in last 7 days
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentOrders } = await supabase
-      .from("orders")
-      .select("user_id")
-      .gte("created_at", sevenDaysAgo)
-      .neq("status", "cancelled");
-
-    const recentUserIds = new Set((recentOrders || []).map((o: any) => o.user_id));
-
-    // For pending carts, show users who have NOT placed an order recently but have FCM tokens
-    const { data: fcmTokens } = await supabase
-      .from("fcm_tokens")
-      .select("user_id");
-
-    const activeFcmUsers = new Set((fcmTokens || []).map((t: any) => t.user_id));
-
-    const pending = profiles
-      .filter((p: any) => activeFcmUsers.has(p.id) && !recentUserIds.has(p.id))
-      .map((p: any) => ({
+    const pending = (profiles || []).map((p: any) => {
+      const userItems = cartData.filter((d: any) => d.user_id === p.id);
+      return {
         user_id: p.id,
         user_name: p.full_name,
         user_email: p.email,
-        item_count: 0,
-        total_estimate: 0,
-      }));
+        item_count: userItems.reduce((s: number, i: any) => s + i.quantity, 0),
+        total_estimate: userItems.reduce((s: number, i: any) => s + (Number(i.price) * i.quantity), 0),
+        items: userItems.map((i: any) => ({
+          id: i.id,
+          product_name: i.product_name,
+          category: i.category,
+          price: Number(i.price),
+          quantity: i.quantity,
+          selected_size: i.selected_size,
+          selected_color: i.selected_color,
+        })),
+      };
+    });
 
-    setPendingCarts(pending);
+    setPendingCarts(pending as any);
     setPendingLoading(false);
   };
 
@@ -149,9 +171,25 @@ const ManageOrders = () => {
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Status atualizado!" });
+      toast({ title: "Status de logística atualizado!" });
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+    }
+  };
+
+  const updatePaymentStatus = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ payment_status: newStatus } as any)
+      .eq("id", orderId);
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Status de pagamento atualizado!" });
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, payment_status: newStatus } : o))
       );
     }
   };
@@ -175,7 +213,8 @@ const ManageOrders = () => {
           "Subtotal": item.price * item.quantity,
           "Total Pedido": order.total_price,
           "Observação": order.observation || "-",
-          "Status": order.status,
+          "Logística": order.status,
+          "Pagamento": order.payment_status,
           "Comprovante": order.receipt_url ? "Sim" : "Não",
           "Entrega - Responsável": (order as any).delivery_recipient_name || "-",
           "Entrega - Local": (order as any).delivery_location || "-",
@@ -239,8 +278,9 @@ const ManageOrders = () => {
           ) : (
             <div className="space-y-2">
               {orders.map((order) => {
-                const statusInfo = getOrderStatus(order);
-                const StatusIcon = statusInfo.icon;
+                const statuses = getOrderStatuses(order);
+                const LogIcon = statuses.logistics.icon;
+                const PayIcon = statuses.payment.icon;
                 const cancelled = isCancelled(order);
                 const textClass = cancelled ? "text-muted-foreground/60" : "";
 
@@ -255,15 +295,22 @@ const ManageOrders = () => {
                       className="w-full flex items-start gap-3 p-3 text-left"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
                           <p className={`font-medium text-sm truncate ${cancelled ? "text-muted-foreground/60 line-through" : "text-foreground"}`}>
                             {order.user_name}
                           </p>
-                          {/* Status tag */}
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusInfo.bg} ${statusInfo.color}`}>
-                            <StatusIcon size={10} />
-                            {statusInfo.label}
-                          </span>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {/* Logistics tag */}
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${statuses.logistics.bg} ${statuses.logistics.color}`}>
+                              <LogIcon size={9} />
+                              {statuses.logistics.label}
+                            </span>
+                            {/* Payment tag */}
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md ${statuses.payment.bg} ${statuses.payment.color}`}>
+                              <PayIcon size={9} />
+                              {statuses.payment.label}
+                            </span>
+                          </div>
                         </div>
                         <p className={`text-xs ${cancelled ? "text-muted-foreground/50" : "text-muted-foreground"}`}>{order.user_email}</p>
                         <p className={`text-[10px] ${cancelled ? "text-muted-foreground/40" : "text-muted-foreground/60"}`}>
@@ -333,33 +380,54 @@ const ManageOrders = () => {
                         {/* Action buttons */}
                         {!cancelled && (
                           <div className="flex flex-wrap gap-2 pt-1">
-                            {order.status !== "paid" && (
+                            {/* Payment action toggles */}
+                            {(order.payment_status === "paid" || order.receipt_url) ? (
                               <button
-                                onClick={() => updateOrderStatus(order.id, "paid")}
-                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                                onClick={() => updatePaymentStatus(order.id, "pending")}
+                                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
                               >
-                                <CircleDollarSign size={12} /> Marcar como pago
+                                <CircleDollarSign size={12} /> Marcar como A PAGAR
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => updatePaymentStatus(order.id, "paid")}
+                                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                              >
+                                <CircleDollarSign size={12} /> Marcar como PAGO
                               </button>
                             )}
+
+                            {/* Logistics action toggles */}
+                            {order.status !== "to_separate" && (
+                              <button
+                                onClick={() => updateOrderStatus(order.id, "to_separate")}
+                                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+                              >
+                                <Package size={12} /> Marcar como A SEPARAR
+                              </button>
+                            )}
+
                             {order.status !== "separated" && (
                               <button
                                 onClick={() => updateOrderStatus(order.id, "separated")}
-                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                               >
-                                <Package size={12} /> Marcar como separado
+                                <Package size={12} /> Marcar como SEPARADO
                               </button>
                             )}
+
                             {order.status !== "delivered" && (
                               <button
                                 onClick={() => updateOrderStatus(order.id, "delivered")}
-                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
                               >
-                                <CheckCircle2 size={12} /> Marcar como entregue
+                                <CheckCircle2 size={12} /> Marcar como ENTREGUE
                               </button>
                             )}
+
                             <button
                               onClick={() => updateOrderStatus(order.id, "cancelled")}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-medium hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                              className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 font-bold hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors"
                             >
                               <XCircle size={12} /> Cancelar pedido
                             </button>
@@ -368,7 +436,7 @@ const ManageOrders = () => {
 
                         {cancelled && (
                           <button
-                            onClick={() => updateOrderStatus(order.id, "confirmed")}
+                            onClick={() => updateOrderStatus(order.id, "to_separate")}
                             className="text-xs text-muted-foreground hover:text-foreground underline"
                           >
                             Desfazer cancelamento
@@ -383,11 +451,10 @@ const ManageOrders = () => {
           )}
         </TabsContent>
 
-        {/* ── TAB: Pending Carts ── */}
         <TabsContent value="pending">
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground leading-snug">
-              Usuários ativos (com notificações habilitadas) que não fizeram pedidos nos últimos 7 dias. Envie um lembrete de carrinho pendente.
+              Usuários com itens no carrinho que ainda não finalizaram o pedido.
             </p>
 
             {pendingLoading ? (
@@ -396,24 +463,57 @@ const ManageOrders = () => {
               <p className="text-muted-foreground text-sm text-center py-8">Nenhum usuário com carrinho pendente identificado.</p>
             ) : (
               <div className="space-y-2">
-                {pendingCarts.map((cart) => (
-                  <div key={cart.user_id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-foreground truncate">{cart.user_name}</p>
-                      <p className="text-xs text-muted-foreground">{cart.user_email}</p>
+                {pendingCarts.map((cart) => {
+                  const isExpanded = expandedId === `cart_${cart.user_id}`;
+                  return (
+                    <div key={cart.user_id} className="bg-card rounded-xl shadow-card overflow-hidden">
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : `cart_${cart.user_id}`)}
+                        className="w-full flex items-center gap-3 p-3 text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground truncate">{cart.user_name}</p>
+                          <p className="text-xs text-muted-foreground">{cart.user_email}</p>
+                          <p className="text-[10px] text-primary font-semibold mt-0.5">
+                            {cart.item_count} item(s) — Total Est.: R$ {Number(cart.total_estimate).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={sendingPush === cart.user_id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sendPushToUser(cart.user_id, cart.user_name);
+                            }}
+                            className="gap-1.5 h-8 text-xs px-2"
+                          >
+                            <Bell size={13} />
+                            {sendingPush === cart.user_id ? "..." : "Notificar"}
+                          </Button>
+                          {isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-3 pb-4 space-y-3 border-t border-border pt-3">
+                          <div className="space-y-1">
+                            {((cart as any).items || []).map((item: any) => (
+                              <div key={item.id} className="flex items-center gap-2 text-xs">
+                                <span className="font-medium text-foreground">{item.quantity}x</span>
+                                <span className="flex-1 text-foreground truncate">{item.product_name}</span>
+                                {item.selected_size && <span className="text-muted-foreground">Tam: {item.selected_size}</span>}
+                                {item.selected_color && <span className="text-muted-foreground">Cor: {item.selected_color}</span>}
+                                <span className="font-medium text-primary">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={sendingPush === cart.user_id}
-                      onClick={() => sendPushToUser(cart.user_id, cart.user_name)}
-                      className="gap-1.5 shrink-0 text-xs"
-                    >
-                      <Bell size={13} />
-                      {sendingPush === cart.user_id ? "Enviando..." : "Notificar"}
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
