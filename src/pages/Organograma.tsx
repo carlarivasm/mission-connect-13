@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
-import { ChevronDown, ChevronRight, Church, Phone } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import OrgMemberCard from "@/components/org/OrgMemberCard";
+import OrgCategorySection from "@/components/org/OrgCategorySection";
+import { Church } from "lucide-react";
 
-interface OrgPosition {
+export interface OrgPosition {
   id: string;
   title: string;
   category: string;
@@ -17,7 +18,7 @@ interface OrgPosition {
   sort_order: number;
 }
 
-interface Profile {
+export interface OrgProfile {
   id: string;
   full_name: string;
   avatar_url: string | null;
@@ -42,60 +43,13 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
 ];
 
 const SPECIAL_CATEGORIES = ["padre", "consagrada"];
-
-const MemberCard = ({ position, profile, catLabel }: { position: OrgPosition; profile?: Profile; catLabel: string }) => {
-  const name = profile?.full_name || position.title;
-  const initials = name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-
-  return (
-    <div className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-      <Avatar className="h-11 w-11 border-2 border-primary/20">
-        {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt={name} /> : null}
-        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{initials}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground truncate">{name}</p>
-        {position.function_name && <p className="text-[10px] text-muted-foreground">{position.function_name}</p>}
-        {profile?.show_phone_in_org && profile?.phone && (
-          <a href={`tel:${profile.phone}`} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
-            <Phone size={10} /> {profile.phone}
-          </a>
-        )}
-        <p className="text-[10px] text-muted-foreground">{catLabel}</p>
-      </div>
-    </div>
-  );
-};
-
-const CategorySection = ({ label, positions, profiles, catLabels, defaultOpen = true }: {
-  label: string; positions: OrgPosition[]; profiles: Map<string, Profile>; catLabels: Record<string, string>; defaultOpen?: boolean;
-}) => {
-  const [open, setOpen] = useState(false);
-  if (positions.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left">
-        {open ? <ChevronDown size={16} className="text-primary" /> : <ChevronRight size={16} className="text-muted-foreground" />}
-        <h3 className="text-sm font-bold text-foreground">{label}</h3>
-        <span className="text-[10px] text-muted-foreground">({positions.length})</span>
-      </button>
-      {open && (
-        <div className="space-y-2 ml-2">
-          {positions.map(p => (
-            <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+const ACCORDION_CATEGORIES = ["coordenador_geral_nacional", "coordenador_funcao"];
 
 const Organograma = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const [positions, setPositions] = useState<OrgPosition[]>([]);
-  const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
+  const [profiles, setProfiles] = useState<Map<string, OrgProfile>>(new Map());
   const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
 
@@ -123,7 +77,7 @@ const Organograma = () => {
             .from("profiles_org_public" as any)
             .select("id, full_name, avatar_url, phone, show_phone_in_org");
           if (profData) {
-            const map = new Map<string, Profile>();
+            const map = new Map<string, OrgProfile>();
             (profData as any[]).forEach(p => map.set(p.id, p));
             setProfiles(map);
           }
@@ -148,51 +102,61 @@ const Organograma = () => {
     <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Organograma" onLogout={handleLogout} />
 
-      <main className="px-4 py-5">
+      <main className="px-4 py-6 max-w-4xl mx-auto">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
           </div>
         ) : positions.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">Organograma ainda não configurado.</p>
+          <p className="text-center text-muted-foreground py-16">Organograma ainda não configurado.</p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-5">
-              {mainCategoryOrder.map(cat => (
-                <CategorySection
+          <div className="space-y-6">
+            {/* Main categories */}
+            {mainCategoryOrder.map(cat => {
+              const catPositions = mainPositions.filter(p => p.category === cat);
+              if (catPositions.length === 0) return null;
+              return (
+                <OrgCategorySection
                   key={cat}
                   label={catLabels[cat] || cat}
-                  positions={mainPositions.filter(p => p.category === cat)}
+                  positions={catPositions}
                   profiles={profiles}
-                  catLabels={catLabels}
+                  isAccordion={ACCORDION_CATEGORIES.includes(cat)}
+                  defaultOpen={!ACCORDION_CATEGORIES.includes(cat)}
                 />
-              ))}
-            </div>
+              );
+            })}
 
+            {/* Padres & Consagradas */}
             {(padres.length > 0 || consagradas.length > 0) && (
-              <div className="space-y-5">
-                <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Church size={16} className="text-primary" />
-                    <h3 className="text-sm font-bold text-foreground">Padres e Consagradas</h3>
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Church size={18} className="text-primary" />
                   </div>
-                  {padres.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground">Padres</p>
-                      {padres.map(p => (
-                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
-                      ))}
-                    </div>
-                  )}
-                  {consagradas.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground">Consagradas</p>
-                      {consagradas.map(p => (
-                        <MemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} catLabel={catLabels[p.category] || p.category} />
-                      ))}
-                    </div>
-                  )}
+                  <h2 className="text-base font-bold text-foreground">Padres e Consagradas</h2>
                 </div>
+
+                {padres.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Padres</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {padres.map(p => (
+                        <OrgMemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {consagradas.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Consagradas</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {consagradas.map(p => (
+                        <OrgMemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
