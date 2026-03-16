@@ -210,10 +210,18 @@ const ManageOrgChart = () => {
         {showCatManager && (
           <div className="space-y-3">
             <div className="space-y-1.5">
-              {categoryOptions.map(c => (
+              {categoryOptions.map((c, index) => (
                 <div key={c.value} className="flex items-center gap-2 p-2 bg-background rounded-lg border border-border">
+                  <div className="flex flex-col gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" disabled={index === 0} onClick={() => handleMoveCategory(index, "up")}>
+                      <ArrowUp size={10} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" disabled={index === categoryOptions.length - 1} onClick={() => handleMoveCategory(index, "down")}>
+                      <ArrowDown size={10} />
+                    </Button>
+                  </div>
                   <span className="flex-1 text-xs font-medium text-foreground">{c.label}</span>
-                  <span className="text-[10px] text-muted-foreground">{c.value}</span>
+                  <span className="text-[10px] text-muted-foreground">{index + 1}º</span>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive">
