@@ -40,10 +40,15 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
   { value: "equipe", label: "Equipe" },
   { value: "padre", label: "Padre" },
   { value: "consagrada", label: "Consagrada" },
+  { value: "consagrado", label: "Consagrado" },
 ];
 
-const SPECIAL_CATEGORIES = ["padre", "consagrada"];
-const ACCORDION_CATEGORIES = ["coordenador_geral_nacional", "coordenador_funcao"];
+const CHURCH_CATEGORIES = ["padre", "consagrada", "consagrado"];
+const CHURCH_SUBCATEGORY_LABELS: Record<string, string> = {
+  padre: "Padres",
+  consagrada: "Consagradas",
+  consagrado: "Consagrados",
+};
 
 const Organograma = () => {
   const navigate = useNavigate();
@@ -93,10 +98,10 @@ const Organograma = () => {
   const catLabels: Record<string, string> = {};
   categories.forEach(c => { catLabels[c.value] = c.label; });
 
-  const mainCategoryOrder = categories.filter(c => !SPECIAL_CATEGORIES.includes(c.value)).map(c => c.value);
-  const mainPositions = positions.filter(p => !SPECIAL_CATEGORIES.includes(p.category));
-  const padres = positions.filter(p => p.category === "padre");
-  const consagradas = positions.filter(p => p.category === "consagrada");
+  const mainCategoryOrder = categories.filter(c => !CHURCH_CATEGORIES.includes(c.value)).map(c => c.value);
+  const mainPositions = positions.filter(p => !CHURCH_CATEGORIES.includes(p.category));
+  
+  const churchPositions = positions.filter(p => CHURCH_CATEGORIES.includes(p.category));
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -110,8 +115,8 @@ const Organograma = () => {
         ) : positions.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">Organograma ainda não configurado.</p>
         ) : (
-          <div className="space-y-6">
-            {/* Main categories */}
+          <div className="space-y-4">
+            {/* Main categories - all expandable */}
             {mainCategoryOrder.map(cat => {
               const catPositions = mainPositions.filter(p => p.category === cat);
               if (catPositions.length === 0) return null;
@@ -121,43 +126,19 @@ const Organograma = () => {
                   label={catLabels[cat] || cat}
                   positions={catPositions}
                   profiles={profiles}
-                  isAccordion={ACCORDION_CATEGORIES.includes(cat)}
-                  defaultOpen={!ACCORDION_CATEGORIES.includes(cat)}
                 />
               );
             })}
 
-            {/* Padres & Consagradas */}
-            {(padres.length > 0 || consagradas.length > 0) && (
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Church size={18} className="text-primary" />
-                  </div>
-                  <h2 className="text-base font-bold text-foreground">Padres e Consagradas</h2>
-                </div>
-
-                {padres.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Padres</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {padres.map(p => (
-                        <OrgMemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {consagradas.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Consagradas</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {consagradas.map(p => (
-                        <OrgMemberCard key={p.id} position={p} profile={p.profile_id ? profiles.get(p.profile_id) : undefined} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Padres & Consagrados */}
+            {churchPositions.length > 0 && (
+              <OrgCategorySection
+                label="Padres & Consagrados"
+                positions={churchPositions}
+                profiles={profiles}
+                icon={<Church size={18} className="text-primary" />}
+                subcategoryLabels={CHURCH_SUBCATEGORY_LABELS}
+              />
             )}
           </div>
         )}
