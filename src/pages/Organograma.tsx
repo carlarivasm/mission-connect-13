@@ -137,6 +137,7 @@ const Organograma = () => {
                 positions={churchPositions}
                 profiles={profiles}
                 icon={<Church size={18} className="text-primary" />}
+                subcategoryLabels={CHURCH_SUBCATEGORY_LABELS}
               />
             )}
           </div>
