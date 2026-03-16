@@ -9,9 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Minus, Plus, ExternalLink, ShoppingCart, CheckCircle, Copy, Check } from "lucide-react";
+import {
+  Trash2, Minus, Plus, ExternalLink, ShoppingCart,
+  CheckCircle, Copy, Check, ArrowRight, AlertCircle,
+  MapPin, Truck, CreditCard,
+} from "lucide-react";
 
 const categoryLabels: Record<string, string> = {
   camiseta: "Camiseta",
@@ -22,29 +26,51 @@ const categoryLabels: Record<string, string> = {
   outros: "Outros",
 };
 
+interface DeliveryLocation {
+  name: string;
+  times: string[];
+}
+
 const Checkout = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const { items, removeItem, updateQuantity, clearCart, totalPrice } = useCart();
   const { toast } = useToast();
 
+  // Step 1 = items review, 2 = payment + delivery
+  const [step, setStep] = useState(1);
+
+  // Payment settings
   const [whatsapp, setWhatsapp] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
   const [qrcodeUrl, setQrcodeUrl] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [bankDetails, setBankDetails] = useState("");
+
+  // Delivery settings (from admin)
+  const [deliveryEnabled, setDeliveryEnabled] = useState(false);
+  const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [observation, setObservation] = useState("");
   const [copied, setCopied] = useState(false);
-  const [payLater, setPayLater] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+
+  // Delivery form state
+  const [deliveryRecipient, setDeliveryRecipient] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
 
   useEffect(() => {
     supabase
       .from("app_settings")
       .select("setting_key, setting_value")
-      .in("setting_key", ["store_whatsapp", "store_payment_link", "store_qrcode_url", "store_pix_key", "store_bank_details"])
+      .in("setting_key", [
+        "store_whatsapp", "store_payment_link", "store_qrcode_url",
+        "store_pix_key", "store_bank_details",
+        "delivery_enabled", "delivery_locations",
+      ])
       .then(({ data }) => {
         if (data) {
           data.forEach((d) => {
@@ -53,6 +79,14 @@ const Checkout = () => {
             if (d.setting_key === "store_qrcode_url") setQrcodeUrl(d.setting_value);
             if (d.setting_key === "store_pix_key") setPixKey(d.setting_value);
             if (d.setting_key === "store_bank_details") setBankDetails(d.setting_value);
+            if (d.setting_key === "delivery_enabled") setDeliveryEnabled(d.setting_value === "true");
+            if (d.setting_key === "delivery_locations") {
+              try {
+                setDeliveryLocations(JSON.parse(d.setting_value) || []);
+              } catch {
+                setDeliveryLocations([]);
+              }
+            }
           });
         }
         setLoading(false);
@@ -63,6 +97,8 @@ const Checkout = () => {
     await signOut();
     navigate("/");
   };
+
+  const selectedLocationData = deliveryLocations.find((l) => l.name === deliveryLocation);
 
   const buildOrderMessage = () => {
     const lines = [
@@ -89,8 +125,18 @@ const Checkout = () => {
       lines.push(`📝 *Observação:* ${observation.trim()}`);
     }
 
+    if (deliveryEnabled && deliveryRecipient) {
+      lines.push(``);
+      lines.push(`🚚 *Entrega:*`);
+      lines.push(`   Responsável: ${deliveryRecipient}`);
+      if (deliveryLocation) lines.push(`   Local: ${deliveryLocation}`);
+      if (deliveryTime) lines.push(`   Horário: ${deliveryTime}`);
+    }
+
     lines.push(``);
-    lines.push(`✅ Pagamento confirmado pelo cliente.`);
+    lines.push(receiptFile ? `🧾 *Comprovante:* Anexado` : `🧾 *Comprovante:* Não enviado`);
+    lines.push(``);
+    lines.push(`✅ Pedido confirmado.`);
 
     return lines.join("\n");
   };
@@ -118,8 +164,11 @@ const Checkout = () => {
         observation: observation.trim() || null,
         total_price: totalPrice,
         status: "confirmed",
-        pay_later: payLater,
+        pay_later: false,
         receipt_url: receiptUrl,
+        delivery_recipient_name: deliveryEnabled && deliveryRecipient ? deliveryRecipient : null,
+        delivery_location: deliveryEnabled && deliveryLocation ? deliveryLocation : null,
+        delivery_time: deliveryEnabled && deliveryTime ? deliveryTime : null,
       } as any)
       .select("id")
       .single();
@@ -147,7 +196,7 @@ const Checkout = () => {
 
     let receiptUrl = null;
 
-    if (!payLater && receiptFile) {
+    if (receiptFile) {
       const fileExt = receiptFile.name.split('.').pop();
       const fileName = `${user?.id}_${Date.now()}.${fileExt}`;
 
@@ -231,95 +280,147 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Checkout" onLogout={handleLogout} />
+      <AppHeader title={step === 1 ? "Revisão do Pedido" : "Pagamento"} onLogout={handleLogout} />
+
+      {/* Step indicator — centered */}
+      <div className="flex justify-center pt-4 pb-1">
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-1.5 text-xs font-semibold ${step === 1 ? "text-primary" : "text-muted-foreground"}`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 1 ? "gradient-mission text-primary-foreground" : "bg-primary text-primary-foreground"}`}>
+              {step > 1 ? <Check size={12} /> : "1"}
+            </div>
+            Itens
+          </div>
+          <div className="w-8 h-px bg-border" />
+          <div className={`flex items-center gap-1.5 text-xs font-semibold ${step === 2 ? "text-primary" : "text-muted-foreground"}`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step === 2 ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+              2
+            </div>
+            Pagamento
+          </div>
+        </div>
+      </div>
 
       <main className="px-4 py-5 space-y-5 max-w-lg mx-auto">
-        {/* Cart Items */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Seus Itens</h2>
-          {items.map((item) => (
-            <div key={`${item.id}_${item.selectedSize}_${item.selectedColor}`} className="flex gap-3 p-3 bg-card rounded-xl shadow-card">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
-              ) : (
-                <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <ShoppingCart size={20} className="text-muted-foreground" />
+
+        {/* ── STEP 1: Items Review ─────────────────────────────── */}
+        {step === 1 && (
+          <>
+            {/* Cart Items */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Seus Itens</h2>
+              {items.map((item) => (
+                <div key={`${item.id}_${item.selectedSize}_${item.selectedColor}`} className="flex gap-3 p-3 bg-card rounded-xl shadow-card">
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <ShoppingCart size={20} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground text-sm truncate">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {categoryLabels[item.category] || item.category}
+                      {item.selectedSize && ` • ${item.selectedSize}`}
+                      {item.selectedColor && ` • ${item.selectedColor}`}
+                    </p>
+                    <p className="text-sm font-bold text-primary mt-0.5">
+                      R$ {(item.price * item.quantity).toFixed(2)}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize, item.selectedColor)}
+                        className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor)}
+                        className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
+                      >
+                        <Plus size={14} />
+                      </button>
+                      <button
+                        onClick={() => removeItem(item.id, item.selectedSize, item.selectedColor)}
+                        className="ml-auto p-1 rounded-md text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Observation */}
+            <div className="bg-card rounded-xl p-4 shadow-card space-y-2">
+              <Label htmlFor="observation" className="text-sm font-bold text-foreground uppercase tracking-wide">
+                Observação
+              </Label>
+              <Textarea
+                id="observation"
+                value={observation}
+                onChange={(e) => setObservation(e.target.value)}
+                placeholder="Adicione informações relevantes sobre o seu pedido."
+                rows={2}
+              />
+            </div>
+
+            {/* Total */}
+            <div className="bg-card rounded-xl p-4 shadow-card flex items-center justify-between">
+              <span className="font-semibold text-foreground">Total</span>
+              <span className="text-xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
+            </div>
+
+            {/* CTA */}
+            <Button
+              onClick={() => setStep(2)}
+              className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
+            >
+              Ir para pagamento
+              <ArrowRight size={20} />
+            </Button>
+          </>
+        )}
+
+        {/* ── STEP 2: Payment + Delivery ───────────────────────── */}
+        {step === 2 && (
+          <>
+            {/* Order summary (compact) */}
+            <div className="bg-card rounded-xl p-4 shadow-card flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">{items.reduce((s, i) => s + i.quantity, 0)} item(s)</p>
+                <p className="text-sm font-semibold text-foreground">Total do pedido</p>
+              </div>
+              <span className="text-xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
+            </div>
+
+            {/* Payment note — prominent */}
+            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-xl p-4">
+              <AlertCircle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-300 font-medium leading-snug">
+                O pagamento deve ser realizado para que o pedido seja efetivado. Realize o pagamento abaixo e envie o comprovante.
+              </p>
+            </div>
+
+            {/* Payment Section */}
+            <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
+              <div className="flex items-center gap-2">
+                <CreditCard size={16} className="text-primary" />
+                <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Pagamento</h2>
+              </div>
+
+              {qrcodeUrl && (
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs text-muted-foreground">Escaneie o QR Code para pagar:</p>
+                  <img src={qrcodeUrl} alt="QR Code de Pagamento" className="w-48 h-48 rounded-xl object-contain bg-white p-1" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground text-sm truncate">{item.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {categoryLabels[item.category] || item.category}
-                  {item.selectedSize && ` • ${item.selectedSize}`}
-                  {item.selectedColor && ` • ${item.selectedColor}`}
-                </p>
-                <p className="text-sm font-bold text-primary mt-0.5">
-                  R$ {(item.price * item.quantity).toFixed(2)}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize, item.selectedColor)}
-                    className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor)}
-                    className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
-                  >
-                    <Plus size={14} />
-                  </button>
-                  <button
-                    onClick={() => removeItem(item.id, item.selectedSize, item.selectedColor)}
-                    className="ml-auto p-1 rounded-md text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Observation */}
-        <div className="bg-card rounded-xl p-4 shadow-card space-y-2">
-          <Label htmlFor="observation" className="text-sm font-bold text-foreground uppercase tracking-wide">
-            Observação
-          </Label>
-          <Textarea
-            id="observation"
-            value={observation}
-            onChange={(e) => setObservation(e.target.value)}
-            placeholder="Adicione informações relevantes sobre o seu pedido."
-            rows={2}
-          />
-        </div>
-
-        {/* Total */}
-        <div className="bg-card rounded-xl p-4 shadow-card flex items-center justify-between">
-          <span className="font-semibold text-foreground">Total</span>
-          <span className="text-xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
-        </div>
-
-        {/* Payment Section */}
-        <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
-          <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Pagamento</h2>
-
-          {qrcodeUrl && (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-xs text-muted-foreground">Escaneie o QR Code para pagar:</p>
-              <img src={qrcodeUrl} alt="QR Code de Pagamento" className="w-48 h-48 rounded-xl object-contain bg-white p-2" />
-            </div>
-          )}
-
-          {pixKey && (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-xs text-muted-foreground">Chave Pix:</p>
-              <div className="flex items-center gap-2 w-full">
-                <code className="flex-1 bg-muted rounded-lg px-3 py-2 text-sm text-foreground text-center font-mono break-all">
-                  {pixKey}
-                </code>
+              {/* PIX — copy button only, key hidden */}
+              {pixKey && (
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(pixKey);
@@ -327,55 +428,39 @@ const Checkout = () => {
                     setTimeout(() => setCopied(false), 2000);
                     toast({ title: "Chave Pix copiada!" });
                   }}
-                  className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-colors active:scale-[0.98]"
                 >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? <Check size={20} /> : <Copy size={20} />}
+                  {copied ? "Copiado!" : "Copiar chave PIX"}
                 </button>
-              </div>
-            </div>
-          )}
+              )}
 
-          {bankDetails && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-semibold">Dados Bancários:</p>
-              <pre className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground whitespace-pre-wrap font-sans">
-                {bankDetails}
-              </pre>
-            </div>
-          )}
+              {bankDetails && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-semibold">Dados Bancários:</p>
+                  <pre className="bg-muted rounded-lg px-3 py-2 text-xs text-foreground whitespace-pre-wrap font-sans">
+                    {bankDetails}
+                  </pre>
+                </div>
+              )}
 
-          {paymentLink && (
-            <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="block">
-              <Button variant="outline" className="w-full gap-2">
-                <ExternalLink size={16} />
-                Abrir Link de Pagamento
-              </Button>
-            </a>
-          )}
+              {paymentLink && (
+                <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="block">
+                  <Button variant="outline" className="w-full gap-2">
+                    <ExternalLink size={16} />
+                    Abrir Link de Pagamento
+                  </Button>
+                </a>
+              )}
 
-          {!qrcodeUrl && !paymentLink && !pixKey && !bankDetails && (
-            <p className="text-sm text-muted-foreground text-center">
-              O administrador ainda não configurou as opções de pagamento.
-            </p>
-          )}
+              {!qrcodeUrl && !paymentLink && !pixKey && !bankDetails && (
+                <p className="text-sm text-muted-foreground text-center">
+                  O administrador ainda não configurou as opções de pagamento.
+                </p>
+              )}
 
-          <div className="pt-4 border-t space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="payLater"
-                checked={payLater}
-                onCheckedChange={(checked) => setPayLater(checked as boolean)}
-              />
-              <label
-                htmlFor="payLater"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Pagarei depois
-              </label>
-            </div>
-
-            {!payLater && (
-              <div className="space-y-2">
+              {/* Receipt upload — optional */}
+              <div className="pt-4 border-t space-y-2">
                 <Label htmlFor="receipt" className="text-sm font-bold text-foreground">
                   Comprovante de Pagamento
                 </Label>
@@ -387,23 +472,101 @@ const Checkout = () => {
                   className="text-sm cursor-pointer file:cursor-pointer"
                 />
                 <p className="text-xs text-muted-foreground">
-                  A seguir, envie a sua lista de produtos pelo WhatsApp para o responsável, com o comprovante de pagamento.
+                  Por favor, anexe o comprovante de pagamento.
                 </p>
               </div>
+            </div>
+
+            {/* Delivery Section — conditional */}
+            {deliveryEnabled && (
+              <div className="bg-card rounded-xl p-4 shadow-card space-y-4">
+                <div className="flex items-center gap-2">
+                  <Truck size={16} className="text-primary" />
+                  <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Entrega</h2>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="delivery-recipient" className="text-sm font-semibold text-foreground">
+                      Nome do responsável pelo recebimento
+                    </Label>
+                    <Input
+                      id="delivery-recipient"
+                      value={deliveryRecipient}
+                      onChange={(e) => setDeliveryRecipient(e.target.value)}
+                      placeholder="Nome completo de quem vai receber"
+                    />
+                  </div>
+
+                  {deliveryLocations.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <MapPin size={13} className="text-primary" />
+                        Local de entrega
+                      </Label>
+                      <Select
+                        value={deliveryLocation}
+                        onValueChange={(val) => {
+                          setDeliveryLocation(val);
+                          setDeliveryTime("");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o local" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {deliveryLocations.map((loc) => (
+                            <SelectItem key={loc.name} value={loc.name}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {selectedLocationData && selectedLocationData.times.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-semibold text-foreground">
+                        Horário de entrega
+                      </Label>
+                      <Select value={deliveryTime} onValueChange={setDeliveryTime}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o horário" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedLocationData.times.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
-        </div>
 
-        {/* Confirm */}
-        <Button
-          onClick={handleConfirmPayment}
-          disabled={sending}
-          className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
-        >
-          <CheckCircle size={20} />
-          {sending ? "Enviando..." : "Enviar pedido"}
-        </Button>
-
+            {/* Actions */}
+            <div className="space-y-2">
+              <Button
+                onClick={handleConfirmPayment}
+                disabled={sending}
+                className="w-full gradient-mission text-primary-foreground h-12 text-base font-semibold gap-2"
+              >
+                <CheckCircle size={20} />
+                {sending ? "Enviando..." : "Enviar pedido"}
+              </Button>
+              <button
+                onClick={() => setStep(1)}
+                className="w-full text-center text-sm text-muted-foreground py-2 hover:text-foreground transition-colors"
+              >
+                ← Rever itens
+              </button>
+            </div>
+          </>
+        )}
       </main>
 
       <BottomNav />

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, ShoppingBag, Pencil, ImagePlus, CreditCard, Save, Upload, Package } from "lucide-react";
+import { Trash2, ShoppingBag, Pencil, ImagePlus, CreditCard, Save, Upload, Package, Truck, X } from "lucide-react";
 
 interface Product {
   id: string;
@@ -152,6 +152,175 @@ const PaymentSettings = () => {
       </div>
       <Button onClick={handleSave} disabled={saving} className="gradient-mission text-primary-foreground gap-2">
         <Save size={16} /> {saving ? "Salvando..." : "Salvar Pagamento"}
+      </Button>
+    </div>
+  );
+};
+
+interface DeliveryLocationEntry {
+  name: string;
+  times: string[];
+}
+
+const DeliverySettings = () => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [enabled, setEnabled] = useState(false);
+  const [locations, setLocations] = useState<DeliveryLocationEntry[]>([]);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [newTimes, setNewTimes] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .in("setting_key", ["delivery_enabled", "delivery_locations"])
+      .then(({ data }) => {
+        if (data) {
+          data.forEach((d) => {
+            if (d.setting_key === "delivery_enabled") setEnabled(d.setting_value === "true");
+            if (d.setting_key === "delivery_locations") {
+              try { setLocations(JSON.parse(d.setting_value) || []); } catch { setLocations([]); }
+            }
+          });
+        }
+      });
+  }, []);
+
+  const addLocation = () => {
+    const name = newLocationName.trim();
+    if (!name) return;
+    if (locations.find((l) => l.name === name)) {
+      toast({ title: "Local já existe", variant: "destructive" });
+      return;
+    }
+    setLocations((prev) => [...prev, { name, times: [] }]);
+    setNewLocationName("");
+  };
+
+  const removeLocation = (name: string) => {
+    setLocations((prev) => prev.filter((l) => l.name !== name));
+  };
+
+  const addTime = (locationName: string) => {
+    const time = (newTimes[locationName] || "").trim();
+    if (!time) return;
+    setLocations((prev) =>
+      prev.map((l) =>
+        l.name === locationName && !l.times.includes(time)
+          ? { ...l, times: [...l.times, time] }
+          : l
+      )
+    );
+    setNewTimes((prev) => ({ ...prev, [locationName]: "" }));
+  };
+
+  const removeTime = (locationName: string, time: string) => {
+    setLocations((prev) =>
+      prev.map((l) =>
+        l.name === locationName ? { ...l, times: l.times.filter((t) => t !== time) } : l
+      )
+    );
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    const entries = [
+      { setting_key: "delivery_enabled", setting_value: enabled ? "true" : "false" },
+      { setting_key: "delivery_locations", setting_value: JSON.stringify(locations) },
+    ];
+    for (const entry of entries) {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert(
+          { ...entry, updated_by: user.id, updated_at: new Date().toISOString() } as any,
+          { onConflict: "setting_key" }
+        );
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    }
+    toast({ title: "Configurações de entrega salvas!" });
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      {/* Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Ativar entrega no checkout</p>
+          <p className="text-xs text-muted-foreground">Quando desativado, o cliente não vê a etapa de entrega.</p>
+        </div>
+        <Switch checked={enabled} onCheckedChange={setEnabled} />
+      </div>
+
+      {/* Locations & times */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase">Locais e horários de entrega</p>
+
+        {locations.length === 0 && (
+          <p className="text-xs text-muted-foreground">Nenhum local cadastrado.</p>
+        )}
+
+        {locations.map((loc) => (
+          <div key={loc.name} className="bg-muted rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">{loc.name}</p>
+              <button onClick={() => removeLocation(loc.name)} className="p-1 rounded text-destructive hover:bg-destructive/10 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Existing times */}
+            <div className="flex flex-wrap gap-1.5">
+              {loc.times.map((t) => (
+                <span key={t} className="flex items-center gap-1 bg-background text-foreground text-xs px-2 py-0.5 rounded-full border border-border">
+                  {t}
+                  <button onClick={() => removeTime(loc.name, t)} className="text-muted-foreground hover:text-destructive transition-colors">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Add time */}
+            <div className="flex gap-2">
+              <Input
+                value={newTimes[loc.name] || ""}
+                onChange={(e) => setNewTimes((prev) => ({ ...prev, [loc.name]: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTime(loc.name); } }}
+                placeholder="Ex: 09:00 – 11:00"
+                className="h-8 text-xs"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => addTime(loc.name)} className="h-8 text-xs whitespace-nowrap">
+                + Horário
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        {/* Add location */}
+        <div className="flex gap-2">
+          <Input
+            value={newLocationName}
+            onChange={(e) => setNewLocationName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLocation(); } }}
+            placeholder="Nome do local (ex: Igreja Central)"
+            className="h-9 text-sm"
+          />
+          <Button type="button" variant="outline" onClick={addLocation} className="h-9 text-sm whitespace-nowrap">
+            + Local
+          </Button>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={saving} className="gradient-mission text-primary-foreground gap-2">
+        <Save size={16} /> {saving ? "Salvando..." : "Salvar Entrega"}
       </Button>
     </div>
   );
@@ -349,6 +518,8 @@ const ManageStore = () => {
 
   const categoryLabel = (val: string) => categories.find((c) => c.value === val)?.label || val;
 
+  const [showDeliverySettings, setShowDeliverySettings] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Configurações de Pagamento - collapsible */}
@@ -359,6 +530,16 @@ const ManageStore = () => {
           <span className="text-xs text-muted-foreground ml-auto">{showPaymentSettings ? "▲" : "▼"}</span>
         </button>
         {showPaymentSettings && <PaymentSettings />}
+      </div>
+
+      {/* Configurações de Entrega - collapsible */}
+      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
+        <button onClick={() => setShowDeliverySettings(!showDeliverySettings)} className="flex items-center gap-2 w-full text-left">
+          <Truck size={14} className="text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Configurações de Entrega</h4>
+          <span className="text-xs text-muted-foreground ml-auto">{showDeliverySettings ? "▲" : "▼"}</span>
+        </button>
+        {showDeliverySettings && <DeliverySettings />}
       </div>
 
       {/* Novo Produto - collapsible */}
