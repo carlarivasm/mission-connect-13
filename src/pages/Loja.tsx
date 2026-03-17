@@ -307,7 +307,7 @@ const ProductCard = ({
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAvailable) return;
-    
+
     // If it's a kit, always open details to select specs
     if (product.product_type === 'kit') {
       setQuantity(1);
@@ -379,11 +379,6 @@ const ProductCard = ({
             <p className="text-base font-bold text-primary">
               R$ {product.price.toFixed(2)}
             </p>
-            {product.is_combo && (
-              <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded font-bold">
-                +{product.combo_min_quantity} un: R$ {product.combo_price?.toFixed(2)}
-              </span>
-            )}
             {product.product_type === 'kit' && (
               <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">
                 KIT
@@ -517,14 +512,14 @@ const ProductCard = ({
                           return (
                             <div key={key} className="bg-muted/50 p-3 rounded-xl space-y-2 border border-border/50">
                               <p className="text-[10px] font-bold text-muted-foreground uppercase">Item {idx + 1}</p>
-                              
+
                               {comp.product && comp.product.sizes.length > 0 && (
                                 <div className="space-y-1">
                                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">Tamanho</p>
                                   <div className="flex gap-1 flex-wrap">
                                     {comp.product.sizes.map(s => {
                                       const sStock = getVariantStock(comp.component_product_id, s, kitSpecs[key]?.color ?? null);
-                                       return (
+                                      return (
                                         <button
                                           key={s}
                                           onClick={() => setKitSpecs(prev => ({ ...prev, [key]: { ...prev[key], size: s } }))}
