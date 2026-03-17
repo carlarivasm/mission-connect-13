@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,7 +38,7 @@ export const useCart = () => {
 
 const CART_KEY = "jfm_cart";
 
-const getCartKey = (item: CartItem | { id: string; selectedSize?: string; selectedColor?: string; configuration?: any }) => 
+const getCartKey = (item: CartItem | { id: string; selectedSize?: string; selectedColor?: string; configuration?: any }) =>
   `${item.id}_${item.selectedSize || ""}_${item.selectedColor || ""}_${item.configuration ? JSON.stringify(item.configuration) : ""}`;
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
@@ -72,7 +73,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             )
           `)
           .eq("user_id", user.id);
-        
+
         if (data && data.length > 0) {
           const mappedItems: CartItem[] = data.map((d: any) => ({
             id: d.product_id,
@@ -120,32 +121,32 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const removeSyncItem = async (id: string, size?: string, color?: string, configuration?: any) => {
     if (!user) return;
-    
+
     let query = supabase
       .from("cart_items")
       .delete()
       .eq("user_id", user.id)
       .eq("product_id", id);
-      
+
     if (size) {
       query = query.eq("selected_size", size);
     } else {
       query = query.is("selected_size", null);
     }
-    
+
     if (color) {
       query = query.eq("selected_color", color);
     } else {
       query = query.is("selected_color", null);
     }
-    
+
     if (configuration) {
       // Use contains for jsonb match to be safe
       query = query.contains("configuration", configuration);
     } else {
       query = query.is("configuration", null);
     }
-    
+
     await (query as any);
   };
 
@@ -161,13 +162,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       } else {
         newItems = [...prev, { ...item, quantity }];
       }
-      
+
       // Background sync
       if (user) {
         const newItem = newItems.find(i => getCartKey(i) === key)!;
         syncItem(newItem);
       }
-      
+
       return newItems;
     });
   };
@@ -215,7 +216,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const totalPrice = items.reduce((sum, i) => {
     const totalProductQty = productQuantities[i.id] || 0;
     const isEligibleForCombo = i.isCombo && i.comboMinQuantity && totalProductQty >= i.comboMinQuantity;
-    
+
     const effectivePrice = (isEligibleForCombo && i.comboPrice)
       ? i.comboPrice
       : i.price;
