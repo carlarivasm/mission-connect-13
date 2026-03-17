@@ -349,10 +349,15 @@ const Checkout = () => {
                           ))}
                         </div>
                       )}
-                      <p className="text-sm font-bold text-primary mt-0.5">
+                      <p className="text-sm font-bold text-primary mt-0.5 flex items-center gap-1.5">
+                        {isComboActive && (
+                          <span className="text-xs text-muted-foreground line-through font-normal">
+                            R$ {(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        )}
                         R$ {(effectivePrice * item.quantity).toFixed(2)}
                         {isComboActive && (
-                          <span className="ml-2 text-[10px] bg-secondary text-secondary-foreground px-1 rounded">COMBO</span>
+                          <span className="text-[10px] bg-secondary text-secondary-foreground px-1 rounded">COMBO</span>
                         )}
                       </p>
                       <div className="flex items-center gap-2 mt-1">

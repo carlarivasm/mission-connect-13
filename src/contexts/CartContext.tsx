@@ -60,10 +60,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user) {
       const fetchCart = async () => {
-        const { data, error } = await (supabase
-          .from("cart_items" as any)
-          .select("*")
-          .eq("user_id", user.id) as any);
+        const { data, error } = await supabase
+          .from("cart_items")
+          .select(`
+            *,
+            store_products (
+              is_combo,
+              combo_min_quantity,
+              combo_price,
+              product_type
+            )
+          `)
+          .eq("user_id", user.id);
         
         if (data && data.length > 0) {
           const mappedItems: CartItem[] = data.map((d: any) => ({
@@ -76,9 +84,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             selectedColor: d.selected_color || undefined,
             image_url: d.image_url,
             configuration: d.configuration || undefined,
-            isCombo: (d as any).is_combo,
-            comboMinQuantity: (d as any).combo_min_quantity,
-            comboPrice: (d as any).combo_price,
+            isCombo: d.store_products?.is_combo,
+            comboMinQuantity: d.store_products?.combo_min_quantity,
+            comboPrice: d.store_products?.combo_price,
           }));
           setItems(mappedItems);
         } else if (items.length > 0) {
@@ -110,17 +118,35 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       } as any, { onConflict: "user_id, product_id, selected_size, selected_color" }) as any);
   };
 
-  const removeSyncItem = async (id: string, size?: string, color?: string) => {
+  const removeSyncItem = async (id: string, size?: string, color?: string, configuration?: any) => {
     if (!user) return;
-    await (supabase
-      .from("cart_items" as any)
+    
+    let query = supabase
+      .from("cart_items")
       .delete()
-      .match({
-        user_id: user.id,
-        product_id: id,
-        selected_size: size || null,
-        selected_color: color || null,
-      } as any) as any);
+      .eq("user_id", user.id)
+      .eq("product_id", id);
+      
+    if (size) {
+      query = query.eq("selected_size", size);
+    } else {
+      query = query.is("selected_size", null);
+    }
+    
+    if (color) {
+      query = query.eq("selected_color", color);
+    } else {
+      query = query.is("selected_color", null);
+    }
+    
+    if (configuration) {
+      // Use contains for jsonb match to be safe
+      query = query.contains("configuration", configuration);
+    } else {
+      query = query.is("configuration", null);
+    }
+    
+    await (query as any);
   };
 
   const addItem = (item: Omit<CartItem, "quantity">, quantity = 1) => {
@@ -150,7 +176,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const key = `${id}_${selectedSize || ""}_${selectedColor || ""}_${configuration ? JSON.stringify(configuration) : ""}`;
     setItems((prev) => {
       const newItems = prev.filter((i) => getCartKey(i) !== key);
-      if (user) removeSyncItem(id, selectedSize, selectedColor);
+      if (user) removeSyncItem(id, selectedSize, selectedColor, configuration);
       return newItems;
     });
   };

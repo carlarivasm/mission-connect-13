@@ -297,6 +297,9 @@ const ProductCard = ({
         selectedSize: product.product_type === 'simple' ? selectedSize : undefined,
         selectedColor: product.product_type === 'simple' ? selectedColor : undefined,
         configuration: product.product_type === 'kit' ? kitSpecs : undefined,
+        isCombo: product.is_combo,
+        comboMinQuantity: product.combo_min_quantity,
+        comboPrice: product.combo_price,
       } as any);
     }
     toast({ title: `${safeQty}x adicionado ao carrinho!`, description: product.name });
@@ -339,6 +342,9 @@ const ProductCard = ({
       category: product.category,
       selectedSize: defaultSize ?? undefined,
       selectedColor: defaultColor ?? undefined,
+      isCombo: product.is_combo,
+      comboMinQuantity: product.combo_min_quantity,
+      comboPrice: product.combo_price,
     });
     toast({ title: "Adicionado!", description: product.name });
   };
