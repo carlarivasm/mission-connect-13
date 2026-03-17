@@ -1259,6 +1259,14 @@ export type Database = {
       }
     }
     Functions: {
+      accept_family_request: {
+        Args: { req_id: string }
+        Returns: undefined
+      }
+      reject_family_request: {
+        Args: { req_id: string }
+        Returns: undefined
+      }
       decrease_stock: {
         Args: {
           p_color: string

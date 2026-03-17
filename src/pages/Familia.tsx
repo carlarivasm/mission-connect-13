@@ -126,10 +126,8 @@ const Familia = () => {
             creator_name: creatorProfile?.full_name || "Membro da família",
           });
 
-          // Use group name as family name if user doesn't have their own
-          if (!familyName) {
-            setFamilyName(groupData.name);
-          }
+          // Force group name as family name for members
+          setFamilyName(groupData.name);
         } else {
           setFamilyGroupInfo({
             id: groupData.id,
@@ -280,6 +278,26 @@ const Familia = () => {
     }
   };
 
+  const handleLeaveFamily = async () => {
+    if (!user || !familyGroupId) return;
+    const { error } = await supabase
+      .from("family_group_members")
+      .delete()
+      .eq("family_group_id", familyGroupId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast({ title: "Erro ao sair da família", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Você não faz mais parte da família." });
+      setFamilyGroupId(null);
+      setFamilyGroupInfo(null);
+      setIsGroupCreator(true);
+      setLinkedUsers([]);
+      loadData();
+    }
+  };
+
   const handleJoinSearch = async () => {
     if (!joinSearchQuery.trim() || !user) return;
     setSearchingJoin(true);
@@ -334,8 +352,8 @@ const Familia = () => {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
           body: JSON.stringify({ 
-              title: "Nova solicitação de família", 
-              body: "Alguém deseja entrar na sua família. Acesse a tela de Família para verificar.", 
+              title: "Pedido de Família", 
+              body: "Alguém enviou uma solicitação para entrar na sua família.", 
               link: "/familia",
               user_ids: [targetUserId]
           }),
@@ -358,8 +376,8 @@ const Familia = () => {
              method: "POST",
              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
              body: JSON.stringify({ 
-                 title: "Solicitação Aceita", 
-                 body: `${user.email} aceitou seu pedido para entrar na família.`, 
+                 title: "Bem-vindo à Família!", 
+                 body: "Seu pedido para entrar na família foi aceito.", 
                  link: "/familia",
                  user_ids: [req.requester_id]
              }),
@@ -506,21 +524,56 @@ const Familia = () => {
 
             <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Membros da família ({members.length})</Label>
+                <Label>Membros da família ({members.length + linkedUsers.length + 1})</Label>
                 <Button type="button" size="sm" variant="outline" onClick={handleAdd} className="gap-1">
                   <Plus size={14} /> Adicionar
                 </Button>
               </div>
 
-              {members.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum membro adicionado. Clique em "Adicionar" acima.
-                </p>
-              ) : (
-                <div className="space-y-3">
+              <div className="space-y-3">
+                {/* O Próprio Usuário Logado */}
+                <div className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/20 rounded-lg">
+                  <span className="text-xs text-muted-foreground w-5 text-right shrink-0">1.</span>
+                  <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0 border border-primary/30">
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary">
+                      Você
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">Você</p>
+                    <p className="text-[10px] text-primary truncate uppercase font-semibold">Missionário(a) principal</p>
+                  </div>
+                </div>
+
+                {/* Pessoas vinculadas que já tem conta */}
+                {linkedUsers.map((lu, idx) => (
+                    <div key={`lu-${lu.user_id}`} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
+                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{idx + 2}.</span>
+                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
+                          {lu.avatar_url ? (
+                            <img src={lu.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
+                              {lu.full_name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate uppercase font-semibold">Missionário(a)</p>
+                        </div>
+                        {isGroupCreator && (
+                          <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                  ))}
+                  
+                  {/* Membros não vinculados (apenas texto) */}
                   {members.map((member, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{index + 1}.</span>
+                    <div key={`m-${index}`} className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{index + linkedUsers.length + 2}.</span>
                       <Input placeholder="Nome" value={member.name} onChange={(e) => handleChange(index, "name", e.target.value)} className="flex-1" />
                       <Input placeholder="Idade" value={member.age} onChange={(e) => handleChange(index, "age", e.target.value)} className="w-20" />
                       <button type="button" onClick={() => handleRemove(index)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
@@ -529,7 +582,6 @@ const Familia = () => {
                     </div>
                   ))}
                 </div>
-              )}
             </div>
 
             {/* TABS for Linked Users vs Join requests */}
@@ -541,10 +593,10 @@ const Familia = () => {
 
               <TabsContent value="vincular" className="bg-card rounded-xl p-4 shadow-card space-y-3 mt-0">
                 <Label className="flex items-center gap-2">
-                  <UserPlus size={16} /> {isGroupCreator ? "Vincular missionários à família" : "Membros da família"}
+                  <UserPlus size={16} /> Adicionar missionários
                 </Label>
                 
-                {isGroupCreator && (
+                {isGroupCreator ? (
                   <>
                     <p className="text-xs text-muted-foreground">
                       Busque por nome ou e-mail para vincular outro missionário à sua família.
@@ -580,57 +632,9 @@ const Familia = () => {
                       </div>
                     )}
                   </>
-                )}
-
-                {/* Show creator for non-creators */}
-                {!isGroupCreator && familyGroupInfo && (
-                  <div className="space-y-2 border-b border-muted pb-2">
-                    <p className="text-xs text-muted-foreground font-semibold">Responsável:</p>
-                    <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                        <Users size={14} className="text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{familyGroupInfo.creator_name}</p>
-                        <p className="text-xs text-muted-foreground">Criador do grupo</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {linkedUsers.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-semibold">
-                      {isGroupCreator ? "Membros vinculados:" : "Outros membros:"}
-                    </p>
-                    {linkedUsers.map((lu) => (
-                      <div key={lu.user_id} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
-                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
-                          {lu.avatar_url ? (
-                            <img src={lu.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
-                              {lu.full_name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{lu.email}</p>
-                        </div>
-                        {isGroupCreator && (
-                          <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
-                            <X size={16} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!isGroupCreator && linkedUsers.length === 0 && !familyGroupInfo && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Você ainda não foi vinculado a nenhum grupo familiar.
+                ) : (
+                  <p className="text-xs text-muted-foreground py-2">
+                    Apenas o criador da família pode convidar novos membros para se vincularem.
                   </p>
                 )}
               </TabsContent>
@@ -639,22 +643,31 @@ const Familia = () => {
                 <Label className="flex items-center gap-2">
                   <UserPlus size={16} /> Entrar em uma Família
                 </Label>
-                <p className="text-xs text-muted-foreground">
-                  Busque por um missionário para solicitar a entrada na família dele. Ele deve possuir uma família criada.
-                </p>
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Buscar por nome ou e-mail..."
-                    value={joinSearchQuery}
-                    onChange={(e) => setJoinSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleJoinSearch()}
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" variant="outline" onClick={handleJoinSearch} disabled={searchingJoin} className="gap-1">
-                    <Search size={14} /> {searchingJoin ? "..." : "Buscar"}
-                  </Button>
-                </div>
+                {(!isGroupCreator && !!familyGroupInfo) ? (
+                  <p className="text-xs text-muted-foreground py-2">
+                    Você já está vinculado a uma família. Para buscar e entrar em outra família, solicite sua remoção do grupo atual primeiro.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Busque por um missionário para solicitar a entrada na família dele. Ele deve possuir uma família criada.
+                    </p>
+
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Buscar por nome ou e-mail..."
+                        value={joinSearchQuery}
+                        onChange={(e) => setJoinSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleJoinSearch()}
+                        className="flex-1"
+                      />
+                      <Button type="button" size="sm" variant="outline" onClick={handleJoinSearch} disabled={searchingJoin} className="gap-1">
+                        <Search size={14} /> {searchingJoin ? "..." : "Buscar"}
+                      </Button>
+                    </div>
+                  </>
+                )}
 
                 {joinSearchResults.length > 0 && (
                   <div className="space-y-2 border-t border-muted pt-2">
@@ -702,10 +715,17 @@ const Familia = () => {
               </TabsContent>
             </Tabs>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
-              <Save size={16} />
-              {saving ? "Salvando..." : "Salvar Dados da Família"}
-            </Button>
+            {isGroupCreator || !familyGroupInfo ? (
+              <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
+                <Save size={16} />
+                {saving ? "Salvando..." : "Salvar Dados da Família"}
+              </Button>
+            ) : (
+              <Button onClick={handleLeaveFamily} variant="secondary" className="w-full gap-2 mt-4 bg-destructive/10 text-destructive hover:bg-destructive/20 border-none">
+                <UserX size={16} />
+                Sair da Família
+              </Button>
+            )}
           </div>
         )}
       </main>
