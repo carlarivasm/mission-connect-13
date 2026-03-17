@@ -513,7 +513,7 @@ const ManageStore = () => {
       product_type: productType,
       is_kit: productType === 'kit',
     };
-    const { error } = editingId 
+    const { error } = editingId
       ? await supabase.from("store_products").update(payload).eq("id", editingId)
       : await supabase.from("store_products").insert(payload);
 
@@ -554,7 +554,7 @@ const ManageStore = () => {
     setComboMinQuantity(p.combo_min_quantity || 1);
     setComboPrice(p.combo_price?.toString() || "");
     setProductType(p.product_type || 'simple');
-    
+
     // Fetch kit components if it's a kit
     if (p.product_type === 'kit') {
       (supabase.from("kit_components" as any).select("*").eq("kit_id", p.id) as any).then(({ data }: any) => {
@@ -563,7 +563,7 @@ const ManageStore = () => {
     } else {
       setKitComponents([]);
     }
-    
+
     setShowNewProduct(true);
   };
 
@@ -626,6 +626,56 @@ const ManageStore = () => {
                   </Select>
                 </div>
               </div>
+              {/* Product Type / Kit Settings */}
+              <div className="bg-muted p-3 rounded-xl space-y-3">
+                <div className="space-y-1">
+                  <Label>Tipo de Produto</Label>
+                  <Select value={productType} onValueChange={(v: any) => setProductType(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simples</SelectItem>
+                      <SelectItem value="kit">Kit de itens variados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {productType === 'kit' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Produtos que compõem o kit</Label>
+                    {kitComponents.map((comp: any, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <Select value={comp.component_product_id} onValueChange={(val) => {
+                          const newComps = [...kitComponents];
+                          newComps[idx].component_product_id = val;
+                          setKitComponents(newComps);
+                        }}>
+                          <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            {products.filter(p => p.product_type === 'simple').map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          className="w-16"
+                          value={comp.quantity}
+                          onChange={(e) => {
+                            const newComps = [...kitComponents];
+                            (newComps[idx] as any).quantity = parseInt(e.target.value) || 1;
+                            setKitComponents(newComps);
+                          }}
+                        />
+                        <button onClick={() => setKitComponents(kitComponents.filter((_, i) => i !== idx))} className="text-destructive">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setKitComponents([...kitComponents, { component_product_id: '', quantity: 1 }])}>
+                      + Adicionar Produto ao Kit
+                    </Button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-1">
                 <Label>Descrição</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes do produto" rows={2} />
@@ -678,56 +728,7 @@ const ManageStore = () => {
                 )}
               </div>
 
-              {/* Product Type / Kit Settings */}
-              <div className="bg-muted p-3 rounded-xl space-y-3">
-                <div className="space-y-1">
-                  <Label>Tipo de Produto</Label>
-                  <Select value={productType} onValueChange={(v: any) => setProductType(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="simple">Simples</SelectItem>
-                      <SelectItem value="kit">Kit / Combo de itens variados</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {productType === 'kit' && (
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase text-muted-foreground">Produtos que compõem o kit</Label>
-                    {kitComponents.map((comp: any, idx) => (
-                      <div key={idx} className="flex gap-2 items-center">
-                        <Select value={comp.component_product_id} onValueChange={(val) => {
-                          const newComps = [...kitComponents];
-                          newComps[idx].component_product_id = val;
-                          setKitComponents(newComps);
-                        }}>
-                          <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                          <SelectContent>
-                            {products.filter(p => p.product_type === 'simple').map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input 
-                          type="number" 
-                          className="w-16" 
-                          value={comp.quantity} 
-                          onChange={(e) => {
-                            const newComps = [...kitComponents];
-                            (newComps[idx] as any).quantity = parseInt(e.target.value) || 1;
-                            setKitComponents(newComps);
-                          }} 
-                        />
-                        <button onClick={() => setKitComponents(kitComponents.filter((_, i) => i !== idx))} className="text-destructive">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => setKitComponents([...kitComponents, { component_product_id: '', quantity: 1 }])}>
-                      + Adicionar Produto ao Kit
-                    </Button>
-                  </div>
-                )}
-              </div>
+
               <div className="space-y-1">
                 <Label>Imagem</Label>
                 <div className="flex items-center gap-3">
