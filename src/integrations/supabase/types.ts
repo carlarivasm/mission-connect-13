@@ -601,6 +601,7 @@ export type Database = {
           quantity: number
           selected_color: string | null
           selected_size: string | null
+          configuration: Json | null
         }
         Insert: {
           category?: string
@@ -632,6 +633,45 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_components: {
+        Row: {
+          id: string
+          kit_id: string
+          component_product_id: string
+          quantity: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          kit_id: string
+          component_product_id: string
+          quantity?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          kit_id?: string
+          component_product_id?: string
+          quantity?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_components_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
             referencedColumns: ["id"]
           },
         ]
@@ -916,6 +956,11 @@ export type Database = {
           price: number
           sizes: string[] | null
           updated_at: string
+          is_combo: boolean | null
+          combo_min_quantity: number | null
+          combo_price: number | null
+          product_type: string | null
+          is_kit: boolean | null
         }
         Insert: {
           available?: boolean
@@ -931,6 +976,11 @@ export type Database = {
           price?: number
           sizes?: string[] | null
           updated_at?: string
+          is_combo?: boolean | null
+          combo_min_quantity?: number | null
+          combo_price?: number | null
+          product_type?: string | null
+          is_kit?: boolean | null
         }
         Update: {
           available?: boolean
@@ -946,6 +996,11 @@ export type Database = {
           price?: number
           sizes?: string[] | null
           updated_at?: string
+          is_combo?: boolean | null
+          combo_min_quantity?: number | null
+          combo_price?: number | null
+          product_type?: string | null
+          is_kit?: boolean | null
         }
         Relationships: []
       }
