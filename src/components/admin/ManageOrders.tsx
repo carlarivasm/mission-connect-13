@@ -17,6 +17,8 @@ interface OrderItem {
   quantity: number;
   selected_size: string | null;
   selected_color: string | null;
+  product_id: string;
+  configuration: any;
 }
 
 interface Order {
@@ -163,6 +165,10 @@ const ManageOrders = () => {
   }, []);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    // Get current order and its items
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus } as any)
@@ -170,12 +176,54 @@ const ManageOrders = () => {
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Logic for stock deduction when becoming "Separado"
+    if (newStatus === "separated") {
+      const items = order.items || [];
+      for (const item of items) {
+        if (item.configuration) {
+          // It's a kit! Deduct stock for each component
+          const { data: components } = await supabase
+            .from("kit_components" as any)
+            .select("*")
+            .eq("kit_id", item.product_id);
+          
+          if (components) {
+            for (const comp of (components as any[])) {
+              // Iterate through each instance of the component in the kit
+              for (let i = 0; i < comp.quantity; i++) {
+                const key = `${comp.component_product_id}_${i}`;
+                const spec = item.configuration[key];
+                
+                await supabase.rpc("decrease_stock", {
+                  p_product_id: comp.component_product_id,
+                  p_size: spec?.size || null,
+                  p_color: spec?.color || null,
+                  p_quantity: item.quantity // Deduct based on total number of kits ordered
+                });
+              }
+            }
+          }
+        } else {
+          // Simple product
+          await supabase.rpc("decrease_stock", {
+            p_product_id: item.product_id,
+            p_size: item.selected_size,
+            p_color: item.selected_color,
+            p_quantity: item.quantity
+          });
+        }
+      }
+      toast({ title: "Estoque atualizado e pedido marcado como separado!" });
     } else {
       toast({ title: "Status de logística atualizado!" });
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-      );
     }
+
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+    );
   };
 
   const updatePaymentStatus = async (orderId: string, newStatus: string) => {

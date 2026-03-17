@@ -21,6 +21,18 @@ interface Product {
   sizes: string[];
   colors: string[];
   contact_info: string | null;
+  is_combo: boolean;
+  combo_min_quantity: number;
+  combo_price: number | null;
+  product_type: 'simple' | 'kit';
+  is_kit: boolean;
+}
+
+interface KitComponent {
+  id?: string;
+  kit_id: string;
+  component_product_id: string;
+  quantity: number;
 }
 
 interface StockEntry {
@@ -37,6 +49,7 @@ const categories = [
   { value: "squeeze", label: "Squeeze" },
   { value: "chaveiro", label: "Chaveiro" },
   { value: "casaco", label: "Casaco" },
+  { value: "kit", label: "Kit" },
   { value: "outros", label: "Outros" },
 ];
 
@@ -434,6 +447,15 @@ const ManageStore = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Combo fields
+  const [isCombo, setIsCombo] = useState(false);
+  const [comboMinQuantity, setComboMinQuantity] = useState(1);
+  const [comboPrice, setComboPrice] = useState("");
+
+  // Kit fields
+  const [productType, setProductType] = useState<'simple' | 'kit'>('simple');
+  const [kitComponents, setKitComponents] = useState<{ component_product_id: string; quantity: number }[]>([]);
+
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("store_products")
@@ -450,6 +472,8 @@ const ManageStore = () => {
     setName(""); setDescription(""); setCategory("camiseta"); setPrice("");
     setAvailable(true); setSizes(""); setColors(""); setContactInfo("");
     setImageUrl(""); setEditingId(null);
+    setIsCombo(false); setComboMinQuantity(1); setComboPrice("");
+    setProductType('simple'); setKitComponents([]);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -483,15 +507,34 @@ const ManageStore = () => {
       contact_info: contactInfo.trim() || null,
       image_url: imageUrl || null,
       created_by: user?.id,
+      is_combo: isCombo,
+      combo_min_quantity: comboMinQuantity,
+      combo_price: isCombo ? parseFloat(comboPrice) || null : null,
+      product_type: productType,
+      is_kit: productType === 'kit',
     };
-    if (editingId) {
-      const { error } = await supabase.from("store_products").update(payload).eq("id", editingId);
-      if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Produto atualizado!" }); resetForm(); fetchProducts(); }
+    const { error } = editingId 
+      ? await supabase.from("store_products").update(payload).eq("id", editingId)
+      : await supabase.from("store_products").insert(payload);
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      const { error } = await supabase.from("store_products").insert(payload);
-      if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Produto adicionado!" }); resetForm(); fetchProducts(); }
+      // Update kit components if it's a kit
+      if (productType === 'kit') {
+        const finalId = editingId || (await supabase.from("store_products").select("id").eq("name", payload.name).order("created_at", { ascending: false }).limit(1).single()).data?.id;
+        if (finalId) {
+          await (supabase.from("kit_components" as any).delete().eq("kit_id", finalId) as any);
+          if (kitComponents.length > 0) {
+            await (supabase.from("kit_components" as any).insert(
+              kitComponents.map(c => ({ ...c, kit_id: finalId }))
+            ) as any);
+          }
+        }
+      }
+      toast({ title: editingId ? "Produto atualizado!" : "Produto adicionado!" });
+      resetForm();
+      fetchProducts();
     }
     setSubmitting(false);
   };
@@ -507,6 +550,20 @@ const ManageStore = () => {
     setColors(p.colors.join(", "));
     setContactInfo(p.contact_info || "");
     setImageUrl(p.image_url || "");
+    setIsCombo(p.is_combo || false);
+    setComboMinQuantity(p.combo_min_quantity || 1);
+    setComboPrice(p.combo_price?.toString() || "");
+    setProductType(p.product_type || 'simple');
+    
+    // Fetch kit components if it's a kit
+    if (p.product_type === 'kit') {
+      (supabase.from("kit_components" as any).select("*").eq("kit_id", p.id) as any).then(({ data }: any) => {
+        if (data) setKitComponents(data.map((c: any) => ({ component_product_id: c.component_product_id, quantity: c.quantity })));
+      });
+    } else {
+      setKitComponents([]);
+    }
+    
     setShowNewProduct(true);
   };
 
@@ -599,6 +656,77 @@ const ManageStore = () => {
               <div className="space-y-1">
                 <Label>Contato/Pedido</Label>
                 <Input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="WhatsApp ou link para pedido" />
+              </div>
+
+              {/* Combo Settings */}
+              <div className="bg-muted p-3 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Ativar Combo?</Label>
+                  <Switch checked={isCombo} onCheckedChange={setIsCombo} />
+                </div>
+                {isCombo && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Qtd Mínima</Label>
+                      <Input type="number" value={comboMinQuantity} onChange={(e) => setComboMinQuantity(parseInt(e.target.value) || 1)} min="1" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Preço Unit. no Combo (R$)</Label>
+                      <Input type="number" step="0.01" value={comboPrice} onChange={(e) => setComboPrice(e.target.value)} placeholder="0,00" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Type / Kit Settings */}
+              <div className="bg-muted p-3 rounded-xl space-y-3">
+                <div className="space-y-1">
+                  <Label>Tipo de Produto</Label>
+                  <Select value={productType} onValueChange={(v: any) => setProductType(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simples</SelectItem>
+                      <SelectItem value="kit">Kit / Combo de itens variados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {productType === 'kit' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase text-muted-foreground">Produtos que compõem o kit</Label>
+                    {kitComponents.map((comp: any, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <Select value={comp.component_product_id} onValueChange={(val) => {
+                          const newComps = [...kitComponents];
+                          newComps[idx].component_product_id = val;
+                          setKitComponents(newComps);
+                        }}>
+                          <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            {products.filter(p => p.product_type === 'simple').map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input 
+                          type="number" 
+                          className="w-16" 
+                          value={comp.quantity} 
+                          onChange={(e) => {
+                            const newComps = [...kitComponents];
+                            (newComps[idx] as any).quantity = parseInt(e.target.value) || 1;
+                            setKitComponents(newComps);
+                          }} 
+                        />
+                        <button onClick={() => setKitComponents(kitComponents.filter((_, i) => i !== idx))} className="text-destructive">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setKitComponents([...kitComponents, { component_product_id: '', quantity: 1 }])}>
+                      + Adicionar Produto ao Kit
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Imagem</Label>

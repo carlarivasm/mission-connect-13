@@ -11,13 +11,17 @@ export interface CartItem {
   quantity: number;
   selectedSize?: string;
   selectedColor?: string;
+  isCombo?: boolean;
+  comboMinQuantity?: number;
+  comboPrice?: number | null;
+  configuration?: any; // For kit component selections
 }
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (id: string, selectedSize?: string, selectedColor?: string) => void;
-  updateQuantity: (id: string, quantity: number, selectedSize?: string, selectedColor?: string) => void;
+  removeItem: (id: string, selectedSize?: string, selectedColor?: string, configuration?: any) => void;
+  updateQuantity: (id: string, quantity: number, selectedSize?: string, selectedColor?: string, configuration?: any) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -33,8 +37,8 @@ export const useCart = () => {
 
 const CART_KEY = "jfm_cart";
 
-const getCartKey = (item: CartItem | { id: string; selectedSize?: string; selectedColor?: string }) => 
-  `${item.id}_${item.selectedSize || ""}_${item.selectedColor || ""}`;
+const getCartKey = (item: CartItem | { id: string; selectedSize?: string; selectedColor?: string; configuration?: any }) => 
+  `${item.id}_${item.selectedSize || ""}_${item.selectedColor || ""}_${item.configuration ? JSON.stringify(item.configuration) : ""}`;
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -71,6 +75,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             selectedSize: d.selected_size || undefined,
             selectedColor: d.selected_color || undefined,
             image_url: d.image_url,
+            configuration: d.configuration || undefined,
+            isCombo: (d as any).is_combo,
+            comboMinQuantity: (d as any).combo_min_quantity,
+            comboPrice: (d as any).combo_price,
           }));
           setItems(mappedItems);
         } else if (items.length > 0) {
@@ -98,6 +106,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         selected_size: item.selectedSize || null,
         selected_color: item.selectedColor || null,
         image_url: item.image_url,
+        configuration: item.configuration || null,
       } as any, { onConflict: "user_id, product_id, selected_size, selected_color" }) as any);
   };
 
@@ -137,8 +146,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const removeItem = (id: string, selectedSize?: string, selectedColor?: string) => {
-    const key = `${id}_${selectedSize || ""}_${selectedColor || ""}`;
+  const removeItem = (id: string, selectedSize?: string, selectedColor?: string, configuration?: any) => {
+    const key = `${id}_${selectedSize || ""}_${selectedColor || ""}_${configuration ? JSON.stringify(configuration) : ""}`;
     setItems((prev) => {
       const newItems = prev.filter((i) => getCartKey(i) !== key);
       if (user) removeSyncItem(id, selectedSize, selectedColor);
@@ -146,12 +155,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const updateQuantity = (id: string, quantity: number, selectedSize?: string, selectedColor?: string) => {
+  const updateQuantity = (id: string, quantity: number, selectedSize?: string, selectedColor?: string, configuration?: any) => {
     if (quantity <= 0) {
-      removeItem(id, selectedSize, selectedColor);
+      removeItem(id, selectedSize, selectedColor, configuration);
       return;
     }
-    const key = `${id}_${selectedSize || ""}_${selectedColor || ""}`;
+    const key = `${id}_${selectedSize || ""}_${selectedColor || ""}_${configuration ? JSON.stringify(configuration) : ""}`;
     setItems((prev) => {
       const newItems = prev.map((i) => getCartKey(i) === key ? { ...i, quantity } : i);
       if (user) {
@@ -170,7 +179,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+  // Group quantities by product_id to check for combo eligibility
+  const productQuantities: Record<string, number> = {};
+  items.forEach(i => {
+    productQuantities[i.id] = (productQuantities[i.id] || 0) + i.quantity;
+  });
+
+  const totalPrice = items.reduce((sum, i) => {
+    const totalProductQty = productQuantities[i.id] || 0;
+    const isEligibleForCombo = i.isCombo && i.comboMinQuantity && totalProductQty >= i.comboMinQuantity;
+    
+    const effectivePrice = (isEligibleForCombo && i.comboPrice)
+      ? i.comboPrice
+      : i.price;
+    return sum + effectivePrice * i.quantity;
+  }, 0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice }}>

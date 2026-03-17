@@ -20,6 +20,18 @@ interface Product {
   sizes: string[];
   colors: string[];
   contact_info: string | null;
+  is_combo: boolean;
+  combo_min_quantity: number;
+  combo_price: number | null;
+  product_type: 'simple' | 'kit';
+  is_kit: boolean;
+}
+
+interface KitComponent {
+  kit_id: string;
+  component_product_id: string;
+  quantity: number;
+  product?: Product;
 }
 
 interface StockEntry {
@@ -35,6 +47,7 @@ const categoryLabels: Record<string, string> = {
   squeeze: "Squeeze",
   chaveiro: "Chaveiro",
   casaco: "Casaco",
+  kit: "Kit",
   outros: "Outros",
 };
 
@@ -44,6 +57,7 @@ const categoryEmojis: Record<string, string> = {
   squeeze: "🥤",
   chaveiro: "🔑",
   casaco: "🧥",
+  kit: "🎁",
   outros: "📦",
 };
 
@@ -57,15 +71,26 @@ const Loja = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  const [kitComponents, setKitComponents] = useState<KitComponent[]>([]);
+
   useEffect(() => {
     Promise.all([
       supabase.from("store_products").select("*").order("category"),
       supabase.from("product_stock").select("product_id, size, color, quantity"),
       supabase.from("app_settings").select("setting_value").eq("setting_key", "store_whatsapp").single(),
-    ]).then(([prodRes, stockRes, whatsRes]) => {
-      if (prodRes.data) setProducts(prodRes.data as Product[]);
+      supabase.from("kit_components" as any).select("*"),
+    ]).then(([prodRes, stockRes, whatsRes, kitRes]) => {
+      const allProds = (prodRes.data || []) as any[];
+      if (prodRes.data) setProducts(allProds as Product[]);
       if (stockRes.data) setStock(stockRes.data as StockEntry[]);
       if (whatsRes.data) setWhatsapp(whatsRes.data.setting_value);
+      if (kitRes.data) {
+        const componentsWithProds = (kitRes.data as any[]).map(comp => ({
+          ...comp,
+          product: allProds.find(p => p.id === comp.component_product_id)
+        }));
+        setKitComponents(componentsWithProds);
+      }
       setLoading(false);
     });
   }, []);
@@ -165,7 +190,8 @@ const Loja = () => {
                 stock={stock}
                 whatsapp={whatsapp}
                 isAvailable={isProductAvailable(product)}
-                getVariantStock={(size, color) => getVariantStock(product.id, size, color)}
+                getVariantStock={(prodId, size, color) => getVariantStock(prodId, size, color)}
+                kitComponents={kitComponents.filter(c => c.kit_id === product.id)}
               />
             ))}
           </div>
@@ -183,12 +209,14 @@ const ProductCard = ({
   whatsapp,
   isAvailable,
   getVariantStock,
+  kitComponents,
 }: {
   product: Product;
   stock: StockEntry[];
   whatsapp: string;
   isAvailable: boolean;
-  getVariantStock: (size: string | null, color: string | null) => number | null;
+  getVariantStock: (productId: string, size: string | null, color: string | null) => number | null;
+  kitComponents: KitComponent[];
 }) => {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -203,6 +231,7 @@ const ProductCard = ({
       document.body.style.overflow = "";
     };
   }, [showDetails]);
+
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes.length > 0 ? product.sizes[0] : undefined
   );
@@ -210,10 +239,32 @@ const ProductCard = ({
     product.colors.length > 0 ? product.colors[0] : undefined
   );
   const [quantity, setQuantity] = useState(1);
+  const [kitSpecs, setKitSpecs] = useState<Record<string, { size?: string, color?: string }>>({});
+
+  // Initialize kitSpecs if it's a kit
+  useEffect(() => {
+    if (product.product_type === 'kit' && kitComponents.length > 0) {
+      const initialSpecs: Record<string, { size?: string, color?: string }> = {};
+      kitComponents.forEach(comp => {
+        if (comp.product) {
+          // Initialize specs for each instance of the component item
+          for (let i = 0; i < comp.quantity; i++) {
+            const key = `${comp.component_product_id}_${i}`;
+            initialSpecs[key] = {
+              size: comp.product.sizes.length > 0 ? comp.product.sizes[0] : undefined,
+              color: comp.product.colors.length > 0 ? comp.product.colors[0] : undefined,
+            };
+          }
+        }
+      });
+      setKitSpecs(initialSpecs);
+    }
+  }, [product.id, kitComponents]);
+
   const { addItem } = useCart();
   const { toast } = useToast();
 
-  const currentVariantStock = getVariantStock(selectedSize ?? null, selectedColor ?? null);
+  const currentVariantStock = getVariantStock(product.id, selectedSize ?? null, selectedColor ?? null);
   const variantOutOfStock = currentVariantStock !== null && currentVariantStock <= 0;
 
   // Clamp quantity whenever the selected variant changes so it never exceeds available stock
@@ -243,9 +294,10 @@ const ProductCard = ({
         price: product.price,
         image_url: product.image_url,
         category: product.category,
-        selectedSize,
-        selectedColor,
-      });
+        selectedSize: product.product_type === 'simple' ? selectedSize : undefined,
+        selectedColor: product.product_type === 'simple' ? selectedColor : undefined,
+        configuration: product.product_type === 'kit' ? kitSpecs : undefined,
+      } as any);
     }
     toast({ title: `${safeQty}x adicionado ao carrinho!`, description: product.name });
     setShowDetails(false);
@@ -255,6 +307,14 @@ const ProductCard = ({
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAvailable) return;
+    
+    // If it's a kit, always open details to select specs
+    if (product.product_type === 'kit') {
+      setQuantity(1);
+      setShowDetails(true);
+      return;
+    }
+
     // If product has MULTIPLE size or color options, open modal to let user pick
     const hasMultipleSizes = product.sizes.length > 1;
     const hasMultipleColors = product.colors.length > 1;
@@ -266,7 +326,7 @@ const ProductCard = ({
     // Single variant (or no variant): add directly with the only available option
     const defaultSize = product.sizes.length === 1 ? product.sizes[0] : null;
     const defaultColor = product.colors.length === 1 ? product.colors[0] : null;
-    const defaultStock = getVariantStock(defaultSize, defaultColor);
+    const defaultStock = getVariantStock(product.id, defaultSize, defaultColor);
     if (defaultStock !== null && defaultStock <= 0) {
       toast({ title: "Esgotado", description: "Este item está fora de estoque.", variant: "destructive" });
       return;
@@ -319,6 +379,16 @@ const ProductCard = ({
             <p className="text-base font-bold text-primary">
               R$ {product.price.toFixed(2)}
             </p>
+            {product.is_combo && (
+              <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded font-bold">
+                +{product.combo_min_quantity} un: R$ {product.combo_price?.toFixed(2)}
+              </span>
+            )}
+            {product.product_type === 'kit' && (
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">
+                KIT
+              </span>
+            )}
             {isAvailable ? (
               <button
                 onClick={handleQuickAdd}
@@ -367,71 +437,133 @@ const ProductCard = ({
                 <p className="text-sm text-muted-foreground mt-3">{product.description}</p>
               )}
 
-              {product.sizes.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Tamanho</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {product.sizes.map((s) => {
-                      const sStock = getVariantStock(s, selectedColor ?? null);
-                      const outOfStock = sStock !== null && sStock <= 0;
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => setSelectedSize(s)}
-                          disabled={outOfStock}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
-                            ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
-                            : selectedSize === s
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground hover:bg-muted/80"
-                            }`}
-                        >
-                          {s}
-                          {sStock !== null && (
-                            <span className="ml-1 text-[10px] opacity-70">({sStock})</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Simple Product Specs OR Kit Component Specs */}
+              {product.product_type === 'simple' ? (
+                <>
+                  {product.sizes.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Tamanho</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {product.sizes.map((s) => {
+                          const sStock = getVariantStock(product.id, s, selectedColor ?? null);
+                          const outOfStock = sStock !== null && sStock <= 0;
+                          return (
+                            <button
+                              key={s}
+                              onClick={() => setSelectedSize(s)}
+                              disabled={outOfStock}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
+                                ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                                : selectedSize === s
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-foreground hover:bg-muted/80"
+                                }`}
+                            >
+                              {s}
+                              {sStock !== null && (
+                                <span className="ml-1 text-[10px] opacity-70">({sStock})</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-              {product.colors.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Cor</p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {product.colors.map((c) => {
-                      const cStock = getVariantStock(selectedSize ?? null, c);
-                      const outOfStock = cStock !== null && cStock <= 0;
-                      return (
-                        <button
-                          key={c}
-                          onClick={() => setSelectedColor(c)}
-                          disabled={outOfStock}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
-                            ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
-                            : selectedColor === c
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground hover:bg-muted/80"
-                            }`}
-                        >
-                          {c}
-                          {cStock !== null && (
-                            <span className="ml-1 text-[10px] opacity-70">({cStock})</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                  {product.colors.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Cor</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {product.colors.map((c) => {
+                          const cStock = getVariantStock(product.id, selectedSize ?? null, c);
+                          const outOfStock = cStock !== null && cStock <= 0;
+                          return (
+                            <button
+                              key={c}
+                              onClick={() => setSelectedColor(c)}
+                              disabled={outOfStock}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${outOfStock
+                                ? "bg-muted text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                                : selectedColor === c
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-foreground hover:bg-muted/80"
+                                }`}
+                            >
+                              {c}
+                              {cStock !== null && (
+                                <span className="ml-1 text-[10px] opacity-70">({cStock})</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {currentVariantStock !== null && (
+                    <p className={`text-xs mt-2 font-semibold ${currentVariantStock > 0 ? "text-green-600" : "text-destructive"}`}>
+                      {currentVariantStock > 0 ? `${currentVariantStock} em estoque` : "Fora de estoque"}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs font-bold text-muted-foreground uppercase border-b pb-1">Itens do Kit</p>
+                  {kitComponents.map((comp) => (
+                    <div key={comp.component_product_id} className="space-y-3">
+                      <p className="text-sm font-bold border-l-2 border-primary pl-2">{comp.product?.name}</p>
+                      <div className="grid gap-3">
+                        {Array.from({ length: comp.quantity }).map((_, idx) => {
+                          const key = `${comp.component_product_id}_${idx}`;
+                          return (
+                            <div key={key} className="bg-muted/50 p-3 rounded-xl space-y-2 border border-border/50">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase">Item {idx + 1}</p>
+                              
+                              {comp.product && comp.product.sizes.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">Tamanho</p>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {comp.product.sizes.map(s => {
+                                      const sStock = getVariantStock(comp.component_product_id, s, kitSpecs[key]?.color ?? null);
+                                       return (
+                                        <button
+                                          key={s}
+                                          onClick={() => setKitSpecs(prev => ({ ...prev, [key]: { ...prev[key], size: s } }))}
+                                          className={`px-2 py-0.5 rounded-md text-[10px] transition-colors ${kitSpecs[key]?.size === s ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}
+                                        >
+                                          {s} {sStock !== null && `(${sStock})`}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
 
-              {/* Stock info */}
-              {currentVariantStock !== null && (
-                <p className={`text-xs mt-2 font-semibold ${currentVariantStock > 0 ? "text-green-600" : "text-destructive"}`}>
-                  {currentVariantStock > 0 ? `${currentVariantStock} em estoque` : "Fora de estoque"}
-                </p>
+                              {comp.product && comp.product.colors.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">Cor</p>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {comp.product.colors.map(c => {
+                                      const cStock = getVariantStock(comp.component_product_id, kitSpecs[key]?.size ?? null, c);
+                                      return (
+                                        <button
+                                          key={c}
+                                          onClick={() => setKitSpecs(prev => ({ ...prev, [key]: { ...prev[key], color: c } }))}
+                                          className={`px-2 py-0.5 rounded-md text-[10px] transition-colors ${kitSpecs[key]?.color === c ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}
+                                        >
+                                          {c} {cStock !== null && `(${cStock})`}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

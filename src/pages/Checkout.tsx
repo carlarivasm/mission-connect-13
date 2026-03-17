@@ -23,6 +23,7 @@ const categoryLabels: Record<string, string> = {
   squeeze: "Squeeze",
   chaveiro: "Chaveiro",
   casaco: "Casaco",
+  kit: "Kit",
   outros: "Outros",
 };
 
@@ -110,10 +111,28 @@ const Checkout = () => {
       `📋 *Itens do Pedido:*`,
     ];
 
+    // Group quantities by product_id for combo check in message
+    const productQuantities: Record<string, number> = {};
+    items.forEach(i => {
+      productQuantities[i.id] = (productQuantities[i.id] || 0) + i.quantity;
+    });
+
     items.forEach((item, i) => {
-      let desc = `${i + 1}. *${item.name}* — ${item.quantity}x R$ ${item.price.toFixed(2)}`;
+      const totalProductQty = productQuantities[item.id] || 0;
+      const isComboActive = item.isCombo && item.comboMinQuantity && totalProductQty >= item.comboMinQuantity;
+      const effectivePrice = isComboActive ? item.comboPrice || item.price : item.price;
+      
+      let desc = `${i + 1}. *${item.name}* — ${item.quantity}x R$ ${effectivePrice.toFixed(2)}`;
+      if (isComboActive) desc += " (Combo!)";
       if (item.selectedSize) desc += ` | Tam: ${item.selectedSize}`;
       if (item.selectedColor) desc += ` | Cor: ${item.selectedColor}`;
+      
+      if (item.configuration) {
+        desc += `\n   _Componentes:_`;
+        Object.entries(item.configuration).forEach(([key, specs]: [string, any]) => {
+          desc += `\n   - ${specs.size || ''} ${specs.color || ''}`;
+        });
+      }
       lines.push(desc);
     });
 
@@ -141,16 +160,7 @@ const Checkout = () => {
     return lines.join("\n");
   };
 
-  const decreaseStock = async () => {
-    for (const item of items) {
-      await supabase.rpc("decrease_stock", {
-        p_product_id: item.id,
-        p_size: item.selectedSize || null,
-        p_color: item.selectedColor || null,
-        p_quantity: item.quantity,
-      });
-    }
-  };
+  // Removed decreaseStock from here as it should only happen when status is "Separado"
 
   const saveOrderToDb = async (receiptUrl: string | null) => {
     if (!user) return;
@@ -186,6 +196,7 @@ const Checkout = () => {
       selected_size: item.selectedSize || null,
       selected_color: item.selectedColor || null,
       image_url: item.image_url || null,
+      configuration: item.configuration || null,
     }));
 
     await supabase.from("order_items").insert(orderItems as any);
@@ -225,8 +236,8 @@ const Checkout = () => {
     // Save to database
     await saveOrderToDb(receiptUrl);
 
-    // Decrease stock
-    await decreaseStock();
+    // Decrease stock - REMOVED, now handled in ManageOrders when status -> Separado
+    // await decreaseStock();
 
     // Send to WhatsApp
     const message = buildOrderMessage();
@@ -310,49 +321,65 @@ const Checkout = () => {
             {/* Cart Items */}
             <div className="space-y-3">
               <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Seus Itens</h2>
-              {items.map((item) => (
-                <div key={`${item.id}_${item.selectedSize}_${item.selectedColor}`} className="flex gap-3 p-3 bg-card rounded-xl shadow-card">
-                  {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <ShoppingCart size={20} className="text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {categoryLabels[item.category] || item.category}
-                      {item.selectedSize && ` • ${item.selectedSize}`}
-                      {item.selectedColor && ` • ${item.selectedColor}`}
-                    </p>
-                    <p className="text-sm font-bold text-primary mt-0.5">
-                      R$ {(item.price * item.quantity).toFixed(2)}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize, item.selectedColor)}
-                        className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor)}
-                        className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
-                      >
-                        <Plus size={14} />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.id, item.selectedSize, item.selectedColor)}
-                        className="ml-auto p-1 rounded-md text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+              {items.map((item) => {
+                const productQty = items.reduce((sum, it) => it.id === item.id ? sum + it.quantity : sum, 0);
+                const isComboActive = item.isCombo && item.comboMinQuantity && productQty >= item.comboMinQuantity;
+                const effectivePrice = isComboActive && item.comboPrice ? item.comboPrice : item.price;
+                
+                return (
+                  <div key={`${item.id}_${item.selectedSize}_${item.selectedColor}_${item.configuration ? JSON.stringify(item.configuration) : ""}`} className="flex gap-3 p-3 bg-card rounded-xl shadow-card">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <ShoppingCart size={20} className="text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground text-sm truncate">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {categoryLabels[item.category] || item.category}
+                        {item.selectedSize && ` • ${item.selectedSize}`}
+                        {item.selectedColor && ` • ${item.selectedColor}`}
+                      </p>
+                      {item.configuration && (
+                        <div className="mt-1 p-1.5 bg-muted/50 rounded text-[10px] text-muted-foreground whitespace-pre-wrap">
+                          {Object.entries(item.configuration).map(([key, specs]: [string, any]) => (
+                            <div key={key}>• {specs.size && `Tam: ${specs.size}`} {specs.color && `Cor: ${specs.color}`}</div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-sm font-bold text-primary mt-0.5">
+                        R$ {(effectivePrice * item.quantity).toFixed(2)}
+                        {isComboActive && (
+                          <span className="ml-2 text-[10px] bg-secondary text-secondary-foreground px-1 rounded">COMBO</span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize, item.selectedColor, item.configuration)}
+                          className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="text-sm font-semibold w-6 text-center">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor, item.configuration)}
+                          className="p-1 rounded-md bg-muted text-foreground hover:bg-muted/80"
+                        >
+                          <Plus size={14} />
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.id, item.selectedSize, item.selectedColor, item.configuration)}
+                          className="ml-auto p-1 rounded-md text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Observation */}
