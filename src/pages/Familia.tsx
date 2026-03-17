@@ -7,8 +7,9 @@ import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Plus, Trash2, Save, Search, UserPlus, X } from "lucide-react";
+import { Users, Plus, Trash2, Save, Search, UserPlus, X, UserCheck, UserX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FamilyMember {
   name: string;
@@ -34,6 +35,7 @@ interface SearchResult {
   full_name: string;
   email: string;
   avatar_url: string | null;
+  hasFamily?: boolean;
 }
 
 const Familia = () => {
@@ -53,6 +55,13 @@ const Familia = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // New states for Join Family feature
+  const [joinSearchQuery, setJoinSearchQuery] = useState("");
+  const [joinSearchResults, setJoinSearchResults] = useState<SearchResult[]>([]);
+  const [searchingJoin, setSearchingJoin] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [outboundRequests, setOutboundRequests] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -133,7 +142,47 @@ const Familia = () => {
       await loadLinkedUsers(groupId);
     }
 
+    await loadRequests();
+
     setLoading(false);
+  };
+
+  const loadRequests = async () => {
+    if (!user) return;
+
+    // Load incoming requests
+    const { data: incomingData } = await supabase
+      .from("family_requests")
+      .select("id, requester_id, created_at")
+      .eq("target_user_id", user.id)
+      .eq("status", "pending");
+
+    if (incomingData && incomingData.length > 0) {
+      const requesterIds = incomingData.map((r) => r.requester_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", requesterIds);
+
+      const enrichedRequests = incomingData.map((r) => ({
+        ...r,
+        requesterProfile: profilesData?.find((p: any) => p.id === r.requester_id),
+      }));
+      setPendingRequests(enrichedRequests);
+    } else {
+      setPendingRequests([]);
+    }
+
+    // Load outbound requests
+    const { data: outboundData } = await supabase
+      .from("family_requests")
+      .select("target_user_id")
+      .eq("requester_id", user.id)
+      .eq("status", "pending");
+      
+    if (outboundData) {
+      setOutboundRequests(new Set(outboundData.map((r) => r.target_user_id)));
+    }
   };
 
   const loadLinkedUsers = async (groupId: string) => {
@@ -231,6 +280,106 @@ const Familia = () => {
     }
   };
 
+  const handleJoinSearch = async () => {
+    if (!joinSearchQuery.trim() || !user) return;
+    setSearchingJoin(true);
+    const { data: usersData } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, avatar_url")
+      .neq("id", user.id)
+      .or(`full_name.ilike.%${joinSearchQuery.trim()}%,email.ilike.%${joinSearchQuery.trim()}%`)
+      .limit(10);
+
+    if (usersData && usersData.length > 0) {
+      const userIds = usersData.map((u: any) => u.id);
+      const { data: grps } = await supabase
+        .from("family_group_members")
+        .select("user_id")
+        .in("user_id", userIds);
+      
+      const hasGrpSet = new Set(grps?.map((g) => g.user_id) || []);
+      const alreadyLinked = new Set(linkedUsers.map((u) => u.user_id));
+      
+      setJoinSearchResults(
+        usersData
+        .filter((p: any) => !alreadyLinked.has(p.id))    
+        .map((u: any) => ({
+          ...u,
+          hasFamily: hasGrpSet.has(u.id),
+        }))
+      );
+    } else {
+        setJoinSearchResults([]);
+    }
+    setSearchingJoin(false);
+  };
+
+  const handleSendJoinRequest = async (targetUserId: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("family_requests").insert({
+      requester_id: user.id,
+      target_user_id: targetUserId,
+    });
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Solicitação enviada!", description: "Aguarde a pessoa aceitar sua solicitação." });
+      setOutboundRequests(new Set([...outboundRequests, targetUserId]));
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+          body: JSON.stringify({ 
+              title: "Nova solicitação de família", 
+              body: "Alguém deseja entrar na sua família. Acesse a tela de Família para verificar.", 
+              link: "/familia",
+              user_ids: [targetUserId]
+          }),
+        }).catch(console.error);
+      }
+    }
+  };
+
+  const handleAcceptRequest = async (reqId: string, req: any) => {
+    const { error } = await supabase.rpc("accept_family_request", { req_id: reqId });
+    if (error) {
+       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+       toast({ title: "Sucesso", description: "Solicitação aceita. Famílias foram mescladas!" });
+       
+       const { data: { session } } = await supabase.auth.getSession();
+       if (session?.access_token) {
+           const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+           await fetch(`https://${projectId}.supabase.co/functions/v1/send-push-notification`, {
+             method: "POST",
+             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+             body: JSON.stringify({ 
+                 title: "Solicitação Aceita", 
+                 body: `${user.email} aceitou seu pedido para entrar na família.`, 
+                 link: "/familia",
+                 user_ids: [req.requester_id]
+             }),
+           }).catch(console.error);
+       }
+       setPendingRequests(pendingRequests.filter(r => r.id !== reqId));
+       loadData();
+    }
+  };
+
+  const handleRejectRequest = async (reqId: string) => {
+    const { error } = await supabase.rpc("reject_family_request", { req_id: reqId });
+    if (error) {
+       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+       toast({ title: "Recusada", description: "A solicitação foi recusada." });
+       setPendingRequests(pendingRequests.filter(r => r.id !== reqId));
+    }
+  };
+
   const handleAdd = () => setMembers([...members, { name: "", age: "" }]);
   const handleRemove = (index: number) => setMembers(members.filter((_, i) => i !== index));
   const handleChange = (index: number, field: keyof FamilyMember, value: string) => {
@@ -287,6 +436,42 @@ const Familia = () => {
           <p className="text-muted-foreground text-sm text-center py-8">Carregando...</p>
         ) : (
           <div className="space-y-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            
+            {/* Show pending requests at the top, below "Nome da família" section technically, but this makes sense here */}
+            {pendingRequests.length > 0 && (
+              <div className="space-y-3">
+                {pendingRequests.map((req) => (
+                  <div key={req.id} className="bg-primary/5 border border-primary/20 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden shrink-0">
+                        {req.requesterProfile?.avatar_url ? (
+                          <img src={req.requesterProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm font-bold text-muted-foreground">
+                            {req.requesterProfile?.full_name?.charAt(0).toUpperCase() || "?"}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">Novo Pedido</p>
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{req.requesterProfile?.full_name || "Alguém"}</span> quer entrar na sua família.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button onClick={() => handleAcceptRequest(req.id, req)} size="sm" className="flex-1 gap-1" variant="default">
+                        <UserCheck size={14} /> Aceitar
+                      </Button>
+                      <Button onClick={() => handleRejectRequest(req.id)} size="sm" className="flex-1 gap-1" variant="outline">
+                        <UserX size={14} /> Negar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Show info banner when user was linked by someone else */}
             {!isGroupCreator && familyGroupInfo && (
               <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
@@ -347,102 +532,175 @@ const Familia = () => {
               )}
             </div>
 
-            {/* Linked Users Section */}
-            <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
-              <Label className="flex items-center gap-2">
-                <UserPlus size={16} /> {isGroupCreator ? "Vincular missionários à família" : "Membros da família"}
-              </Label>
-              
-              {isGroupCreator && (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Busque por nome ou e-mail para vincular outro missionário à sua família.
-                  </p>
+            {/* TABS for Linked Users vs Join requests */}
+            <Tabs defaultValue="vincular" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-2 bg-muted rounded-xl p-1">
+                <TabsTrigger value="vincular" className="rounded-lg text-xs py-2">Vincular à família</TabsTrigger>
+                <TabsTrigger value="entrar" className="rounded-lg text-xs py-2">Entrar em uma família</TabsTrigger>
+              </TabsList>
 
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Buscar por nome ou e-mail..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      className="flex-1"
-                    />
-                    <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={searching} className="gap-1">
-                      <Search size={14} /> {searching ? "..." : "Buscar"}
-                    </Button>
-                  </div>
+              <TabsContent value="vincular" className="bg-card rounded-xl p-4 shadow-card space-y-3 mt-0">
+                <Label className="flex items-center gap-2">
+                  <UserPlus size={16} /> {isGroupCreator ? "Vincular missionários à família" : "Membros da família"}
+                </Label>
+                
+                {isGroupCreator && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Busque por nome ou e-mail para vincular outro missionário à sua família.
+                    </p>
 
-                  {searchResults.length > 0 && (
-                    <div className="space-y-2 border-t border-muted pt-2">
-                      <p className="text-xs text-muted-foreground">Resultados:</p>
-                      {searchResults.map((r) => (
-                        <div key={r.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Buscar por nome ou e-mail..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                        className="flex-1"
+                      />
+                      <Button type="button" size="sm" variant="outline" onClick={handleSearch} disabled={searching} className="gap-1">
+                        <Search size={14} /> {searching ? "..." : "Buscar"}
+                      </Button>
+                    </div>
+
+                    {searchResults.length > 0 && (
+                      <div className="space-y-2 border-t border-muted pt-2">
+                        <p className="text-xs text-muted-foreground">Resultados:</p>
+                        {searchResults.map((r) => (
+                          <div key={r.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                            </div>
+                            <Button type="button" size="sm" variant="outline" onClick={() => handleAddLinkedUser(r)} className="gap-1 shrink-0">
+                              <UserPlus size={14} /> Vincular
+                            </Button>
                           </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => handleAddLinkedUser(r)} className="gap-1 shrink-0">
-                            <UserPlus size={14} /> Vincular
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
 
-              {/* Show creator for non-creators */}
-              {!isGroupCreator && familyGroupInfo && (
-                <div className="space-y-2 border-b border-muted pb-2">
-                  <p className="text-xs text-muted-foreground font-semibold">Responsável:</p>
-                  <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Users size={14} className="text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{familyGroupInfo.creator_name}</p>
-                      <p className="text-xs text-muted-foreground">Criador do grupo</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {linkedUsers.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-semibold">
-                    {isGroupCreator ? "Membros vinculados:" : "Outros membros:"}
-                  </p>
-                  {linkedUsers.map((lu) => (
-                    <div key={lu.user_id} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
-                        {lu.avatar_url ? (
-                          <img src={lu.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
-                            {lu.full_name.charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                {/* Show creator for non-creators */}
+                {!isGroupCreator && familyGroupInfo && (
+                  <div className="space-y-2 border-b border-muted pb-2">
+                    <p className="text-xs text-muted-foreground font-semibold">Responsável:</p>
+                    <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                        <Users size={14} className="text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{lu.email}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{familyGroupInfo.creator_name}</p>
+                        <p className="text-xs text-muted-foreground">Criador do grupo</p>
                       </div>
-                      {isGroupCreator && (
-                        <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
-                          <X size={16} />
-                        </button>
-                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
 
-              {!isGroupCreator && linkedUsers.length === 0 && !familyGroupInfo && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  Você ainda não foi vinculado a nenhum grupo familiar.
+                {linkedUsers.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-semibold">
+                      {isGroupCreator ? "Membros vinculados:" : "Outros membros:"}
+                    </p>
+                    {linkedUsers.map((lu) => (
+                      <div key={lu.user_id} className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
+                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
+                          {lu.avatar_url ? (
+                            <img src={lu.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
+                              {lu.full_name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{lu.full_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{lu.email}</p>
+                        </div>
+                        {isGroupCreator && (
+                          <button type="button" onClick={() => handleRemoveLinkedUser(lu.user_id)} className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0">
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isGroupCreator && linkedUsers.length === 0 && !familyGroupInfo && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Você ainda não foi vinculado a nenhum grupo familiar.
+                  </p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="entrar" className="bg-card rounded-xl p-4 shadow-card space-y-3 mt-0">
+                <Label className="flex items-center gap-2">
+                  <UserPlus size={16} /> Entrar em uma Família
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Busque por um missionário para solicitar a entrada na família dele. Ele deve possuir uma família criada.
                 </p>
-              )}
-            </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Buscar por nome ou e-mail..."
+                    value={joinSearchQuery}
+                    onChange={(e) => setJoinSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleJoinSearch()}
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={handleJoinSearch} disabled={searchingJoin} className="gap-1">
+                    <Search size={14} /> {searchingJoin ? "..." : "Buscar"}
+                  </Button>
+                </div>
+
+                {joinSearchResults.length > 0 && (
+                  <div className="space-y-2 border-t border-muted pt-2">
+                    <p className="text-xs text-muted-foreground">Resultados:</p>
+                    {joinSearchResults.map((r) => {
+                      const alreadyRequested = outboundRequests.has(r.id);
+                      return (
+                        <div key={r.id} className="flex flex-col gap-2 p-2 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
+                              {r.avatar_url ? (
+                                <img src={r.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted-foreground">
+                                  {r.full_name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{r.full_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                            </div>
+                            
+                            <Button 
+                              type="button" 
+                              size="sm" 
+                              variant={alreadyRequested ? "secondary" : "default"} 
+                              onClick={() => handleSendJoinRequest(r.id)} 
+                              disabled={alreadyRequested || !r.hasFamily}
+                              className="gap-1 shrink-0"
+                            >
+                              {alreadyRequested ? "Solicitado" : "Entrar"}
+                            </Button>
+                          </div>
+                          {!r.hasFamily && (
+                             <p className="text-[10px] text-destructive italic text-right">
+                               * Este usuário ainda não possui família para você entrar.
+                             </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
 
             <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
               <Save size={16} />

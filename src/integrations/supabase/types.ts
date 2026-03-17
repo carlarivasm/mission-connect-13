@@ -256,6 +256,48 @@ export type Database = {
         }
         Relationships: []
       }
+      family_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          target_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          target_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          target_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_requests_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       fcm_tokens: {
         Row: {
           created_at: string
