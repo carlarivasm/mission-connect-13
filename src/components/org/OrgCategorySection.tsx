@@ -75,7 +75,7 @@ const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = fa
               <p className="text-xs font-semibold text-primary uppercase tracking-wider border-b border-border/50 pb-1">
                 {groupLabel}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
                 {items.map(p => (
                   <OrgMemberCard
                     key={p.id}
@@ -88,7 +88,7 @@ const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = fa
           ))}
 
           {ungrouped.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
               {ungrouped.map(p => (
                 <OrgMemberCard
                   key={p.id}

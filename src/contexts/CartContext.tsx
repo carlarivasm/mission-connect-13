@@ -122,8 +122,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const removeSyncItem = async (id: string, size?: string, color?: string, configuration?: any) => {
     if (!user) return;
 
-    let query = supabase
-      .from("cart_items")
+    let query = (supabase
+      .from("cart_items" as any) as any)
       .delete()
       .eq("user_id", user.id)
       .eq("product_id", id);
