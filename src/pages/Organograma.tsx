@@ -159,17 +159,23 @@ const Organograma = () => {
               />
             )}
 
-            {/* 3) Responsável */}
+            {/* 3) Responsável pelos Responsáveis de Equipe */}
             {responsavelPositions.length > 0 && (
               <OrgCategorySection
-                label={catLabels["responsavel"] || "Responsável"}
+                label="Responsável pelos Responsáveis de Equipe"
                 positions={responsavelPositions}
                 profiles={profiles}
               />
             )}
 
-            {/* 4) Equipes agrupadas por função */}
-            {Array.from(teamsByFunction.entries()).map(([teamName, team]) => (
+            {/* 4) Equipes ordenadas numericamente */}
+            {Array.from(teamsByFunction.entries())
+              .sort((a, b) => {
+                const numA = parseInt(a[0].replace(/\D/g, "")) || 999;
+                const numB = parseInt(b[0].replace(/\D/g, "")) || 999;
+                return numA - numB;
+              })
+              .map(([teamName, team]) => (
               <OrgCategorySection
                 key={teamName}
                 label={teamName}
