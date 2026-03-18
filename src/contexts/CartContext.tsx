@@ -61,8 +61,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user) {
       const fetchCart = async () => {
-        const { data, error } = await supabase
-          .from("cart_items")
+        const { data, error } = await (supabase
+          .from("cart_items" as any) as any)
           .select(`
             *,
             store_products (
