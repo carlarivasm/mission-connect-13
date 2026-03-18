@@ -50,6 +50,10 @@ const CHURCH_SUBCATEGORY_LABELS: Record<string, string> = {
   consagrado: "Consagrados",
 };
 
+// Fixed display order for the public organograma
+const TOP_CATEGORIES = ["coordenador_geral_nacional", "coordenador_local", "coordenador_funcao"];
+const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
+
 const Organograma = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -98,10 +102,28 @@ const Organograma = () => {
   const catLabels: Record<string, string> = {};
   categories.forEach(c => { catLabels[c.value] = c.label; });
 
-  const mainCategoryOrder = categories.filter(c => !CHURCH_CATEGORIES.includes(c.value)).map(c => c.value);
-  const mainPositions = positions.filter(p => !CHURCH_CATEGORIES.includes(p.category));
-  
+  // 1) Top leadership categories
+  const topPositions = TOP_CATEGORIES.map(cat => ({
+    cat,
+    items: positions.filter(p => p.category === cat),
+  })).filter(g => g.items.length > 0);
+
+  // 2) Church positions
   const churchPositions = positions.filter(p => CHURCH_CATEGORIES.includes(p.category));
+
+  // 3) Responsável (standalone, not team-based)
+  const responsavelPositions = positions.filter(p => p.category === "responsavel");
+
+  // 4) Team positions grouped by function_name
+  const teamPositions = positions.filter(p => TEAM_CATEGORIES.includes(p.category));
+  const teamsByFunction = new Map<string, { responsaveis: OrgPosition[]; membros: OrgPosition[] }>();
+  teamPositions.forEach(p => {
+    const fn = p.function_name?.trim() || "Sem equipe";
+    if (!teamsByFunction.has(fn)) teamsByFunction.set(fn, { responsaveis: [], membros: [] });
+    const team = teamsByFunction.get(fn)!;
+    if (p.category === "responsavel_equipe") team.responsaveis.push(p);
+    else team.membros.push(p);
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -116,21 +138,17 @@ const Organograma = () => {
           <p className="text-center text-muted-foreground py-16">Organograma ainda não configurado.</p>
         ) : (
           <div className="space-y-4">
-            {/* Main categories - all expandable */}
-            {mainCategoryOrder.map(cat => {
-              const catPositions = mainPositions.filter(p => p.category === cat);
-              if (catPositions.length === 0) return null;
-              return (
-                <OrgCategorySection
-                  key={cat}
-                  label={catLabels[cat] || cat}
-                  positions={catPositions}
-                  profiles={profiles}
-                />
-              );
-            })}
+            {/* 1) Top leadership */}
+            {topPositions.map(({ cat, items }) => (
+              <OrgCategorySection
+                key={cat}
+                label={catLabels[cat] || cat}
+                positions={items}
+                profiles={profiles}
+              />
+            ))}
 
-            {/* Padres & Consagrados */}
+            {/* 2) Padres & Consagrados */}
             {churchPositions.length > 0 && (
               <OrgCategorySection
                 label="Padres & Consagrados"
@@ -140,6 +158,29 @@ const Organograma = () => {
                 subcategoryLabels={CHURCH_SUBCATEGORY_LABELS}
               />
             )}
+
+            {/* 3) Responsável */}
+            {responsavelPositions.length > 0 && (
+              <OrgCategorySection
+                label={catLabels["responsavel"] || "Responsável"}
+                positions={responsavelPositions}
+                profiles={profiles}
+              />
+            )}
+
+            {/* 4) Equipes agrupadas por função */}
+            {Array.from(teamsByFunction.entries()).map(([teamName, team]) => (
+              <OrgCategorySection
+                key={teamName}
+                label={teamName}
+                positions={[...team.responsaveis, ...team.membros]}
+                profiles={profiles}
+                subcategoryLabels={{
+                  responsavel_equipe: "Responsáveis",
+                  equipe: "Membros",
+                }}
+              />
+            ))}
           </div>
         )}
       </main>
