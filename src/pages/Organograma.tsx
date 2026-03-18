@@ -111,8 +111,8 @@ const Organograma = () => {
   // 2) Church positions
   const churchPositions = positions.filter(p => CHURCH_CATEGORIES.includes(p.category));
 
-  // 3) Responsável (standalone, not team-based)
-  const responsavelPositions = positions.filter(p => p.category === "responsavel");
+  // 3) Responsável dos Responsáveis de Equipe
+  const responsavelPositions = positions.filter(p => p.category === "responsavel" || p.category === "responsavel_dos_responsaveis_de_equipe");
 
   // 4) Team positions grouped by function_name
   const teamPositions = positions.filter(p => TEAM_CATEGORIES.includes(p.category));
