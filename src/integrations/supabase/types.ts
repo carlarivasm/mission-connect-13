@@ -62,6 +62,76 @@ export type Database = {
         }
         Relationships: []
       }
+      cart_items: {
+        Row: {
+          category: string
+          configuration: Json | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          price: number
+          product_id: string | null
+          product_name: string
+          quantity: number
+          selected_color: string | null
+          selected_size: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          configuration?: Json | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          price: number
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          selected_color?: string | null
+          selected_size?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          configuration?: Json | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          price?: number
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          selected_color?: string | null
+          selected_size?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_org_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -281,22 +351,7 @@ export type Database = {
           target_user_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "family_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "family_requests_target_user_id_fkey"
-            columns: ["target_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       fcm_tokens: {
         Row: {
@@ -428,6 +483,45 @@ export type Database = {
           uploaded_by_name?: string
         }
         Relationships: []
+      }
+      kit_components: {
+        Row: {
+          component_product_id: string
+          created_at: string | null
+          id: string
+          kit_id: string
+          quantity: number | null
+        }
+        Insert: {
+          component_product_id: string
+          created_at?: string | null
+          id?: string
+          kit_id: string
+          quantity?: number | null
+        }
+        Update: {
+          component_product_id?: string
+          created_at?: string | null
+          id?: string
+          kit_id?: string
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_components_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_components_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       location_user_notes: {
         Row: {
@@ -634,6 +728,7 @@ export type Database = {
       order_items: {
         Row: {
           category: string
+          configuration: Json | null
           id: string
           image_url: string | null
           order_id: string
@@ -643,10 +738,10 @@ export type Database = {
           quantity: number
           selected_color: string | null
           selected_size: string | null
-          configuration: Json | null
         }
         Insert: {
           category?: string
+          configuration?: Json | null
           id?: string
           image_url?: string | null
           order_id: string
@@ -659,6 +754,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          configuration?: Json | null
           id?: string
           image_url?: string | null
           order_id?: string
@@ -679,51 +775,16 @@ export type Database = {
           },
         ]
       }
-      kit_components: {
-        Row: {
-          id: string
-          kit_id: string
-          component_product_id: string
-          quantity: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          kit_id: string
-          component_product_id: string
-          quantity?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          kit_id?: string
-          component_product_id?: string
-          quantity?: number | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kit_components_kit_id_fkey"
-            columns: ["kit_id"]
-            isOneToOne: false
-            referencedRelation: "store_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kit_components_component_product_id_fkey"
-            columns: ["component_product_id"]
-            isOneToOne: false
-            referencedRelation: "store_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
           created_at: string
+          delivery_location: string | null
+          delivery_recipient_name: string | null
+          delivery_time: string | null
           id: string
           observation: string | null
           pay_later: boolean | null
+          payment_status: string | null
           receipt_url: string | null
           status: string
           total_price: number
@@ -733,9 +794,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_location?: string | null
+          delivery_recipient_name?: string | null
+          delivery_time?: string | null
           id?: string
           observation?: string | null
           pay_later?: boolean | null
+          payment_status?: string | null
           receipt_url?: string | null
           status?: string
           total_price?: number
@@ -745,9 +810,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_location?: string | null
+          delivery_recipient_name?: string | null
+          delivery_time?: string | null
           id?: string
           observation?: string | null
           pay_later?: boolean | null
+          payment_status?: string | null
           receipt_url?: string | null
           status?: string
           total_price?: number
@@ -988,61 +1057,61 @@ export type Database = {
           available: boolean
           category: string
           colors: string[] | null
+          combo_min_quantity: number | null
+          combo_price: number | null
           contact_info: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           image_url: string | null
+          is_combo: boolean | null
+          is_kit: boolean | null
           name: string
           price: number
+          product_type: string | null
           sizes: string[] | null
           updated_at: string
-          is_combo: boolean | null
-          combo_min_quantity: number | null
-          combo_price: number | null
-          product_type: string | null
-          is_kit: boolean | null
         }
         Insert: {
           available?: boolean
           category?: string
           colors?: string[] | null
+          combo_min_quantity?: number | null
+          combo_price?: number | null
           contact_info?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_combo?: boolean | null
+          is_kit?: boolean | null
           name: string
           price?: number
+          product_type?: string | null
           sizes?: string[] | null
           updated_at?: string
-          is_combo?: boolean | null
-          combo_min_quantity?: number | null
-          combo_price?: number | null
-          product_type?: string | null
-          is_kit?: boolean | null
         }
         Update: {
           available?: boolean
           category?: string
           colors?: string[] | null
+          combo_min_quantity?: number | null
+          combo_price?: number | null
           contact_info?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_combo?: boolean | null
+          is_kit?: boolean | null
           name?: string
           price?: number
+          product_type?: string | null
           sizes?: string[] | null
           updated_at?: string
-          is_combo?: boolean | null
-          combo_min_quantity?: number | null
-          combo_price?: number | null
-          product_type?: string | null
-          is_kit?: boolean | null
         }
         Relationships: []
       }
@@ -1259,14 +1328,7 @@ export type Database = {
       }
     }
     Functions: {
-      accept_family_request: {
-        Args: { req_id: string }
-        Returns: undefined
-      }
-      reject_family_request: {
-        Args: { req_id: string }
-        Returns: undefined
-      }
+      accept_family_request: { Args: { req_id: string }; Returns: undefined }
       decrease_stock: {
         Args: {
           p_color: string
@@ -1329,6 +1391,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reject_family_request: { Args: { req_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "missionary"
