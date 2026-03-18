@@ -61,8 +61,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user) {
       const fetchCart = async () => {
-        const { data, error } = await supabase
-          .from("cart_items")
+        const { data, error } = await (supabase
+          .from("cart_items" as any) as any)
           .select(`
             *,
             store_products (
@@ -122,8 +122,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const removeSyncItem = async (id: string, size?: string, color?: string, configuration?: any) => {
     if (!user) return;
 
-    let query = supabase
-      .from("cart_items")
+    let query = (supabase
+      .from("cart_items" as any) as any)
       .delete()
       .eq("user_id", user.id)
       .eq("product_id", id);
