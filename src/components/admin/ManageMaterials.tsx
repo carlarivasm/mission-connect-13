@@ -159,7 +159,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
     // Calculate sort_order for new items (put at end)
     const maxOrder = materials.length > 0 ? Math.max(...materials.map(m => m.sort_order)) : -1;
 
-    const payload: Record<string, unknown> = {
+    const payload: any = {
       title: title.trim(),
       description: description.trim() || null,
       category,
