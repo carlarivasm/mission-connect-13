@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, Music, File, Link2, X } from "lucide-react";
+import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, Music, File, Link2, X, ArrowUp, ArrowDown } from "lucide-react";
 
 interface Material {
   id: string;
@@ -19,6 +19,7 @@ interface Material {
   link_url: string | null;
   material_type: string;
   storage_path: string | null;
+  sort_order: number;
   created_at: string;
 }
 
@@ -98,7 +99,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const [linkUrl, setLinkUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<globalThis.File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
 
@@ -109,6 +110,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
     const { data, error } = await supabase
       .from("materials")
       .select("*")
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
     if (data) {
       const filtered = (data as Material[]).filter((m) =>
@@ -154,6 +156,9 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
       setUploadingFile(false);
     }
 
+    // Calculate sort_order for new items (put at end)
+    const maxOrder = materials.length > 0 ? Math.max(...materials.map(m => m.sort_order)) : -1;
+
     const payload: any = {
       title: title.trim(),
       description: description.trim() || null,
@@ -162,6 +167,9 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
       link_url: linkUrl.trim() || null,
       created_by: user?.id,
     };
+    if (!editingId) {
+      payload.sort_order = maxOrder + 1;
+    }
     if (fileUrl) { payload.file_url = fileUrl; payload.storage_path = storagePath; }
 
     if (editingId) {
@@ -197,7 +205,28 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
     else fetchMaterials();
   };
 
-  const showFileUpload = materialType !== "link";
+  const handleMoveUp = async (index: number) => {
+    if (index <= 0) return;
+    const current = filteredMaterials[index];
+    const above = filteredMaterials[index - 1];
+    await Promise.all([
+      supabase.from("materials").update({ sort_order: above.sort_order }).eq("id", current.id),
+      supabase.from("materials").update({ sort_order: current.sort_order }).eq("id", above.id),
+    ]);
+    fetchMaterials();
+  };
+
+  const handleMoveDown = async (index: number) => {
+    if (index >= filteredMaterials.length - 1) return;
+    const current = filteredMaterials[index];
+    const below = filteredMaterials[index + 1];
+    await Promise.all([
+      supabase.from("materials").update({ sort_order: below.sort_order }).eq("id", current.id),
+      supabase.from("materials").update({ sort_order: current.sort_order }).eq("id", below.id),
+    ]);
+    fetchMaterials();
+  };
+
   const filteredMaterials = filterCat ? materials.filter((m) => m.category === filterCat) : materials;
 
   return (
@@ -302,8 +331,24 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
         ) : filteredMaterials.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-4">Nenhum material cadastrado.</p>
         ) : (
-          filteredMaterials.map((m) => (
+          filteredMaterials.map((m, idx) => (
             <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button
+                  onClick={() => handleMoveUp(idx)}
+                  disabled={idx === 0}
+                  className="p-1 rounded text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  onClick={() => handleMoveDown(idx)}
+                  disabled={idx === filteredMaterials.length - 1}
+                  className="p-1 rounded text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors"
+                >
+                  <ArrowDown size={14} />
+                </button>
+              </div>
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
                 {materialTypeIcon(m.material_type)}
               </div>

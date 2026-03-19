@@ -1,0 +1,1 @@
+ALTER TABLE public.materials ADD COLUMN sort_order integer NOT NULL DEFAULT 0;

@@ -586,6 +586,7 @@ export type Database = {
           id: string
           link_url: string | null
           material_type: string
+          sort_order: number
           storage_path: string | null
           title: string
         }
@@ -598,6 +599,7 @@ export type Database = {
           id?: string
           link_url?: string | null
           material_type?: string
+          sort_order?: number
           storage_path?: string | null
           title: string
         }
@@ -610,6 +612,7 @@ export type Database = {
           id?: string
           link_url?: string | null
           material_type?: string
+          sort_order?: number
           storage_path?: string | null
           title?: string
         }
