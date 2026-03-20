@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell } from "lucide-react";
 import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
@@ -62,6 +63,14 @@ const ManageSurveys = () => {
   const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: ["", ""] }]);
   const [submitting, setSubmitting] = useState(false);
 
+  // Push notification scheduling
+  const [sendPush, setSendPush] = useState(false);
+  const [pushScheduleType, setPushScheduleType] = useState<"now" | "scheduled">("now");
+  const [pushDate, setPushDate] = useState("");
+  const [pushTime, setPushTime] = useState("");
+  const [pushTitle, setPushTitle] = useState("");
+  const [pushBody, setPushBody] = useState("");
+
   // Confirmations
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -82,9 +91,27 @@ const ManageSurveys = () => {
 
   useEffect(() => { fetchSurveys(); }, []);
 
+  // Update push defaults when title changes
+  useEffect(() => {
+    if (!pushTitle || pushTitle === `📋 Nova pesquisa disponível`) {
+      setPushTitle("📋 Nova pesquisa disponível");
+    }
+    if (!pushBody || pushBody.startsWith("Responda a pesquisa")) {
+      setPushBody(`Responda a pesquisa "${title}" agora!`);
+    }
+  }, [title]);
+
   const addQuestion = () => setQuestions([...questions, { text: "", type: "multiple_choice", options: ["", ""] }]);
 
   const removeQuestion = (qi: number) => setQuestions(questions.filter((_, i) => i !== qi));
+
+  const moveQuestion = (qi: number, direction: "up" | "down") => {
+    const newIndex = direction === "up" ? qi - 1 : qi + 1;
+    if (newIndex < 0 || newIndex >= questions.length) return;
+    const updated = [...questions];
+    [updated[qi], updated[newIndex]] = [updated[newIndex], updated[qi]];
+    setQuestions(updated);
+  };
 
   const updateQuestionText = (qi: number, text: string) => {
     const updated = [...questions];
@@ -114,6 +141,10 @@ const ManageSurveys = () => {
     setEditingSurveyId(survey.id);
     setTitle(survey.title);
     setDescription(survey.description || "");
+    setSendPush(false);
+    setPushScheduleType("now");
+    setPushDate("");
+    setPushTime("");
 
     const { data: qs } = await supabase
       .from("survey_questions")
@@ -143,6 +174,50 @@ const ManageSurveys = () => {
     setShowCreate(true);
   };
 
+  const schedulePushNotification = async (surveyId: string) => {
+    if (!sendPush) return;
+
+    const notifTitle = pushTitle || "📋 Nova pesquisa disponível";
+    const notifBody = pushBody || `Responda a pesquisa "${title}" agora!`;
+    const link = "/pesquisas";
+
+    if (pushScheduleType === "now") {
+      // Send immediately via edge function
+      try {
+        await supabase.functions.invoke("send-push-notification", {
+          body: {
+            title: notifTitle,
+            body: notifBody,
+            link,
+            createInApp: true,
+          },
+        });
+        toast({ title: "Push enviado!", description: "Notificação enviada para todos os usuários." });
+      } catch (err: any) {
+        toast({ title: "Erro ao enviar push", description: err?.message, variant: "destructive" });
+      }
+    } else {
+      // Schedule for later
+      if (!pushDate || !pushTime) {
+        toast({ title: "Erro", description: "Defina data e hora para agendar.", variant: "destructive" });
+        return;
+      }
+      const scheduledAt = new Date(`${pushDate}T${pushTime}:00`).toISOString();
+      const { error } = await supabase.from("scheduled_push").insert({
+        title: notifTitle,
+        body: notifBody,
+        link,
+        scheduled_at: scheduledAt,
+        create_in_app: true,
+      } as any);
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Push agendado!", description: `Notificação será enviada em ${new Date(scheduledAt).toLocaleString("pt-BR")}.` });
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!title.trim()) return;
     const validQuestions = questions.filter(
@@ -158,17 +233,14 @@ const ManageSurveys = () => {
       let surveyId = editingSurveyId;
 
       if (editingSurveyId) {
-        // Update survey metadata
         const { error: surveyErr } = await supabase
           .from("surveys")
           .update({ title: title.trim(), description: description.trim() || null } as any)
           .eq("id", editingSurveyId);
         if (surveyErr) throw surveyErr;
 
-        // Delete old questions (cascade deletes options via FK)
         await supabase.from("survey_questions").delete().eq("survey_id", editingSurveyId);
       } else {
-        // Create new survey
         const { data: survey, error: surveyErr } = await supabase
           .from("surveys")
           .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id } as any)
@@ -178,7 +250,7 @@ const ManageSurveys = () => {
         surveyId = survey.id;
       }
 
-      // Insert questions
+      // Insert questions with correct sort_order
       for (let qi = 0; qi < validQuestions.length; qi++) {
         const q = validQuestions[qi];
         const { data: question, error: qErr } = await supabase
@@ -199,6 +271,11 @@ const ManageSurveys = () => {
         }
       }
 
+      // Schedule push notification if enabled
+      if (surveyId) {
+        await schedulePushNotification(surveyId);
+      }
+
       toast({
         title: editingSurveyId ? "Pesquisa atualizada!" : "Pesquisa criada!",
         description: `"${title}" ${editingSurveyId ? "foi atualizada" : "está disponível para os missionários"}.`,
@@ -217,6 +294,12 @@ const ManageSurveys = () => {
     setTitle("");
     setDescription("");
     setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
+    setSendPush(false);
+    setPushScheduleType("now");
+    setPushDate("");
+    setPushTime("");
+    setPushTitle("");
+    setPushBody("");
   };
 
   const toggleActive = async (survey: Survey) => {
@@ -267,7 +350,6 @@ const ManageSurveys = () => {
     setLoadingResults(false);
   };
 
-  // Group responses by question for display
   const groupedResponses = () => {
     const mcMap: Record<string, { option: string; count: number }[]> = {};
     const openMap: Record<string, string[]> = {};
@@ -353,6 +435,24 @@ const ManageSurveys = () => {
                       placeholder="Texto da pergunta"
                       className="flex-1"
                     />
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => moveQuestion(qi, "up")}
+                        disabled={qi === 0}
+                        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Mover para cima"
+                      >
+                        <ArrowUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => moveQuestion(qi, "down")}
+                        disabled={qi === questions.length - 1}
+                        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Mover para baixo"
+                      >
+                        <ArrowDown size={12} />
+                      </button>
+                    </div>
                     {questions.length > 1 && (
                       <button onClick={() => removeQuestion(qi)} className="p-1 text-destructive hover:bg-destructive/10 rounded">
                         <Trash2 size={14} />
@@ -421,6 +521,70 @@ const ManageSurveys = () => {
               <Button type="button" variant="outline" size="sm" onClick={addQuestion} className="gap-1">
                 <Plus size={14} /> Adicionar Pergunta
               </Button>
+            </div>
+
+            {/* Push notification section */}
+            <div className="border border-border rounded-lg p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell size={16} className="text-primary" />
+                  <Label className="text-sm font-medium cursor-pointer">Enviar notificação push</Label>
+                </div>
+                <Switch checked={sendPush} onCheckedChange={setSendPush} />
+              </div>
+
+              {sendPush && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPushScheduleType("now")}
+                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "now" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                    >
+                      Enviar agora
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPushScheduleType("scheduled")}
+                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "scheduled" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                    >
+                      Agendar
+                    </button>
+                  </div>
+
+                  {pushScheduleType === "scheduled" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Data</Label>
+                        <Input type="date" value={pushDate} onChange={(e) => setPushDate(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Hora</Label>
+                        <Input type="time" value={pushTime} onChange={(e) => setPushTime(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Título da notificação</Label>
+                    <Input
+                      value={pushTitle}
+                      onChange={(e) => setPushTitle(e.target.value)}
+                      placeholder="📋 Nova pesquisa disponível"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mensagem</Label>
+                    <Input
+                      value={pushBody}
+                      onChange={(e) => setPushBody(e.target.value)}
+                      placeholder={`Responda a pesquisa "${title}" agora!`}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button
