@@ -6,7 +6,8 @@ import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import OrgMemberCard from "@/components/org/OrgMemberCard";
 import OrgCategorySection from "@/components/org/OrgCategorySection";
-import { Church } from "lucide-react";
+import { Church, Users } from "lucide-react";
+import { TEAM_COLOR_OPTIONS } from "@/components/admin/ManageOrgTeams";
 
 export interface OrgPosition {
   id: string;
