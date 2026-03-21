@@ -127,9 +127,15 @@ const ManageOrgChart = () => {
     await saveCategories(newArr);
   };
 
+  const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
+
   const handleAdd = async () => {
     if (!title.trim()) {
       toast({ title: "Preencha o título", variant: "destructive" });
+      return;
+    }
+    if (TEAM_CATEGORIES.includes(category) && !functionName.trim()) {
+      toast({ title: "Preencha o campo 'Função'", description: "Para categorias de equipe, informe o nome da equipe (ex: Equipe 1).", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -277,8 +283,17 @@ const ManageOrgChart = () => {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Função (opcional)</Label>
-            <Input value={functionName} onChange={e => setFunctionName(e.target.value)} placeholder="Ex: Formação" />
+            <Label className="text-xs">
+              Função {TEAM_CATEGORIES.includes(category) ? "(obrigatório)" : "(opcional)"}
+            </Label>
+            <Input
+              value={functionName}
+              onChange={e => setFunctionName(e.target.value)}
+              placeholder={TEAM_CATEGORIES.includes(category) ? "Ex: Equipe 1" : "Ex: Formação"}
+            />
+            {TEAM_CATEGORIES.includes(category) && (
+              <p className="text-[10px] text-amber-600">Informe o nome da equipe (ex: Equipe 1) para agrupar corretamente no organograma.</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Vincular ao Perfil</Label>
@@ -343,7 +358,12 @@ const InlineEditRow = ({
   const [editProfile, setEditProfile] = useState(pos.profile_id || "none");
   const [editOrder, setEditOrder] = useState(pos.sort_order);
 
+  const TEAM_CATS = ["responsavel_equipe", "equipe"];
+
   const handleSave = async () => {
+    if (TEAM_CATS.includes(editCategory) && !editFunction.trim()) {
+      return;
+    }
     if (editTitle !== pos.title) await onUpdate(pos, "title", editTitle.trim());
     if (editCategory !== pos.category) await onUpdate(pos, "category", editCategory);
     if ((editFunction || null) !== pos.function_name) await onUpdate(pos, "function_name", editFunction.trim() || null);
@@ -417,8 +437,11 @@ const InlineEditRow = ({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-[10px]">Função</Label>
-          <Input value={editFunction} onChange={e => setEditFunction(e.target.value)} className="h-8 text-xs" placeholder="Opcional" />
+          <Label className="text-[10px]">Função {TEAM_CATS.includes(editCategory) ? "(obrigatório)" : ""}</Label>
+          <Input value={editFunction} onChange={e => setEditFunction(e.target.value)} className="h-8 text-xs" placeholder={TEAM_CATS.includes(editCategory) ? "Ex: Equipe 1" : "Opcional"} />
+          {TEAM_CATS.includes(editCategory) && !editFunction.trim() && (
+            <p className="text-[10px] text-destructive">Informe o nome da equipe.</p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-[10px]">Perfil</Label>
