@@ -50,6 +50,7 @@ const ManageOrgChart = () => {
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
+  const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
   // New position form
   const [title, setTitle] = useState("");
