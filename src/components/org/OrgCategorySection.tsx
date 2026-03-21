@@ -9,11 +9,12 @@ interface OrgCategorySectionProps {
   positions: OrgPosition[];
   profiles: Map<string, OrgProfile>;
   icon?: React.ReactNode;
+  iconColor?: string;
   defaultOpen?: boolean;
   subcategoryLabels?: Record<string, string>;
 }
 
-const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = false, subcategoryLabels }: OrgCategorySectionProps) => {
+const OrgCategorySection = ({ label, positions, profiles, icon, iconColor, defaultOpen = false, subcategoryLabels }: OrgCategorySectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
 
   if (positions.length === 0) return null;
@@ -47,7 +48,10 @@ const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = fa
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3 w-full text-left p-4 hover:bg-accent/50 transition-colors"
       >
-        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <div
+          className={cn("h-9 w-9 rounded-full flex items-center justify-center shrink-0", !iconColor && "bg-primary/10")}
+          style={iconColor ? { background: `hsl(${iconColor} / 0.15)` } : undefined}
+        >
           {icon || <Users size={18} className="text-primary" />}
         </div>
         <div className="flex-1 min-w-0">

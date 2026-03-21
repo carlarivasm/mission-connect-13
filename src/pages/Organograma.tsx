@@ -6,7 +6,8 @@ import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import OrgMemberCard from "@/components/org/OrgMemberCard";
 import OrgCategorySection from "@/components/org/OrgCategorySection";
-import { Church } from "lucide-react";
+import { Church, Users } from "lucide-react";
+import { TEAM_COLOR_OPTIONS } from "@/components/admin/ManageOrgTeams";
 
 export interface OrgPosition {
   id: string;
@@ -61,12 +62,14 @@ const Organograma = () => {
   const [profiles, setProfiles] = useState<Map<string, OrgProfile>>(new Map());
   const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
+  const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [posRes, catRes] = await Promise.all([
+      const [posRes, catRes, colorsRes] = await Promise.all([
         supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
         supabase.from("app_settings").select("setting_value").eq("setting_key", "org_categories").maybeSingle(),
+        supabase.from("app_settings").select("setting_value").eq("setting_key", "org_team_colors").maybeSingle(),
       ]);
 
       if (catRes.data?.setting_value) {
@@ -74,6 +77,10 @@ const Organograma = () => {
           const parsed = JSON.parse(catRes.data.setting_value);
           if (Array.isArray(parsed) && parsed.length > 0) setCategories(parsed);
         } catch { /* keep defaults */ }
+      }
+
+      if (colorsRes.data?.setting_value) {
+        try { setTeamColors(JSON.parse(colorsRes.data.setting_value)); } catch {}
       }
 
       if (posRes.data) {
@@ -175,18 +182,28 @@ const Organograma = () => {
                 const numB = parseInt(b[0].replace(/\D/g, "")) || 999;
                 return numA - numB;
               })
-              .map(([teamName, team]) => (
-              <OrgCategorySection
-                key={teamName}
-                label={teamName}
-                positions={[...team.responsaveis, ...team.membros]}
-                profiles={profiles}
-                subcategoryLabels={{
-                  responsavel_equipe: "Responsáveis",
-                  equipe: "Membros",
-                }}
-              />
-            ))}
+              .map(([teamName, team]) => {
+                const colorVal = teamColors[teamName];
+                const colorObj = TEAM_COLOR_OPTIONS.find(c => c.value === colorVal);
+                const teamIcon = colorObj ? (
+                  <Users size={18} style={{ color: `hsl(${colorObj.hsl})` }} />
+                ) : undefined;
+
+                return (
+                  <OrgCategorySection
+                    key={teamName}
+                    label={teamName}
+                    positions={[...team.responsaveis, ...team.membros]}
+                    profiles={profiles}
+                    icon={teamIcon}
+                    iconColor={colorObj ? colorObj.hsl : undefined}
+                    subcategoryLabels={{
+                      responsavel_equipe: "Responsáveis",
+                      equipe: "Membros",
+                    }}
+                  />
+                );
+              })}
           </div>
         )}
       </main>

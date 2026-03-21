@@ -50,6 +50,7 @@ const ManageOrgChart = () => {
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
+  const [teamColors, setTeamColors] = useState<Record<string, string>>({});
 
   // New position form
   const [title, setTitle] = useState("");
@@ -65,10 +66,11 @@ const ManageOrgChart = () => {
   const [newCatLabel, setNewCatLabel] = useState("");
 
   const fetchData = async () => {
-    const [posRes, profRes, catRes] = await Promise.all([
+    const [posRes, profRes, catRes, colorsRes] = await Promise.all([
       supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
       supabase.from("profiles").select("id, full_name").order("full_name"),
       supabase.from("app_settings").select("setting_value").eq("setting_key", SETTINGS_KEY).maybeSingle(),
+      supabase.from("app_settings").select("setting_value").eq("setting_key", "org_team_colors").maybeSingle(),
     ]);
     if (posRes.data) setPositions(posRes.data as any[]);
     if (profRes.data) setProfiles(profRes.data as any[]);
@@ -76,6 +78,11 @@ const ManageOrgChart = () => {
       try {
         const parsed = JSON.parse(catRes.data.setting_value);
         if (Array.isArray(parsed) && parsed.length > 0) setCategoryOptions(parsed);
+      } catch { /* keep defaults */ }
+    }
+    if (colorsRes.data?.setting_value) {
+      try {
+        setTeamColors(JSON.parse(colorsRes.data.setting_value));
       } catch { /* keep defaults */ }
     }
     setLoading(false);
@@ -319,7 +326,7 @@ const ManageOrgChart = () => {
       </div>
 
       {/* Teams Manager */}
-      <ManageOrgTeams positions={positions} profiles={profiles} onRefresh={fetchData} />
+      <ManageOrgTeams positions={positions} profiles={profiles} onRefresh={fetchData} teamColors={teamColors} onTeamColorsChange={setTeamColors} />
 
       {/* List */}
       <div className="space-y-2">

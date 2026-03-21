@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,8 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Users, ChevronDown, UserPlus } from "lucide-react";
+import { Plus, Trash2, Users, ChevronDown, UserPlus, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export const TEAM_COLOR_OPTIONS = [
+  { value: "blue", label: "Azul", hsl: "220 80% 50%" },
+  { value: "yellow", label: "Amarelo", hsl: "45 90% 50%" },
+  { value: "red", label: "Vermelho", hsl: "0 75% 50%" },
+  { value: "green", label: "Verde", hsl: "140 60% 40%" },
+  { value: "orange", label: "Laranja", hsl: "25 90% 50%" },
+  { value: "purple", label: "Roxo", hsl: "270 60% 50%" },
+] as const;
+
+const TEAM_COLORS_SETTINGS_KEY = "org_team_colors";
 
 interface OrgPosition {
   id: string;
@@ -29,17 +40,20 @@ interface ManageOrgTeamsProps {
   positions: OrgPosition[];
   profiles: ProfileOption[];
   onRefresh: () => Promise<void>;
+  teamColors?: Record<string, string>;
+  onTeamColorsChange?: (colors: Record<string, string>) => void;
 }
 
 const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
 
-const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps) => {
+const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalColors, onTeamColorsChange }: ManageOrgTeamsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [newTeamName, setNewTeamName] = useState("");
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [teamColors, setTeamColors] = useState<Record<string, string>>(externalColors || {});
 
   // Add member form per team
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -47,6 +61,27 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps)
   const [memberRole, setMemberRole] = useState<"equipe" | "responsavel_equipe">("equipe");
   const [memberProfileId, setMemberProfileId] = useState("");
   const [savingMember, setSavingMember] = useState(false);
+
+  useEffect(() => {
+    if (externalColors) setTeamColors(externalColors);
+  }, [externalColors]);
+
+  const saveTeamColor = async (teamName: string, colorValue: string) => {
+    const updated = { ...teamColors, [teamName]: colorValue };
+    setTeamColors(updated);
+    onTeamColorsChange?.(updated);
+
+    await supabase.from("app_settings").upsert({
+      setting_key: TEAM_COLORS_SETTINGS_KEY,
+      setting_value: JSON.stringify(updated),
+      updated_by: user?.id,
+    } as any, { onConflict: "setting_key" });
+  };
+
+  const getTeamColor = (teamName: string) => {
+    const val = teamColors[teamName];
+    return TEAM_COLOR_OPTIONS.find(c => c.value === val);
+  };
 
   // Group team positions by function_name
   const teamPositions = positions.filter(p => TEAM_CATEGORIES.includes(p.category) && p.function_name?.trim());
@@ -201,6 +236,12 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps)
                 <div className="flex items-center gap-2 p-3 bg-background">
                   <button onClick={() => toggleTeam(teamName)} className="flex items-center gap-2 flex-1 text-left">
                     <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                    <div
+                      className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: getTeamColor(teamName) ? `hsl(${getTeamColor(teamName)!.hsl})` : undefined }}
+                    >
+                      <Users size={10} className={getTeamColor(teamName) ? "text-white" : "text-muted-foreground"} />
+                    </div>
                     <span className="text-sm font-semibold text-foreground">{teamName}</span>
                     <span className="text-[10px] text-muted-foreground">({total} {total === 1 ? "membro" : "membros"})</span>
                   </button>
@@ -228,6 +269,29 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps)
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="p-3 space-y-3 border-t border-border">
+                    {/* Color picker */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Palette size={12} className="text-muted-foreground" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cor do ícone</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {TEAM_COLOR_OPTIONS.map(color => (
+                          <button
+                            key={color.value}
+                            onClick={() => saveTeamColor(teamName, color.value)}
+                            className={cn(
+                              "w-7 h-7 rounded-full border-2 transition-all",
+                              teamColors[teamName] === color.value
+                                ? "border-foreground scale-110"
+                                : "border-transparent hover:scale-105"
+                            )}
+                            style={{ background: `hsl(${color.hsl})` }}
+                            title={color.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
                     {/* Responsáveis */}
                     {responsaveis.length > 0 && (
                       <div className="space-y-1">
