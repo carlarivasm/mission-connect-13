@@ -318,6 +318,9 @@ const ManageOrgChart = () => {
         </Button>
       </div>
 
+      {/* Teams Manager */}
+      <ManageOrgTeams positions={positions} profiles={profiles} onRefresh={fetchData} />
+
       {/* List */}
       <div className="space-y-2">
         {positions.length === 0 ? (
