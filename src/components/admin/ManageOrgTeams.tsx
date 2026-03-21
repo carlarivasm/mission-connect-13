@@ -40,6 +40,8 @@ interface ManageOrgTeamsProps {
   positions: OrgPosition[];
   profiles: ProfileOption[];
   onRefresh: () => Promise<void>;
+  teamColors?: Record<string, string>;
+  onTeamColorsChange?: (colors: Record<string, string>) => void;
 }
 
 const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
