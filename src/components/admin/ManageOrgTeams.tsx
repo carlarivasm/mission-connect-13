@@ -269,6 +269,29 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="p-3 space-y-3 border-t border-border">
+                    {/* Color picker */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Palette size={12} className="text-muted-foreground" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cor do ícone</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {TEAM_COLOR_OPTIONS.map(color => (
+                          <button
+                            key={color.value}
+                            onClick={() => saveTeamColor(teamName, color.value)}
+                            className={cn(
+                              "w-7 h-7 rounded-full border-2 transition-all",
+                              teamColors[teamName] === color.value
+                                ? "border-foreground scale-110"
+                                : "border-transparent hover:scale-105"
+                            )}
+                            style={{ background: `hsl(${color.hsl})` }}
+                            title={color.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
                     {/* Responsáveis */}
                     {responsaveis.length > 0 && (
                       <div className="space-y-1">
