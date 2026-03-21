@@ -358,7 +358,12 @@ const InlineEditRow = ({
   const [editProfile, setEditProfile] = useState(pos.profile_id || "none");
   const [editOrder, setEditOrder] = useState(pos.sort_order);
 
+  const TEAM_CATS = ["responsavel_equipe", "equipe"];
+
   const handleSave = async () => {
+    if (TEAM_CATS.includes(editCategory) && !editFunction.trim()) {
+      return;
+    }
     if (editTitle !== pos.title) await onUpdate(pos, "title", editTitle.trim());
     if (editCategory !== pos.category) await onUpdate(pos, "category", editCategory);
     if ((editFunction || null) !== pos.function_name) await onUpdate(pos, "function_name", editFunction.trim() || null);
