@@ -66,9 +66,10 @@ const Organograma = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [posRes, catRes] = await Promise.all([
+      const [posRes, catRes, colorsRes] = await Promise.all([
         supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
         supabase.from("app_settings").select("setting_value").eq("setting_key", "org_categories").maybeSingle(),
+        supabase.from("app_settings").select("setting_value").eq("setting_key", "org_team_colors").maybeSingle(),
       ]);
 
       if (catRes.data?.setting_value) {
