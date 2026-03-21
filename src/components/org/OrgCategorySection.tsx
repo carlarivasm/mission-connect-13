@@ -14,7 +14,7 @@ interface OrgCategorySectionProps {
   subcategoryLabels?: Record<string, string>;
 }
 
-const OrgCategorySection = ({ label, positions, profiles, icon, defaultOpen = false, subcategoryLabels }: OrgCategorySectionProps) => {
+const OrgCategorySection = ({ label, positions, profiles, icon, iconColor, defaultOpen = false, subcategoryLabels }: OrgCategorySectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
 
   if (positions.length === 0) return null;
