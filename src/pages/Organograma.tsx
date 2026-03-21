@@ -182,18 +182,28 @@ const Organograma = () => {
                 const numB = parseInt(b[0].replace(/\D/g, "")) || 999;
                 return numA - numB;
               })
-              .map(([teamName, team]) => (
-              <OrgCategorySection
-                key={teamName}
-                label={teamName}
-                positions={[...team.responsaveis, ...team.membros]}
-                profiles={profiles}
-                subcategoryLabels={{
-                  responsavel_equipe: "Responsáveis",
-                  equipe: "Membros",
-                }}
-              />
-            ))}
+              .map(([teamName, team]) => {
+                const colorVal = teamColors[teamName];
+                const colorObj = TEAM_COLOR_OPTIONS.find(c => c.value === colorVal);
+                const teamIcon = colorObj ? (
+                  <Users size={18} style={{ color: `hsl(${colorObj.hsl})` }} />
+                ) : undefined;
+
+                return (
+                  <OrgCategorySection
+                    key={teamName}
+                    label={teamName}
+                    positions={[...team.responsaveis, ...team.membros]}
+                    profiles={profiles}
+                    icon={teamIcon}
+                    iconColor={colorObj ? colorObj.hsl : undefined}
+                    subcategoryLabels={{
+                      responsavel_equipe: "Responsáveis",
+                      equipe: "Membros",
+                    }}
+                  />
+                );
+              })}
           </div>
         )}
       </main>
