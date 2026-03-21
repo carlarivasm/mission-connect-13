@@ -283,8 +283,17 @@ const ManageOrgChart = () => {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Função (opcional)</Label>
-            <Input value={functionName} onChange={e => setFunctionName(e.target.value)} placeholder="Ex: Formação" />
+            <Label className="text-xs">
+              Função {TEAM_CATEGORIES.includes(category) ? "(obrigatório)" : "(opcional)"}
+            </Label>
+            <Input
+              value={functionName}
+              onChange={e => setFunctionName(e.target.value)}
+              placeholder={TEAM_CATEGORIES.includes(category) ? "Ex: Equipe 1" : "Ex: Formação"}
+            />
+            {TEAM_CATEGORIES.includes(category) && (
+              <p className="text-[10px] text-amber-600">Informe o nome da equipe (ex: Equipe 1) para agrupar corretamente no organograma.</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Vincular ao Perfil</Label>
