@@ -127,9 +127,15 @@ const ManageOrgChart = () => {
     await saveCategories(newArr);
   };
 
+  const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
+
   const handleAdd = async () => {
     if (!title.trim()) {
       toast({ title: "Preencha o título", variant: "destructive" });
+      return;
+    }
+    if (TEAM_CATEGORIES.includes(category) && !functionName.trim()) {
+      toast({ title: "Preencha o campo 'Função'", description: "Para categorias de equipe, informe o nome da equipe (ex: Equipe 1).", variant: "destructive" });
       return;
     }
     setSaving(true);
