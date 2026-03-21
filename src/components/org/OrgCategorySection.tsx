@@ -9,6 +9,7 @@ interface OrgCategorySectionProps {
   positions: OrgPosition[];
   profiles: Map<string, OrgProfile>;
   icon?: React.ReactNode;
+  iconColor?: string;
   defaultOpen?: boolean;
   subcategoryLabels?: Record<string, string>;
 }
