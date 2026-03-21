@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,8 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Users, ChevronDown, UserPlus } from "lucide-react";
+import { Plus, Trash2, Users, ChevronDown, UserPlus, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+export const TEAM_COLOR_OPTIONS = [
+  { value: "blue", label: "Azul", hsl: "220 80% 50%" },
+  { value: "yellow", label: "Amarelo", hsl: "45 90% 50%" },
+  { value: "red", label: "Vermelho", hsl: "0 75% 50%" },
+  { value: "green", label: "Verde", hsl: "140 60% 40%" },
+  { value: "orange", label: "Laranja", hsl: "25 90% 50%" },
+  { value: "purple", label: "Roxo", hsl: "270 60% 50%" },
+] as const;
+
+const TEAM_COLORS_SETTINGS_KEY = "org_team_colors";
 
 interface OrgPosition {
   id: string;
