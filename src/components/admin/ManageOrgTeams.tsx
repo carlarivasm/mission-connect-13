@@ -46,13 +46,14 @@ interface ManageOrgTeamsProps {
 
 const TEAM_CATEGORIES = ["responsavel_equipe", "equipe"];
 
-const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps) => {
+const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalColors, onTeamColorsChange }: ManageOrgTeamsProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [newTeamName, setNewTeamName] = useState("");
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [teamColors, setTeamColors] = useState<Record<string, string>>(externalColors || {});
 
   // Add member form per team
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -60,6 +61,27 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh }: ManageOrgTeamsProps)
   const [memberRole, setMemberRole] = useState<"equipe" | "responsavel_equipe">("equipe");
   const [memberProfileId, setMemberProfileId] = useState("");
   const [savingMember, setSavingMember] = useState(false);
+
+  useEffect(() => {
+    if (externalColors) setTeamColors(externalColors);
+  }, [externalColors]);
+
+  const saveTeamColor = async (teamName: string, colorValue: string) => {
+    const updated = { ...teamColors, [teamName]: colorValue };
+    setTeamColors(updated);
+    onTeamColorsChange?.(updated);
+
+    await supabase.from("app_settings").upsert({
+      setting_key: TEAM_COLORS_SETTINGS_KEY,
+      setting_value: JSON.stringify(updated),
+      updated_by: user?.id,
+    } as any, { onConflict: "setting_key" });
+  };
+
+  const getTeamColor = (teamName: string) => {
+    const val = teamColors[teamName];
+    return TEAM_COLOR_OPTIONS.find(c => c.value === val);
+  };
 
   // Group team positions by function_name
   const teamPositions = positions.filter(p => TEAM_CATEGORIES.includes(p.category) && p.function_name?.trim());
