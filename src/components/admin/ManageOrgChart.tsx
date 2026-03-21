@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Users, Pencil, X, Check, Tag, ArrowUp, ArrowDown } from "lucide-react";
+import ManageOrgTeams from "./ManageOrgTeams";
 
 interface OrgPosition {
   id: string;
