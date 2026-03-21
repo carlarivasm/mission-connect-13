@@ -48,7 +48,11 @@ const OrgCategorySection = ({ label, positions, profiles, icon, iconColor, defau
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3 w-full text-left p-4 hover:bg-accent/50 transition-colors"
       >
-        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+        <div
+          className="h-9 w-9 rounded-full flex items-center justify-center shrink-0"
+          style={iconColor ? { background: `hsl(${iconColor} / 0.15)` } : undefined}
+          {...(!iconColor ? { className: "h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0" } : {})}
+        >
           {icon || <Users size={18} className="text-primary" />}
         </div>
         <div className="flex-1 min-w-0">
