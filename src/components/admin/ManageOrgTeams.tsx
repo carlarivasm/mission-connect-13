@@ -236,6 +236,12 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
                 <div className="flex items-center gap-2 p-3 bg-background">
                   <button onClick={() => toggleTeam(teamName)} className="flex items-center gap-2 flex-1 text-left">
                     <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                    <div
+                      className="h-5 w-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: getTeamColor(teamName) ? `hsl(${getTeamColor(teamName)!.hsl})` : undefined }}
+                    >
+                      <Users size={10} className={getTeamColor(teamName) ? "text-white" : "text-muted-foreground"} />
+                    </div>
                     <span className="text-sm font-semibold text-foreground">{teamName}</span>
                     <span className="text-[10px] text-muted-foreground">({total} {total === 1 ? "membro" : "membros"})</span>
                   </button>
