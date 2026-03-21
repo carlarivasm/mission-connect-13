@@ -437,8 +437,11 @@ const InlineEditRow = ({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-[10px]">Função</Label>
-          <Input value={editFunction} onChange={e => setEditFunction(e.target.value)} className="h-8 text-xs" placeholder="Opcional" />
+          <Label className="text-[10px]">Função {TEAM_CATS.includes(editCategory) ? "(obrigatório)" : ""}</Label>
+          <Input value={editFunction} onChange={e => setEditFunction(e.target.value)} className="h-8 text-xs" placeholder={TEAM_CATS.includes(editCategory) ? "Ex: Equipe 1" : "Opcional"} />
+          {TEAM_CATS.includes(editCategory) && !editFunction.trim() && (
+            <p className="text-[10px] text-destructive">Informe o nome da equipe.</p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-[10px]">Perfil</Label>
