@@ -326,7 +326,7 @@ const ManageOrgChart = () => {
       </div>
 
       {/* Teams Manager */}
-      <ManageOrgTeams positions={positions} profiles={profiles} onRefresh={fetchData} />
+      <ManageOrgTeams positions={positions} profiles={profiles} onRefresh={fetchData} teamColors={teamColors} onTeamColorsChange={setTeamColors} />
 
       {/* List */}
       <div className="space-y-2">
