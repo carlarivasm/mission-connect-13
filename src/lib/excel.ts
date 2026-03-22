@@ -131,18 +131,42 @@ function getCellString(cell: ExcelJS.Cell): string {
   return String(val).trim();
 }
 
-/** Parse CSV text into rows */
+/** Parse CSV text into rows — handles comma, semicolon, and tab delimiters */
 function parseCsvText(text: string): Record<string, string>[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  // Strip BOM
+  const clean = text.replace(/^\uFEFF/, "");
+  const lines = clean.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
+
+  // Auto-detect delimiter from the header line
+  const firstLine = lines[0];
+  let delimiter = ",";
+  if (firstLine.includes("\t")) {
+    delimiter = "\t";
+  } else if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) {
+    delimiter = ";";
+  }
 
   const parseRow = (line: string) => {
     const result: string[] = [];
     let current = "";
     let inQuotes = false;
-    for (const ch of line) {
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if ((ch === "," || ch === ";") && !inQuotes) { result.push(current.trim()); current = ""; continue; }
+    for (let ci = 0; ci < line.length; ci++) {
+      const ch = line[ci];
+      if (ch === '"') {
+        if (inQuotes && line[ci + 1] === '"') {
+          current += '"';
+          ci++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (ch === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+        continue;
+      }
       current += ch;
     }
     result.push(current.trim());
