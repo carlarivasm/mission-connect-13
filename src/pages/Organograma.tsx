@@ -85,6 +85,10 @@ const Organograma = () => {
         try { setTeamColors(JSON.parse(colorsRes.data.setting_value)); } catch {}
       }
 
+      if (orderRes.data?.setting_value) {
+        try { setTeamOrder(JSON.parse(orderRes.data.setting_value)); } catch {}
+      }
+
       if (posRes.data) {
         const typed = posRes.data as any[] as OrgPosition[];
         setPositions(typed);
