@@ -299,7 +299,7 @@ const ManageMissionaries = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
               onChange={handleFileUpload}
               className="hidden"
               disabled={uploading}
