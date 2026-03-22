@@ -79,7 +79,7 @@ const OrgCategorySection = ({ label, positions, profiles, icon, iconColor, defau
               <p className="text-xs font-semibold text-primary uppercase tracking-wider border-b border-border/50 pb-1">
                 {groupLabel}
               </p>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {items.map(p => (
                   <OrgMemberCard
                     key={p.id}
