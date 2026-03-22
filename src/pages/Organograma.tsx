@@ -63,6 +63,7 @@ const Organograma = () => {
   const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
+  const [teamOrder, setTeamOrder] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchAll = async () => {
