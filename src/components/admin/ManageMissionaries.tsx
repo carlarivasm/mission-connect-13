@@ -265,8 +265,9 @@ const ManageMissionaries = () => {
           variant: "destructive",
         });
       }
-    } catch (err) {
-      toast({ title: "Erro ao ler arquivo", description: "Verifique se é um arquivo Excel (.xlsx ou .xls) válido.", variant: "destructive" });
+    } catch (err: any) {
+      console.error("File import error:", err);
+      toast({ title: "Erro ao ler arquivo", description: "Verifique se é um arquivo Excel (.xlsx), CSV ou planilha do Google Sheets válida.", variant: "destructive" });
     }
 
     setUploading(false);
@@ -299,7 +300,7 @@ const ManageMissionaries = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
               onChange={handleFileUpload}
               className="hidden"
               disabled={uploading}
