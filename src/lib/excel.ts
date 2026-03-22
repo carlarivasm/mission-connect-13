@@ -54,48 +54,59 @@ export function exportToCsv(
  * Read an Excel or CSV file and return rows as array of objects.
  */
 export async function readExcelFile(file: File): Promise<Record<string, string>[]> {
-  // Handle CSV files
-  if (file.name.toLowerCase().endsWith(".csv")) {
+  const fileName = file.name.toLowerCase();
+
+  // Handle CSV / TSV files
+  if (fileName.endsWith(".csv") || fileName.endsWith(".tsv") || fileName.endsWith(".txt")) {
     const text = await file.text();
     return parseCsvText(text);
   }
 
-  const workbook = new ExcelJS.Workbook();
+  // Try xlsx parsing
   const buffer = await file.arrayBuffer();
 
-  // Try xlsx first, then xls-compatible
   try {
+    const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer);
-  } catch {
-    // If xlsx fails, try csv interpretation
-    const text = await file.text();
-    return parseCsvText(text);
-  }
 
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet || worksheet.rowCount < 2) return [];
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet || worksheet.rowCount < 2) return [];
 
-  const headerRow = worksheet.getRow(1);
-  const headers: string[] = [];
-  headerRow.eachCell((cell, colNumber) => {
-    headers[colNumber] = getCellString(cell);
-  });
-
-  const rows: Record<string, string>[] = [];
-  for (let i = 2; i <= worksheet.rowCount; i++) {
-    const row = worksheet.getRow(i);
-    const obj: Record<string, string> = {};
-    let hasValue = false;
-    row.eachCell((cell, colNumber) => {
-      if (headers[colNumber]) {
-        obj[headers[colNumber]] = getCellString(cell);
-        if (obj[headers[colNumber]]) hasValue = true;
-      }
+    const headerRow = worksheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      headers[colNumber] = getCellString(cell);
     });
-    if (hasValue) rows.push(obj);
+
+    const rows: Record<string, string>[] = [];
+    for (let i = 2; i <= worksheet.rowCount; i++) {
+      const row = worksheet.getRow(i);
+      const obj: Record<string, string> = {};
+      let hasValue = false;
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        if (headers[colNumber]) {
+          obj[headers[colNumber]] = getCellString(cell);
+          if (obj[headers[colNumber]]) hasValue = true;
+        }
+      });
+      if (hasValue) rows.push(obj);
+    }
+
+    if (rows.length > 0) return rows;
+  } catch {
+    // xlsx failed, fall through
   }
 
-  return rows;
+  // Fallback: try reading as CSV text (handles .xls Google Sheets exports, etc.)
+  try {
+    const text = await file.text();
+    const csvRows = parseCsvText(text);
+    if (csvRows.length > 0) return csvRows;
+  } catch {
+    // ignore
+  }
+
+  return [];
 }
 
 /** Extract string from an ExcelJS cell, handling RichText and hyperlinks */
