@@ -25,7 +25,7 @@ const OrgMemberCard = ({ position, profile }: OrgMemberCardProps) => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200 text-left w-full min-w-[200px] max-w-[260px] shrink-0"
+        className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200 text-left w-full shrink-0"
       >
         <Avatar className="h-10 w-10 rounded-full border-2 border-primary/20 shrink-0">
           {profile?.avatar_url ? (

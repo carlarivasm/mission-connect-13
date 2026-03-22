@@ -184,6 +184,11 @@ const Organograma = () => {
             {/* 4) Equipes ordenadas numericamente */}
             {Array.from(teamsByFunction.entries())
               .sort((a, b) => {
+                const idxA = teamOrder.indexOf(a[0]);
+                const idxB = teamOrder.indexOf(b[0]);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
                 const numA = parseInt(a[0].replace(/\D/g, "")) || 999;
                 const numB = parseInt(b[0].replace(/\D/g, "")) || 999;
                 return numA - numB;
