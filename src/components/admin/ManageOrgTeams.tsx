@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Users, ChevronDown, UserPlus, Palette } from "lucide-react";
+import { Plus, Trash2, Users, ChevronDown, UserPlus, Palette, GripVertical, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const TEAM_COLOR_OPTIONS = [
@@ -20,6 +20,7 @@ export const TEAM_COLOR_OPTIONS = [
 ] as const;
 
 const TEAM_COLORS_SETTINGS_KEY = "org_team_colors";
+const TEAM_ORDER_SETTINGS_KEY = "org_team_order";
 
 interface OrgPosition {
   id: string;
@@ -34,6 +35,12 @@ interface OrgPosition {
 interface ProfileOption {
   id: string;
   full_name: string;
+}
+
+interface FamilyGroup {
+  id: string;
+  name: string;
+  members: { user_id: string; full_name: string }[];
 }
 
 interface ManageOrgTeamsProps {
@@ -54,6 +61,8 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [teamColors, setTeamColors] = useState<Record<string, string>>(externalColors || {});
+  const [teamOrder, setTeamOrder] = useState<string[]>([]);
+  const [families, setFamilies] = useState<FamilyGroup[]>([]);
 
   // Add member form per team
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -61,10 +70,57 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
   const [memberRole, setMemberRole] = useState<"equipe" | "responsavel_equipe">("equipe");
   const [memberProfileId, setMemberProfileId] = useState("");
   const [savingMember, setSavingMember] = useState(false);
+  const [addMode, setAddMode] = useState<"individual" | "family">("individual");
+  const [selectedFamilyId, setSelectedFamilyId] = useState("");
+
+  // Drag state
+  const [draggedTeam, setDraggedTeam] = useState<string | null>(null);
+  const [dragOverTeam, setDragOverTeam] = useState<string | null>(null);
 
   useEffect(() => {
     if (externalColors) setTeamColors(externalColors);
   }, [externalColors]);
+
+  useEffect(() => {
+    fetchFamilies();
+    fetchTeamOrder();
+  }, []);
+
+  const fetchFamilies = async () => {
+    const { data: groups } = await supabase.from("family_groups").select("id, name");
+    if (!groups) return;
+
+    const { data: members } = await supabase.from("family_group_members").select("family_group_id, user_id");
+    const { data: profs } = await supabase.from("profiles").select("id, full_name");
+
+    const profMap = new Map<string, string>();
+    (profs || []).forEach((p: any) => profMap.set(p.id, p.full_name));
+
+    const result: FamilyGroup[] = (groups as any[]).map(g => ({
+      id: g.id,
+      name: g.name || "Família",
+      members: (members || [])
+        .filter((m: any) => m.family_group_id === g.id)
+        .map((m: any) => ({ user_id: m.user_id, full_name: profMap.get(m.user_id) || "Sem nome" })),
+    }));
+    setFamilies(result);
+  };
+
+  const fetchTeamOrder = async () => {
+    const { data } = await supabase.from("app_settings").select("setting_value").eq("setting_key", TEAM_ORDER_SETTINGS_KEY).maybeSingle();
+    if (data?.setting_value) {
+      try { setTeamOrder(JSON.parse(data.setting_value)); } catch {}
+    }
+  };
+
+  const saveTeamOrder = async (order: string[]) => {
+    setTeamOrder(order);
+    await supabase.from("app_settings").upsert({
+      setting_key: TEAM_ORDER_SETTINGS_KEY,
+      setting_value: JSON.stringify(order),
+      updated_by: user?.id,
+    } as any, { onConflict: "setting_key" });
+  };
 
   const saveTeamColor = async (teamName: string, colorValue: string) => {
     const updated = { ...teamColors, [teamName]: colorValue };
@@ -85,12 +141,19 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
 
   // Group team positions by function_name
   const teamPositions = positions.filter(p => TEAM_CATEGORIES.includes(p.category) && p.function_name?.trim());
-  const teamNames = Array.from(new Set(teamPositions.map(p => p.function_name!.trim())))
-    .sort((a, b) => {
-      const numA = parseInt(a.replace(/\D/g, "")) || 999;
-      const numB = parseInt(b.replace(/\D/g, "")) || 999;
-      return numA - numB;
-    });
+  const rawTeamNames = Array.from(new Set(teamPositions.map(p => p.function_name!.trim())));
+
+  // Sort by custom order, then numerically for unordered ones
+  const teamNames = [...rawTeamNames].sort((a, b) => {
+    const idxA = teamOrder.indexOf(a);
+    const idxB = teamOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    const numA = parseInt(a.replace(/\D/g, "")) || 999;
+    const numB = parseInt(b.replace(/\D/g, "")) || 999;
+    return numA - numB;
+  });
 
   const getTeamMembers = (teamName: string) => {
     const members = teamPositions.filter(p => p.function_name?.trim() === teamName);
@@ -120,7 +183,6 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
       return;
     }
     setCreatingTeam(true);
-    // Create a placeholder position so the team exists
     const { error } = await supabase.from("org_positions").insert({
       title: `Membro - ${name}`,
       category: "equipe",
@@ -135,6 +197,9 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
       toast({ title: `Equipe "${name}" criada!` });
       setNewTeamName("");
       setExpandedTeams(prev => new Set(prev).add(name));
+      // Add to order
+      const newOrder = [...teamOrder, name];
+      await saveTeamOrder(newOrder);
       await onRefresh();
     }
     setCreatingTeam(false);
@@ -171,6 +236,43 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
     setSavingMember(false);
   };
 
+  const handleAddFamily = async (teamName: string) => {
+    if (!selectedFamilyId) {
+      toast({ title: "Selecione uma família", variant: "destructive" });
+      return;
+    }
+    const family = families.find(f => f.id === selectedFamilyId);
+    if (!family || family.members.length === 0) {
+      toast({ title: "Família sem membros", variant: "destructive" });
+      return;
+    }
+    setSavingMember(true);
+    const maxOrder = teamPositions
+      .filter(p => p.function_name?.trim() === teamName)
+      .reduce((max, p) => Math.max(max, p.sort_order), -1);
+
+    const inserts = family.members.map((m, i) => ({
+      title: m.full_name,
+      category: memberRole,
+      function_name: teamName,
+      profile_id: m.user_id,
+      sort_order: maxOrder + 1 + i,
+      created_by: user?.id,
+    }));
+
+    const { error } = await supabase.from("org_positions").insert(inserts as any);
+
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `${family.members.length} membros da família "${family.name}" adicionados!` });
+      setSelectedFamilyId("");
+      setMemberRole("equipe");
+      await onRefresh();
+    }
+    setSavingMember(false);
+  };
+
   const handleDeleteMember = async (id: string) => {
     const { error } = await supabase.from("org_positions").delete().eq("id", id);
     if (error) {
@@ -195,6 +297,48 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
   const getProfileName = (pid: string | null) => {
     if (!pid) return null;
     return profiles.find(p => p.id === pid)?.full_name || null;
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (teamName: string) => {
+    setDraggedTeam(teamName);
+  };
+
+  const handleDragOver = (e: React.DragEvent, teamName: string) => {
+    e.preventDefault();
+    if (draggedTeam && draggedTeam !== teamName) {
+      setDragOverTeam(teamName);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverTeam(null);
+  };
+
+  const handleDrop = async (targetTeam: string) => {
+    if (!draggedTeam || draggedTeam === targetTeam) {
+      setDraggedTeam(null);
+      setDragOverTeam(null);
+      return;
+    }
+
+    const currentOrder = [...teamNames];
+    const fromIdx = currentOrder.indexOf(draggedTeam);
+    const toIdx = currentOrder.indexOf(targetTeam);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    currentOrder.splice(fromIdx, 1);
+    currentOrder.splice(toIdx, 0, draggedTeam);
+
+    await saveTeamOrder(currentOrder);
+    setDraggedTeam(null);
+    setDragOverTeam(null);
+    toast({ title: "Ordem atualizada!" });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTeam(null);
+    setDragOverTeam(null);
   };
 
   return (
@@ -231,9 +375,23 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
             const total = responsaveis.length + membros.length;
 
             return (
-              <div key={teamName} className="border border-border rounded-xl overflow-hidden">
+              <div
+                key={teamName}
+                className={cn(
+                  "border border-border rounded-xl overflow-hidden transition-all",
+                  draggedTeam === teamName && "opacity-50",
+                  dragOverTeam === teamName && "border-primary border-2"
+                )}
+                draggable
+                onDragStart={() => handleDragStart(teamName)}
+                onDragOver={(e) => handleDragOver(e, teamName)}
+                onDragLeave={handleDragLeave}
+                onDrop={() => handleDrop(teamName)}
+                onDragEnd={handleDragEnd}
+              >
                 {/* Team header */}
                 <div className="flex items-center gap-2 p-3 bg-background">
+                  <GripVertical size={14} className="text-muted-foreground cursor-grab shrink-0" />
                   <button onClick={() => toggleTeam(teamName)} className="flex items-center gap-2 flex-1 text-left">
                     <ChevronDown size={14} className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
                     <div
@@ -315,45 +473,107 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
                     {/* Add member form */}
                     {addingTo === teamName ? (
                       <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px]">Nome</Label>
-                            <Input value={memberTitle} onChange={e => setMemberTitle(e.target.value)} className="h-8 text-xs" placeholder="Ex: João Silva" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px]">Papel</Label>
-                            <Select value={memberRole} onValueChange={v => setMemberRole(v as any)}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="equipe">Membro</SelectItem>
-                                <SelectItem value="responsavel_equipe">Responsável</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="col-span-2 space-y-1">
-                            <Label className="text-[10px]">Vincular ao Perfil (opcional)</Label>
-                            <Select value={memberProfileId} onValueChange={setMemberProfileId}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nenhum</SelectItem>
-                                {profiles.map(p => (
-                                  <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                        {/* Mode toggle */}
+                        <div className="flex gap-1">
+                          <Button
+                            variant={addMode === "individual" ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-[10px] gap-1"
+                            onClick={() => setAddMode("individual")}
+                          >
+                            <UserPlus size={10} /> Individual
+                          </Button>
+                          <Button
+                            variant={addMode === "family" ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-[10px] gap-1"
+                            onClick={() => setAddMode("family")}
+                          >
+                            <Home size={10} /> Família
+                          </Button>
                         </div>
+
+                        {addMode === "individual" ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-[10px]">Nome</Label>
+                              <Input value={memberTitle} onChange={e => setMemberTitle(e.target.value)} className="h-8 text-xs" placeholder="Ex: João Silva" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px]">Papel</Label>
+                              <Select value={memberRole} onValueChange={v => setMemberRole(v as any)}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="equipe">Membro</SelectItem>
+                                  <SelectItem value="responsavel_equipe">Responsável</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="col-span-2 space-y-1">
+                              <Label className="text-[10px]">Vincular ao Perfil (opcional)</Label>
+                              <Select value={memberProfileId} onValueChange={setMemberProfileId}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhum</SelectItem>
+                                  {profiles.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <Label className="text-[10px]">Selecionar Família</Label>
+                              <Select value={selectedFamilyId} onValueChange={setSelectedFamilyId}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolha uma família" /></SelectTrigger>
+                                <SelectContent>
+                                  {families.map(f => (
+                                    <SelectItem key={f.id} value={f.id}>
+                                      {f.name} ({f.members.length} {f.members.length === 1 ? "membro" : "membros"})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {selectedFamilyId && (
+                              <div className="text-[10px] text-muted-foreground space-y-0.5">
+                                <p className="font-semibold">Membros que serão adicionados:</p>
+                                {families.find(f => f.id === selectedFamilyId)?.members.map(m => (
+                                  <p key={m.user_id}>• {m.full_name}</p>
+                                ))}
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              <Label className="text-[10px]">Papel para todos</Label>
+                              <Select value={memberRole} onValueChange={v => setMemberRole(v as any)}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="equipe">Membro</SelectItem>
+                                  <SelectItem value="responsavel_equipe">Responsável</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setAddingTo(null); setMemberTitle(""); setMemberProfileId(""); }}>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setAddingTo(null); setMemberTitle(""); setMemberProfileId(""); setSelectedFamilyId(""); }}>
                             Cancelar
                           </Button>
-                          <Button size="sm" className="h-7 text-xs gap-1" disabled={savingMember} onClick={() => handleAddMember(teamName)}>
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            disabled={savingMember}
+                            onClick={() => addMode === "individual" ? handleAddMember(teamName) : handleAddFamily(teamName)}
+                          >
                             <Plus size={12} /> {savingMember ? "Salvando..." : "Adicionar"}
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1" onClick={() => { setAddingTo(teamName); setMemberTitle(""); setMemberProfileId(""); setMemberRole("equipe"); }}>
+                      <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1" onClick={() => { setAddingTo(teamName); setMemberTitle(""); setMemberProfileId(""); setMemberRole("equipe"); setAddMode("individual"); setSelectedFamilyId(""); }}>
                         <UserPlus size={12} /> Adicionar Membro
                       </Button>
                     )}

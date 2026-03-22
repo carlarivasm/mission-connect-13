@@ -63,13 +63,15 @@ const Organograma = () => {
   const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
+  const [teamOrder, setTeamOrder] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [posRes, catRes, colorsRes] = await Promise.all([
+      const [posRes, catRes, colorsRes, orderRes] = await Promise.all([
         supabase.from("org_positions").select("*").order("sort_order", { ascending: true }),
         supabase.from("app_settings").select("setting_value").eq("setting_key", "org_categories").maybeSingle(),
         supabase.from("app_settings").select("setting_value").eq("setting_key", "org_team_colors").maybeSingle(),
+        supabase.from("app_settings").select("setting_value").eq("setting_key", "org_team_order").maybeSingle(),
       ]);
 
       if (catRes.data?.setting_value) {
@@ -81,6 +83,10 @@ const Organograma = () => {
 
       if (colorsRes.data?.setting_value) {
         try { setTeamColors(JSON.parse(colorsRes.data.setting_value)); } catch {}
+      }
+
+      if (orderRes.data?.setting_value) {
+        try { setTeamOrder(JSON.parse(orderRes.data.setting_value)); } catch {}
       }
 
       if (posRes.data) {
@@ -178,6 +184,11 @@ const Organograma = () => {
             {/* 4) Equipes ordenadas numericamente */}
             {Array.from(teamsByFunction.entries())
               .sort((a, b) => {
+                const idxA = teamOrder.indexOf(a[0]);
+                const idxB = teamOrder.indexOf(b[0]);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
                 const numA = parseInt(a[0].replace(/\D/g, "")) || 999;
                 const numB = parseInt(b[0].replace(/\D/g, "")) || 999;
                 return numA - numB;
