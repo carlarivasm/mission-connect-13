@@ -92,7 +92,7 @@ const OrgCategorySection = ({ label, positions, profiles, icon, iconColor, defau
           ))}
 
           {ungrouped.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {ungrouped.map(p => (
                 <OrgMemberCard
                   key={p.id}
