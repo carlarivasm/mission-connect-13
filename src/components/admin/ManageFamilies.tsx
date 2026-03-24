@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Download, ChevronDown, ChevronUp, ChevronRight, UserPlus, Users, Search, Heart, User } from "lucide-react";
+import { Download, ChevronDown, ChevronUp, ChevronRight, UserPlus, Users, Search, Heart, User, Trash2 } from "lucide-react";
 import { exportToExcel, exportToCsv } from "@/lib/excel";
 import { TEAM_COLOR_OPTIONS } from "./ManageOrgTeams";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 
 interface ManualMember {
@@ -204,6 +205,17 @@ const ManageFamilies = () => {
     setLinking(false);
   };
 
+  const handleDeleteFamily = async (familyId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { error } = await supabase.from("family_groups").delete().eq("id", familyId);
+    if (error) {
+       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+    } else {
+       toast({ title: "Família excluída com sucesso" });
+       fetchData();
+    }
+  };
+
   const handleOpenCreateModal = (user: any) => {
     setUserToCreateFamilyFor(user);
     setNewFamilyName(user.family_name || "Família " + user.full_name.split(" ")[0]);
@@ -387,7 +399,33 @@ const ManageFamilies = () => {
                         );
                       })()}
                     </div>
-                    <div className="flex items-center justify-center text-muted-foreground shrink-0 pl-2">
+                    <div className="flex items-center justify-center text-muted-foreground shrink-0 pl-2 gap-1.5">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0" 
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir família?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              A família será completamente excluída e todos os membros desvinculados. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={(e: any) => handleDeleteFamily(f.id, e)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       {expandedFamily === f.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                   </div>

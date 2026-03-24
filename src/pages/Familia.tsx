@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Users, Plus, Trash2, Save, Search, UserPlus, X, UserCheck, UserX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface FamilyMember {
   name: string;
@@ -290,6 +291,22 @@ const Familia = () => {
       toast({ title: "Erro ao sair da família", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Sucesso", description: "Você não faz mais parte da família." });
+      setFamilyGroupId(null);
+      setFamilyGroupInfo(null);
+      setIsGroupCreator(true);
+      setLinkedUsers([]);
+      loadData();
+    }
+  };
+
+  const handleDeleteFamily = async () => {
+    if (!user || !familyGroupId) return;
+    const { error } = await supabase.from("family_groups").delete().eq("id", familyGroupId);
+    
+    if (error) {
+      toast({ title: "Erro ao excluir a família", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "A família foi excluída permanentemente." });
       setFamilyGroupId(null);
       setFamilyGroupInfo(null);
       setIsGroupCreator(true);
@@ -716,10 +733,36 @@ const Familia = () => {
             </Tabs>
 
             {isGroupCreator || !familyGroupInfo ? (
-              <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
-                <Save size={16} />
-                {saving ? "Salvando..." : "Salvar Dados da Família"}
-              </Button>
+              <div className="space-y-4">
+                <Button onClick={handleSave} disabled={saving} className="w-full gradient-mission text-primary-foreground gap-2">
+                  <Save size={16} />
+                  {saving ? "Salvando..." : "Salvar Dados da Família"}
+                </Button>
+                
+                {isGroupCreator && familyGroupInfo && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="secondary" className="w-full gap-2 bg-destructive/10 text-destructive hover:bg-destructive/20 border-none">
+                        <Trash2 size={16} /> Excluir Família
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir família?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          A família será completamente excluída e todos os membros desvinculados. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteFamily} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             ) : (
               <Button onClick={handleLeaveFamily} variant="secondary" className="w-full gap-2 mt-4 bg-destructive/10 text-destructive hover:bg-destructive/20 border-none">
                 <UserX size={16} />
