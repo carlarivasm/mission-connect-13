@@ -299,6 +299,12 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
     return profiles.find(p => p.id === pid)?.full_name || null;
   };
 
+  const getFamilyName = (pid: string | null) => {
+    if (!pid) return null;
+    const fam = families.find(f => f.members.some(m => m.user_id === pid));
+    return fam ? fam.name : null;
+  };
+
   // Drag and drop handlers
   const handleDragStart = (teamName: string) => {
     setDraggedTeam(teamName);
@@ -465,7 +471,7 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
                       <div className="space-y-1">
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Membros</p>
                         {membros.map(m => (
-                          <MemberRow key={m.id} member={m} profileName={getProfileName(m.profile_id)} onDelete={handleDeleteMember} />
+                          <MemberRow key={m.id} member={m} profileName={getProfileName(m.profile_id)} familyName={getFamilyName(m.profile_id)} onDelete={handleDeleteMember} />
                         ))}
                       </div>
                     )}
@@ -588,11 +594,15 @@ const ManageOrgTeams = ({ positions, profiles, onRefresh, teamColors: externalCo
   );
 };
 
-const MemberRow = ({ member, profileName, onDelete }: { member: OrgPosition; profileName: string | null; onDelete: (id: string) => Promise<void> }) => (
+const MemberRow = ({ member, profileName, familyName, onDelete }: { member: OrgPosition; profileName: string | null; familyName?: string | null; onDelete: (id: string) => Promise<void> }) => (
   <div className="flex items-center gap-2 p-2 bg-background rounded-lg">
     <div className="flex-1 min-w-0">
       <p className="text-xs font-medium text-foreground truncate">{member.title}</p>
-      {profileName && <p className="text-[10px] text-muted-foreground truncate">Perfil: {profileName}</p>}
+      {familyName ? (
+        <p className="text-[10px] text-muted-foreground truncate">Família: {familyName}</p>
+      ) : profileName ? (
+        <p className="text-[10px] text-muted-foreground truncate">Perfil: {profileName}</p>
+      ) : null}
     </div>
     <AlertDialog>
       <AlertDialogTrigger asChild>
