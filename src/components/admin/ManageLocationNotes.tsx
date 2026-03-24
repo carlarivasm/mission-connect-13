@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { exportToExcel, exportToCsv } from "@/lib/excel";
+import { renderNeedsNames } from "@/lib/utils";
 
 interface NoteRow {
   location_name: string;
@@ -36,9 +37,10 @@ const ManageLocationNotes = () => {
       const locationIds = [...new Set((notes as any[]).map((n) => n.location_id))];
       const userIds = [...new Set((notes as any[]).map((n) => n.user_id))];
 
-      const [{ data: locations }, { data: profiles }] = await Promise.all([
+      const [{ data: locations }, { data: profiles }, { data: categories }] = await Promise.all([
         supabase.from("mission_locations").select("id, name, address").in("id", locationIds),
         supabase.from("profiles").select("id, full_name, email").in("id", userIds),
+        supabase.from("needs_categories").select("id, name"),
       ]);
 
       const locMap: Record<string, { name: string; address: string }> = {};
@@ -55,7 +57,7 @@ const ManageLocationNotes = () => {
         house_number: n.house_number || "",
         resident_name: n.resident_name || "",
         user_address: n.user_address || "",
-        needs: n.needs || "",
+        needs: renderNeedsNames(n.needs, categories || []) || "",
         notes: n.notes || "",
         updated_at: n.updated_at,
       }));

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Pencil, Sparkles, Pin, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NoteFormModal } from "./NoteFormModal";
+import { renderNeedsNames } from "@/lib/utils";
 
 export interface MissionLocation {
     id: string;
@@ -311,15 +312,6 @@ export function LocationCard({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function renderNeedsNames(needsStr: string, categories: any[]) {
-    try {
-        const ids = JSON.parse(needsStr || "[]");
-        if (!Array.isArray(ids)) return needsStr;
-        const names = ids.map((id: string) => categories.find(c => c.id === id)?.name).filter(Boolean);
-        return names.join(", ");
-    } catch {
-        return needsStr;
-    }
-}
+
 
 

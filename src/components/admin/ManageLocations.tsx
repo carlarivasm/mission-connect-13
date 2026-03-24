@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { exportToExcel } from "@/lib/excel";
+import { renderNeedsNames } from "@/lib/utils";
 
 interface MissionLocation {
   id: string;
@@ -173,11 +174,16 @@ const ManageLocations = () => {
         .select("id, full_name, email")
         .in("id", userIds);
 
+      const { data: categories } = await supabase
+        .from("needs_categories")
+        .select("id, name");
+
       const enriched: UserNote[] = (notes as any[]).map((n) => {
         const loc = locs?.find((l: any) => l.id === n.location_id);
         const profile = profiles?.find((p: any) => p.id === n.user_id);
         return {
           ...n,
+          needs: renderNeedsNames(n.needs, categories || []),
           location_name: loc?.name || "—",
           location_address: loc?.address || "",
           user_email: profile?.full_name || profile?.email || n.user_id,
