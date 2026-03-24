@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, MapPinPlus, Pencil, Eye, Download, ExternalLink, ClipboardList } from "lucide-react";
+import { Trash2, MapPinPlus, Pencil, Eye, Download, ExternalLink, ClipboardList, X, ChevronDown } from "lucide-react";
 import { ManageNeeds } from "./ManageNeeds";
+import { TEAM_COLOR_OPTIONS } from "./ManageOrgTeams";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,7 @@ interface UserNote {
   location_name?: string;
   location_address?: string;
   user_email?: string;
+  team_color?: string | null;
 }
 
 const ManageLocations = () => {
@@ -67,6 +70,16 @@ const ManageLocations = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [userNotes, setUserNotes] = useState<UserNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  const toggleExpandNote = (id: string) => {
+    setExpandedNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Collapsible sections
   const [showNeedsManager, setShowNeedsManager] = useState(false);
@@ -178,6 +191,30 @@ const ManageLocations = () => {
         .from("needs_categories")
         .select("id, name");
 
+      const { data: orgPositions } = await supabase
+        .from("org_positions")
+        .select("profile_id, function_name")
+        .in("profile_id", userIds)
+        .in("category", ["equipe", "responsavel_equipe"]);
+
+      const { data: colorSettings } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "org_team_colors")
+        .maybeSingle();
+
+      const teamMap: Record<string, string> = {};
+      (orgPositions || []).forEach((p: any) => {
+        if (p.profile_id && p.function_name) teamMap[p.profile_id] = p.function_name;
+      });
+
+      let teamColors: Record<string, string> = {};
+      if (colorSettings?.setting_value) {
+        try {
+          teamColors = JSON.parse(colorSettings.setting_value);
+        } catch {}
+      }
+
       const enriched: UserNote[] = (notes as any[]).map((n) => {
         const loc = locs?.find((l: any) => l.id === n.location_id);
         const profile = profiles?.find((p: any) => p.id === n.user_id);
@@ -186,7 +223,8 @@ const ManageLocations = () => {
           needs: renderNeedsNames(n.needs, categories || []),
           location_name: loc?.name || "—",
           location_address: loc?.address || "",
-          user_email: profile?.full_name || profile?.email || n.user_id,
+          user_email: teamMap[n.user_id] || "Sem equipe",
+          team_color: teamMap[n.user_id] ? teamColors[teamMap[n.user_id]] || null : null,
         };
       });
       setUserNotes(enriched);
@@ -358,46 +396,110 @@ const ManageLocations = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* User notes dialog */}
-      <Dialog open={showNotes} onOpenChange={setShowNotes}>
-        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              Observações dos Missionários
-              {userNotes.length > 0 && (
-                <Button size="sm" variant="outline" onClick={exportUserNotes} className="gap-1">
-                  <Download size={14} /> Exportar Excel
-                </Button>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {loadingNotes ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      {/* User notes dialog via portal */}
+      {showNotes && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto px-4"
+          style={{ paddingTop: "68px", paddingBottom: "72px" }}
+          onClick={() => setShowNotes(false)}
+        >
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" style={{ zIndex: -1 }} />
+
+          {/* Panel shape and scroll rules */}
+          <div
+            className="relative w-full max-w-lg bg-background shadow-2xl flex flex-col min-h-0 rounded-2xl"
+            style={{ maxHeight: "calc(100dvh - 68px - 72px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+              <h3 className="font-bold text-foreground">Observações</h3>
+              <div className="flex items-center gap-2">
+                {userNotes.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={exportUserNotes} className="gap-1 h-8 px-2 text-xs">
+                    <Download size={14} /> Excel
+                  </Button>
+                )}
+                <button
+                  onClick={() => setShowNotes(false)}
+                  className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+                  aria-label="Manter aberto"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
-          ) : userNotes.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Nenhuma observação registrada ainda.</p>
-          ) : (
-            <div className="space-y-3">
-              {userNotes.map((n) => (
-                <div key={n.id} className="p-3 bg-muted/50 rounded-lg space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm text-foreground">{n.location_name}</p>
-                    <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">👤 {n.user_email}</p>
-                  {n.needs && (
-                    <p className="text-xs text-foreground"><span className="font-semibold">Necessidades:</span> {n.needs}</p>
-                  )}
-                  {n.notes && (
-                    <p className="text-xs text-foreground italic">{n.notes}</p>
-                  )}
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {loadingNotes ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-              ))}
+              ) : userNotes.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">Nenhuma observação registrada ainda.</p>
+              ) : (
+                <div className="space-y-3">
+                  {userNotes.map((n) => {
+                    const isExpanded = expandedNotes.has(n.id);
+                    const colorObj = n.team_color ? TEAM_COLOR_OPTIONS.find(c => c.value === n.team_color) : null;
+                    
+                    return (
+                      <div key={n.id} className="bg-card rounded-xl shadow-sm border border-border/60 overflow-hidden transition-all duration-200">
+                        {/* Header */}
+                        <button 
+                          onClick={() => toggleExpandNote(n.id)}
+                          className="w-full flex items-start justify-between p-3 text-left hover:bg-muted/40 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0 pr-2">
+                            <p className="font-semibold text-sm text-primary truncate">{n.location_name}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              {colorObj && (
+                                <div 
+                                  className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" 
+                                  style={{ backgroundColor: `hsl(${colorObj.hsl})` }} 
+                                />
+                              )}
+                              <p className="text-xs font-medium text-foreground truncate">👤 {n.user_email}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                              {new Date(n.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                          </div>
+                        </button>
+                        
+                        {/* Body */}
+                        <div 
+                          className={`px-3 space-y-1.5 border-border overflow-hidden transition-all duration-200 ${
+                            isExpanded ? "max-h-[500px] pb-3 pt-2 border-t opacity-100 bg-muted/10" : "max-h-0 opacity-0"
+                          }`}
+                        >
+                          {n.needs && (
+                            <p className="text-xs text-foreground mt-1"><span className="font-semibold text-foreground/80">Necessidades:</span> {n.needs}</p>
+                          )}
+                          {n.notes && (
+                            <div className="bg-muted/50 p-2.5 rounded-lg mt-1 border border-border/40">
+                              <p className="text-xs text-muted-foreground italic">"{n.notes}"</p>
+                            </div>
+                          )}
+                          {!n.needs && !n.notes && (
+                            <p className="text-xs text-muted-foreground italic mt-1">Nenhuma observação ou necessidade detalhada.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
