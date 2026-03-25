@@ -6,13 +6,15 @@ import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardList, CheckCircle2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ClipboardList, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Survey {
   id: string;
   title: string;
   description: string | null;
+  end_message?: string | null;
 }
 
 interface Question {
@@ -27,6 +29,8 @@ interface Option {
   question_id: string;
   option_text: string;
   sort_order: number;
+  next_question_id: string | null;
+  ends_survey: boolean;
 }
 
 const Pesquisas = () => {
@@ -38,19 +42,24 @@ const Pesquisas = () => {
   const [loading, setLoading] = useState(true);
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
 
-  // Active survey being answered
+  // Active survey
   const [activeSurvey, setActiveSurvey] = useState<Survey | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<Option[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({}); // question_id -> option_id or text
-  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({}); // question_id -> text
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Step-by-step navigation
+  const [currentStep, setCurrentStep] = useState(0);
+  const [questionPath, setQuestionPath] = useState<number[]>([0]); // indices into questions array
+  const [surveyEnded, setSurveyEnded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const { data: surveyData } = await supabase
         .from("surveys")
-        .select("id, title, description")
+        .select("id, title, description, end_message")
         .eq("active", true)
         .order("created_at", { ascending: false });
 
@@ -74,6 +83,9 @@ const Pesquisas = () => {
     setActiveSurvey(survey);
     setAnswers({});
     setTextAnswers({});
+    setCurrentStep(0);
+    setQuestionPath([0]);
+    setSurveyEnded(false);
 
     const { data: qs } = await supabase
       .from("survey_questions")
@@ -84,47 +96,122 @@ const Pesquisas = () => {
     if (qs) {
       setQuestions(qs as Question[]);
       const qIds = qs.map((q: any) => q.id);
-      const { data: opts } = await supabase
-        .from("survey_options")
-        .select("*")
-        .in("question_id", qIds)
-        .order("sort_order");
-      if (opts) setOptions(opts as Option[]);
+      if (qIds.length > 0) {
+        const { data: opts } = await supabase
+          .from("survey_options")
+          .select("*")
+          .in("question_id", qIds)
+          .order("sort_order");
+        if (opts) setOptions(opts as Option[]);
+      }
+    }
+  };
+
+  const currentQuestionIndex = questionPath[currentStep] ?? 0;
+  const currentQuestion = questions[currentQuestionIndex];
+  const totalSteps = questionPath.length;
+  const progressPercent = questions.length > 0 ? ((currentStep + 1) / questions.length) * 100 : 0;
+
+  const isCurrentAnswered = () => {
+    if (!currentQuestion) return false;
+    if (currentQuestion.question_type === "open_ended") return !!textAnswers[currentQuestion.id]?.trim();
+    return !!answers[currentQuestion.id];
+  };
+
+  const getNextQuestionIndex = (): { nextIndex: number; endsNow: boolean } => {
+    if (!currentQuestion) return { nextIndex: -1, endsNow: true };
+
+    if (currentQuestion.question_type === "multiple_choice") {
+      const selectedOptionId = answers[currentQuestion.id];
+      const selectedOption = options.find(o => o.id === selectedOptionId);
+      if (selectedOption) {
+        if (selectedOption.ends_survey) return { nextIndex: -1, endsNow: true };
+        if (selectedOption.next_question_id) {
+          const targetIdx = questions.findIndex(q => q.id === selectedOption.next_question_id);
+          if (targetIdx !== -1) return { nextIndex: targetIdx, endsNow: false };
+        }
+      }
+    }
+
+    // Default: next sequential question
+    const nextIdx = currentQuestionIndex + 1;
+    if (nextIdx >= questions.length) return { nextIndex: -1, endsNow: true };
+    return { nextIndex: nextIdx, endsNow: false };
+  };
+
+  const goNext = () => {
+    if (!isCurrentAnswered()) {
+      toast({ title: "Responda", description: "Preencha a pergunta antes de continuar.", variant: "destructive" });
+      return;
+    }
+
+    const { nextIndex, endsNow } = getNextQuestionIndex();
+
+    if (endsNow) {
+      // Check if this is a conditional end or natural end
+      if (currentQuestion?.question_type === "multiple_choice") {
+        const selectedOption = options.find(o => o.id === answers[currentQuestion.id]);
+        if (selectedOption?.ends_survey) {
+          setSurveyEnded(true);
+          handleSubmit();
+          return;
+        }
+      }
+      // Natural end - submit
+      handleSubmit();
+      return;
+    }
+
+    const newPath = [...questionPath.slice(0, currentStep + 1), nextIndex];
+    setQuestionPath(newPath);
+    setCurrentStep(currentStep + 1);
+  };
+
+  const goPrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
     }
   };
 
   const handleSubmit = async () => {
     if (!user || !activeSurvey) return;
 
-    const unanswered = questions.filter((q) => {
-      if (q.question_type === "open_ended") return !textAnswers[q.id]?.trim();
-      if (q.question_type === "scale") return !answers[q.id];
-      return !answers[q.id];
-    });
-    if (unanswered.length > 0) {
-      toast({ title: "Responda todas", description: "Preencha todas as perguntas.", variant: "destructive" });
+    setSubmitting(true);
+    // Collect only answered questions from the path
+    const answeredQuestionIds = new Set(questionPath.slice(0, currentStep + 1).map(idx => questions[idx]?.id).filter(Boolean));
+
+    const rows = Array.from(answeredQuestionIds).map((qId) => {
+      const q = questions.find(q => q.id === qId)!;
+      return {
+        survey_id: activeSurvey.id,
+        question_id: q.id,
+        option_id: q.question_type === "open_ended" || q.question_type === "scale" ? null : answers[q.id] || null,
+        response_text: q.question_type === "open_ended" ? (textAnswers[q.id]?.trim() || null) : q.question_type === "scale" ? (answers[q.id] || null) : null,
+        user_id: user.id,
+      };
+    }).filter(r => r.option_id || r.response_text);
+
+    if (rows.length === 0) {
+      setSubmitting(false);
       return;
     }
-
-    setSubmitting(true);
-    const rows = questions.map((q) => ({
-      survey_id: activeSurvey.id,
-      question_id: q.id,
-      option_id: q.question_type === "open_ended" || q.question_type === "scale" ? null : answers[q.id],
-      response_text: q.question_type === "open_ended" ? textAnswers[q.id].trim() : q.question_type === "scale" ? answers[q.id] : null,
-      user_id: user.id,
-    }));
 
     const { error } = await supabase.from("survey_responses").insert(rows as any);
 
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Resposta enviada!", description: "Obrigado por participar." });
+      setSurveyEnded(true);
       setAnsweredIds(new Set([...answeredIds, activeSurvey.id]));
-      setActiveSurvey(null);
     }
     setSubmitting(false);
+  };
+
+  const closeSurvey = () => {
+    setActiveSurvey(null);
+    setSurveyEnded(false);
+    setCurrentStep(0);
+    setQuestionPath([0]);
   };
 
   const handleLogout = async () => {
@@ -179,99 +266,138 @@ const Pesquisas = () => {
               </div>
             )}
           </>
+        ) : surveyEnded ? (
+          /* End screen */
+          <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle2 size={40} className="text-green-600" />
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-display font-bold text-foreground">Resposta enviada!</h2>
+              <p className="text-muted-foreground text-sm max-w-xs">
+                {activeSurvey.end_message || "Obrigado pela sua participação!"}
+              </p>
+            </div>
+            <Button onClick={closeSurvey} className="gradient-mission text-primary-foreground">
+              Voltar às pesquisas
+            </Button>
+          </div>
         ) : (
-          /* Survey answering view */
+          /* Step-by-step answering */
           <div className="space-y-5 animate-fade-in">
             <div>
-              <button onClick={() => setActiveSurvey(null)} className="text-sm text-primary hover:underline mb-2">
+              <button onClick={closeSurvey} className="text-sm text-primary hover:underline mb-2">
                 ← Voltar
               </button>
               <h2 className="text-xl font-display font-bold text-foreground">{activeSurvey.title}</h2>
               {activeSurvey.description && <p className="text-sm text-muted-foreground mt-0.5">{activeSurvey.description}</p>}
             </div>
 
-            {questions.map((q, qi) => {
-              const qOptions = options.filter((o) => o.question_id === q.id);
-              const isOpen = q.question_type === "open_ended";
-              const isScale = q.question_type === "scale";
-              return (
-                <div key={q.id} className="bg-card rounded-xl shadow-card p-4 space-y-3">
-                  <p className="font-medium text-foreground text-sm">
-                    {qi + 1}. {q.question_text}
-                  </p>
-                  {isOpen ? (
-                    <Textarea
-                      value={textAnswers[q.id] || ""}
-                      onChange={(e) => setTextAnswers({ ...textAnswers, [q.id]: e.target.value })}
-                      placeholder="Escreva sua resposta..."
-                      rows={3}
-                      className="text-sm"
-                    />
-                  ) : isScale ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setAnswers({ ...answers, [q.id]: String(n) })}
-                            className={`flex-1 h-12 rounded-xl border-2 font-bold text-lg transition-all ${
-                              answers[q.id] === String(n)
-                                ? "border-primary bg-primary text-primary-foreground scale-110"
-                                : "border-border bg-card text-muted-foreground hover:border-primary/40"
-                            }`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex justify-between px-1">
-                        <span className="text-[10px] text-muted-foreground">Muito ruim</span>
-                        <span className="text-[10px] text-muted-foreground">Excelente</span>
-                      </div>
+            {/* Progress bar */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Pergunta {currentStep + 1} de {questions.length}</span>
+                <span className="text-xs font-medium text-primary">{Math.round(progressPercent)}%</span>
+              </div>
+              <Progress value={progressPercent} className="h-2" />
+            </div>
+
+            {/* Current question */}
+            {currentQuestion && (
+              <div className="bg-card rounded-xl shadow-card p-5 space-y-4">
+                <p className="font-medium text-foreground">
+                  {currentStep + 1}. {currentQuestion.question_text}
+                </p>
+
+                {currentQuestion.question_type === "open_ended" ? (
+                  <Textarea
+                    value={textAnswers[currentQuestion.id] || ""}
+                    onChange={(e) => setTextAnswers({ ...textAnswers, [currentQuestion.id]: e.target.value })}
+                    placeholder="Escreva sua resposta..."
+                    rows={4}
+                    className="text-sm"
+                  />
+                ) : currentQuestion.question_type === "scale" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setAnswers({ ...answers, [currentQuestion.id]: String(n) })}
+                          className={`flex-1 h-14 rounded-xl border-2 font-bold text-lg transition-all ${
+                            answers[currentQuestion.id] === String(n)
+                              ? "border-primary bg-primary text-primary-foreground scale-110"
+                              : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {qOptions.map((opt) => (
+                    <div className="flex justify-between px-1">
+                      <span className="text-[10px] text-muted-foreground">Muito ruim</span>
+                      <span className="text-[10px] text-muted-foreground">Excelente</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {options
+                      .filter((o) => o.question_id === currentQuestion.id)
+                      .map((opt) => (
                         <label
                           key={opt.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                            answers[q.id] === opt.id
-                              ? "border-primary bg-primary/5"
+                          className={`flex items-center gap-3 p-3.5 rounded-lg border cursor-pointer transition-all ${
+                            answers[currentQuestion.id] === opt.id
+                              ? "border-primary bg-primary/5 shadow-sm"
                               : "border-border hover:border-primary/40"
                           }`}
                         >
                           <div
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                              answers[q.id] === opt.id ? "border-primary" : "border-muted-foreground/40"
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              answers[currentQuestion.id] === opt.id ? "border-primary" : "border-muted-foreground/40"
                             }`}
                           >
-                            {answers[q.id] === opt.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            {answers[currentQuestion.id] === opt.id && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
                           </div>
                           <span className="text-sm text-foreground">{opt.option_text}</span>
                           <input
                             type="radio"
-                            name={q.id}
+                            name={currentQuestion.id}
                             value={opt.id}
-                            checked={answers[q.id] === opt.id}
-                            onChange={() => setAnswers({ ...answers, [q.id]: opt.id })}
+                            checked={answers[currentQuestion.id] === opt.id}
+                            onChange={() => setAnswers({ ...answers, [currentQuestion.id]: opt.id })}
                             className="hidden"
                           />
                         </label>
                       ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                )}
+              </div>
+            )}
 
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full gradient-mission text-primary-foreground"
-            >
-              {submitting ? "Enviando..." : "Enviar Respostas"}
-            </Button>
+            {/* Navigation buttons */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={goPrev}
+                disabled={currentStep === 0}
+                className="flex-1 gap-1"
+              >
+                <ChevronLeft size={16} /> Anterior
+              </Button>
+              <Button
+                onClick={goNext}
+                disabled={submitting || !isCurrentAnswered()}
+                className="flex-1 gradient-mission text-primary-foreground gap-1"
+              >
+                {submitting ? "Enviando..." : (() => {
+                  const { endsNow } = getNextQuestionIndex();
+                  return endsNow ? "Enviar" : "Próxima";
+                })()}
+                {!submitting && <ChevronRight size={16} />}
+              </Button>
+            </div>
           </div>
         )}
       </main>
