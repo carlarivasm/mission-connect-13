@@ -38,6 +38,7 @@ const Perfil = () => {
   const [showPhoneInOrg, setShowPhoneInOrg] = useState(false);
 
   useEffect(() => {
+    localStorage.setItem('has_visited_profile', 'true');
     if (!user) return;
     supabase
       .from("profiles")

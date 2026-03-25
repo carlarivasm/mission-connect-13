@@ -75,6 +75,7 @@ const Loja = () => {
   const [kitComponents, setKitComponents] = useState<KitComponent[]>([]);
 
   useEffect(() => {
+    localStorage.setItem('has_visited_store', 'true');
     Promise.all([
       supabase.from("store_products").select("*").order("category"),
       supabase.from("product_stock").select("product_id, size, color, quantity"),

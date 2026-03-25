@@ -34,7 +34,7 @@ const AppHeader = ({ title, onLogout }: AppHeaderProps) => {
             </button>
           )}
           <img src={logoSrc} alt="Logo" className="h-9 w-9 rounded-full bg-primary-foreground/20 p-0.5 object-contain" />
-          <h1 className="text-g font-bold text-primary-foreground font-display">{displayTitle}</h1>
+          <h1 className="text-sm font-bold text-primary-foreground font-display">{displayTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
           {totalItems > 0 && (

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import NotificationPopup from "@/components/NotificationPopup";
 import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 import PendingCartAlert from "@/components/PendingCartAlert";
+import OnboardingCard from "@/components/OnboardingCard";
 
 interface EventData {
   id: string;
@@ -63,17 +64,6 @@ const Dashboard = () => {
       <AppHeader onLogout={handleLogout} />
 
       <main className="px-4 py-5 space-y-6">
-        {/* Pending surveys alert */}
-        {!approved && role !== "admin" && (
-          <div className="animate-fade-in rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/30 p-4">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⏳ Conta pendente de aprovação</p>
-            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-              Seu cadastro está sendo analisado por um administrador. Enquanto isso, algumas funcionalidades estão restritas (Materiais, Fotos e Calendário completo).
-            </p>
-          </div>
-        )}
-        <PendingCartAlert />
-        <PendingSurveyAlert />
         {/* Welcome */}
         <div className="animate-fade-in">
           <h2 className="text-2xl font-display font-bold text-foreground">
@@ -87,7 +77,20 @@ const Dashboard = () => {
           <p className="text-muted-foreground text-sm mt-1">Que bom ter você aqui. Veja o que temos para hoje.</p>
         </div>
 
+        {/* Pending surveys alert */}
+        {!approved && role !== "admin" && (
+          <div className="animate-fade-in rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/30 p-4">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⏳ Conta pendente de aprovação</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+              Seu cadastro está sendo analisado por um administrador. Enquanto isso, algumas funcionalidades estão restritas (Materiais, Fotos e Calendário completo).
+            </p>
+          </div>
+        )}
+        <PendingCartAlert />
+        <PendingSurveyAlert />
+
         {/* Quick Actions */}
+        <OnboardingCard />
         <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Acesso Rápido</h3>
           <div className="grid grid-cols-3 gap-3">
