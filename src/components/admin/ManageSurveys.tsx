@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell, GitBranch } from "lucide-react";
 import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
@@ -32,12 +33,23 @@ interface Survey {
   description: string | null;
   active: boolean;
   created_at: string;
+  end_message?: string | null;
+}
+
+interface OptionAction {
+  type: "next" | "goto" | "end";
+  targetQuestionIndex?: number; // index in questions array
+}
+
+interface OptionDraft {
+  text: string;
+  action: OptionAction;
 }
 
 interface QuestionDraft {
   text: string;
   type: "multiple_choice" | "open_ended" | "scale";
-  options: string[];
+  options: OptionDraft[];
 }
 
 interface ResponseRow {
@@ -55,13 +67,14 @@ const ManageSurveys = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create/Edit form
   const [showCreate, setShowCreate] = useState(false);
   const [editingSurveyId, setEditingSurveyId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: ["", ""] }]);
+  const [endMessage, setEndMessage] = useState("Obrigado pela sua participação!");
+  const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
   const [submitting, setSubmitting] = useState(false);
+  const [showConditional, setShowConditional] = useState(false);
 
   // Push notification scheduling
   const [sendPush, setSendPush] = useState(false);
@@ -71,11 +84,9 @@ const ManageSurveys = () => {
   const [pushTitle, setPushTitle] = useState("");
   const [pushBody, setPushBody] = useState("");
 
-  // Confirmations
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
-  // Results
   const [resultsFor, setResultsFor] = useState<Survey | null>(null);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
@@ -91,7 +102,6 @@ const ManageSurveys = () => {
 
   useEffect(() => { fetchSurveys(); }, []);
 
-  // Update push defaults when title changes
   useEffect(() => {
     if (!pushTitle || pushTitle === `📋 Nova pesquisa disponível`) {
       setPushTitle("📋 Nova pesquisa disponível");
@@ -101,15 +111,39 @@ const ManageSurveys = () => {
     }
   }, [title]);
 
-  const addQuestion = () => setQuestions([...questions, { text: "", type: "multiple_choice", options: ["", ""] }]);
+  const addQuestion = () => setQuestions([...questions, { text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
 
-  const removeQuestion = (qi: number) => setQuestions(questions.filter((_, i) => i !== qi));
+  const removeQuestion = (qi: number) => {
+    const updated = questions.filter((_, i) => i !== qi);
+    // Fix any goto references that pointed to removed or shifted questions
+    updated.forEach(q => {
+      q.options.forEach(opt => {
+        if (opt.action.type === "goto" && opt.action.targetQuestionIndex !== undefined) {
+          if (opt.action.targetQuestionIndex === qi) {
+            opt.action = { type: "next" };
+          } else if (opt.action.targetQuestionIndex > qi) {
+            opt.action.targetQuestionIndex--;
+          }
+        }
+      });
+    });
+    setQuestions(updated);
+  };
 
   const moveQuestion = (qi: number, direction: "up" | "down") => {
     const newIndex = direction === "up" ? qi - 1 : qi + 1;
     if (newIndex < 0 || newIndex >= questions.length) return;
     const updated = [...questions];
     [updated[qi], updated[newIndex]] = [updated[newIndex], updated[qi]];
+    // Update goto references
+    updated.forEach(q => {
+      q.options.forEach(opt => {
+        if (opt.action.type === "goto" && opt.action.targetQuestionIndex !== undefined) {
+          if (opt.action.targetQuestionIndex === qi) opt.action.targetQuestionIndex = newIndex;
+          else if (opt.action.targetQuestionIndex === newIndex) opt.action.targetQuestionIndex = qi;
+        }
+      });
+    });
     setQuestions(updated);
   };
 
@@ -121,7 +155,7 @@ const ManageSurveys = () => {
 
   const addOption = (qi: number) => {
     const updated = [...questions];
-    updated[qi].options.push("");
+    updated[qi].options.push({ text: "", action: { type: "next" } });
     setQuestions(updated);
   };
 
@@ -133,7 +167,13 @@ const ManageSurveys = () => {
 
   const updateOption = (qi: number, oi: number, value: string) => {
     const updated = [...questions];
-    updated[qi].options[oi] = value;
+    updated[qi].options[oi].text = value;
+    setQuestions(updated);
+  };
+
+  const updateOptionAction = (qi: number, oi: number, action: OptionAction) => {
+    const updated = [...questions];
+    updated[qi].options[oi].action = action;
     setQuestions(updated);
   };
 
@@ -141,6 +181,7 @@ const ManageSurveys = () => {
     setEditingSurveyId(survey.id);
     setTitle(survey.title);
     setDescription(survey.description || "");
+    setEndMessage(survey.end_message || "Obrigado pela sua participação!");
     setSendPush(false);
     setPushScheduleType("now");
     setPushDate("");
@@ -153,22 +194,40 @@ const ManageSurveys = () => {
       .order("sort_order");
 
     if (qs && qs.length > 0) {
+      // Build a map of question id -> sort_order index
+      const qIdToIndex = new Map<string, number>();
+      qs.forEach((q: any, i: number) => { qIdToIndex.set(q.id, i); });
+
       const drafts: QuestionDraft[] = [];
       for (const q of qs) {
-        let options: string[] = ["", ""];
-        if (q.question_type === "multiple_choice") {
+        let options: OptionDraft[] = [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }];
+        if ((q as any).question_type === "multiple_choice") {
           const { data: opts } = await supabase
             .from("survey_options")
-            .select("option_text")
-            .eq("question_id", q.id)
+            .select("option_text, next_question_id, ends_survey")
+            .eq("question_id", (q as any).id)
             .order("sort_order");
-          if (opts && opts.length > 0) options = opts.map((o: any) => o.option_text);
+          if (opts && opts.length > 0) {
+            options = opts.map((o: any) => {
+              let action: OptionAction = { type: "next" };
+              if (o.ends_survey) {
+                action = { type: "end" };
+              } else if (o.next_question_id && qIdToIndex.has(o.next_question_id)) {
+                action = { type: "goto", targetQuestionIndex: qIdToIndex.get(o.next_question_id)! };
+              }
+              return { text: o.option_text, action };
+            });
+          }
         }
-        drafts.push({ text: q.question_text, type: q.question_type as QuestionDraft["type"], options });
+        drafts.push({ text: (q as any).question_text, type: (q as any).question_type as QuestionDraft["type"], options });
       }
       setQuestions(drafts);
+      // Check if any option has non-default action
+      const hasConditional = drafts.some(q => q.options.some(o => o.action.type !== "next"));
+      setShowConditional(hasConditional);
     } else {
-      setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
+      setQuestions([{ text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
+      setShowConditional(false);
     }
 
     setShowCreate(true);
@@ -176,39 +235,27 @@ const ManageSurveys = () => {
 
   const schedulePushNotification = async (surveyId: string) => {
     if (!sendPush) return;
-
     const notifTitle = pushTitle || "📋 Nova pesquisa disponível";
     const notifBody = pushBody || `Responda a pesquisa "${title}" agora!`;
     const link = "/pesquisas";
 
     if (pushScheduleType === "now") {
-      // Send immediately via edge function
       try {
         await supabase.functions.invoke("send-push-notification", {
-          body: {
-            title: notifTitle,
-            body: notifBody,
-            link,
-            createInApp: true,
-          },
+          body: { title: notifTitle, body: notifBody, link, createInApp: true },
         });
         toast({ title: "Push enviado!", description: "Notificação enviada para todos os usuários." });
       } catch (err: any) {
         toast({ title: "Erro ao enviar push", description: err?.message, variant: "destructive" });
       }
     } else {
-      // Schedule for later
       if (!pushDate || !pushTime) {
         toast({ title: "Erro", description: "Defina data e hora para agendar.", variant: "destructive" });
         return;
       }
       const scheduledAt = new Date(`${pushDate}T${pushTime}:00`).toISOString();
       const { error } = await supabase.from("scheduled_push").insert({
-        title: notifTitle,
-        body: notifBody,
-        link,
-        scheduled_at: scheduledAt,
-        create_in_app: true,
+        title: notifTitle, body: notifBody, link, scheduled_at: scheduledAt, create_in_app: true,
       } as any);
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -221,7 +268,7 @@ const ManageSurveys = () => {
   const handleSave = async () => {
     if (!title.trim()) return;
     const validQuestions = questions.filter(
-      (q) => q.text.trim() && (q.type === "open_ended" || q.type === "scale" || q.options.filter((o) => o.trim()).length >= 2)
+      (q) => q.text.trim() && (q.type === "open_ended" || q.type === "scale" || q.options.filter((o) => o.text.trim()).length >= 2)
     );
     if (validQuestions.length === 0) {
       toast({ title: "Erro", description: "Adicione ao menos uma pergunta com 2 opções.", variant: "destructive" });
@@ -235,22 +282,22 @@ const ManageSurveys = () => {
       if (editingSurveyId) {
         const { error: surveyErr } = await supabase
           .from("surveys")
-          .update({ title: title.trim(), description: description.trim() || null } as any)
+          .update({ title: title.trim(), description: description.trim() || null, end_message: endMessage.trim() || null } as any)
           .eq("id", editingSurveyId);
         if (surveyErr) throw surveyErr;
-
         await supabase.from("survey_questions").delete().eq("survey_id", editingSurveyId);
       } else {
         const { data: survey, error: surveyErr } = await supabase
           .from("surveys")
-          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id } as any)
+          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id, end_message: endMessage.trim() || null } as any)
           .select("id")
           .single();
         if (surveyErr || !survey) throw surveyErr;
         surveyId = survey.id;
       }
 
-      // Insert questions with correct sort_order
+      // First pass: insert all questions to get their IDs
+      const questionIds: string[] = [];
       for (let qi = 0; qi < validQuestions.length; qi++) {
         const q = validQuestions[qi];
         const { data: question, error: qErr } = await supabase
@@ -258,23 +305,34 @@ const ManageSurveys = () => {
           .insert({ survey_id: surveyId, question_text: q.text.trim(), sort_order: qi, question_type: q.type } as any)
           .select("id")
           .single();
-
         if (qErr || !question) throw qErr;
+        questionIds.push(question.id);
+      }
 
+      // Second pass: insert options with conditional logic references
+      for (let qi = 0; qi < validQuestions.length; qi++) {
+        const q = validQuestions[qi];
         if (q.type === "multiple_choice") {
           const optionsToInsert = q.options
-            .filter((o) => o.trim())
-            .map((o, oi) => ({ question_id: question.id, option_text: o.trim(), sort_order: oi }));
-
+            .filter((o) => o.text.trim())
+            .map((o, oi) => {
+              let next_question_id: string | null = null;
+              let ends_survey = false;
+              if (showConditional) {
+                if (o.action.type === "end") {
+                  ends_survey = true;
+                } else if (o.action.type === "goto" && o.action.targetQuestionIndex !== undefined && o.action.targetQuestionIndex < questionIds.length) {
+                  next_question_id = questionIds[o.action.targetQuestionIndex];
+                }
+              }
+              return { question_id: questionIds[qi], option_text: o.text.trim(), sort_order: oi, next_question_id, ends_survey };
+            });
           const { error: oErr } = await supabase.from("survey_options").insert(optionsToInsert as any);
           if (oErr) throw oErr;
         }
       }
 
-      // Schedule push notification if enabled
-      if (surveyId) {
-        await schedulePushNotification(surveyId);
-      }
+      if (surveyId) await schedulePushNotification(surveyId);
 
       toast({
         title: editingSurveyId ? "Pesquisa atualizada!" : "Pesquisa criada!",
@@ -293,13 +351,15 @@ const ManageSurveys = () => {
     setEditingSurveyId(null);
     setTitle("");
     setDescription("");
-    setQuestions([{ text: "", type: "multiple_choice", options: ["", ""] }]);
+    setEndMessage("Obrigado pela sua participação!");
+    setQuestions([{ text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
     setSendPush(false);
     setPushScheduleType("now");
     setPushDate("");
     setPushTime("");
     setPushTitle("");
     setPushBody("");
+    setShowConditional(false);
   };
 
   const toggleActive = async (survey: Survey) => {
@@ -323,14 +383,8 @@ const ManageSurveys = () => {
       .eq("survey_id", survey.id)
       .order("sort_order");
 
-    const { data: opts } = await supabase
-      .from("survey_options")
-      .select("id, question_id, option_text");
-
-    const { data: resps } = await supabase
-      .from("survey_responses")
-      .select("question_id, option_id, user_id, response_text")
-      .eq("survey_id", survey.id);
+    const { data: opts } = await supabase.from("survey_options").select("id, question_id, option_text");
+    const { data: resps } = await supabase.from("survey_responses").select("question_id, option_id, user_id, response_text").eq("survey_id", survey.id);
 
     if (qs && opts && resps) {
       const rows: ResponseRow[] = resps.map((r: any) => {
@@ -379,25 +433,21 @@ const ManageSurveys = () => {
     if (!resultsFor || responses.length === 0) return;
     const { mcMap, openMap } = groupedResponses();
     const rows: Record<string, string | number>[] = [];
-
     Object.entries(mcMap).forEach(([question, options]) => {
       options.forEach((opt) => {
         rows.push({ Pergunta: question, Tipo: "Escolha/Escala", Resposta: opt.option, Quantidade: opt.count });
       });
     });
-
     Object.entries(openMap).forEach(([question, texts]) => {
       texts.forEach((t) => {
         rows.push({ Pergunta: question, Tipo: "Aberta", Resposta: t, Quantidade: 1 });
       });
     });
-
     exportToExcel(rows, "Resultados", `${resultsFor.title.replace(/[^a-zA-Z0-9]/g, "_")}_resultados.xlsx`);
   };
 
   return (
     <div className="space-y-6">
-      {/* Create button */}
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <ClipboardList size={18} /> Pesquisas
@@ -407,7 +457,7 @@ const ManageSurveys = () => {
         </Button>
       </div>
 
-      {/* Create dialog */}
+      {/* Create/Edit dialog */}
       <Dialog open={showCreate} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -421,6 +471,19 @@ const ManageSurveys = () => {
             <div className="space-y-1">
               <Label>Descrição (opcional)</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Breve descrição..." rows={2} />
+            </div>
+            <div className="space-y-1">
+              <Label>Mensagem de encerramento</Label>
+              <Input value={endMessage} onChange={(e) => setEndMessage(e.target.value)} placeholder="Obrigado pela sua participação!" />
+            </div>
+
+            {/* Conditional logic toggle */}
+            <div className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <GitBranch size={16} className="text-primary" />
+                <Label className="text-sm font-medium cursor-pointer">Lógica condicional</Label>
+              </div>
+              <Switch checked={showConditional} onCheckedChange={setShowConditional} />
             </div>
 
             <div className="space-y-4">
@@ -436,20 +499,10 @@ const ManageSurveys = () => {
                       className="flex-1"
                     />
                     <div className="flex flex-col gap-0.5">
-                      <button
-                        onClick={() => moveQuestion(qi, "up")}
-                        disabled={qi === 0}
-                        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title="Mover para cima"
-                      >
+                      <button onClick={() => moveQuestion(qi, "up")} disabled={qi === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Mover para cima">
                         <ArrowUp size={12} />
                       </button>
-                      <button
-                        onClick={() => moveQuestion(qi, "down")}
-                        disabled={qi === questions.length - 1}
-                        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title="Mover para baixo"
-                      >
+                      <button onClick={() => moveQuestion(qi, "down")} disabled={qi === questions.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Mover para baixo">
                         <ArrowDown size={12} />
                       </button>
                     </div>
@@ -461,43 +514,72 @@ const ManageSurveys = () => {
                   </div>
                   <div className="pl-5">
                     <div className="flex gap-2 mb-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => { const u = [...questions]; u[qi].type = "multiple_choice"; setQuestions(u); }}
-                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "multiple_choice" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                      >
+                      <button type="button" onClick={() => { const u = [...questions]; u[qi].type = "multiple_choice"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "multiple_choice" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
                         Múltipla escolha
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { const u = [...questions]; u[qi].type = "open_ended"; setQuestions(u); }}
-                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "open_ended" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                      >
+                      <button type="button" onClick={() => { const u = [...questions]; u[qi].type = "open_ended"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "open_ended" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
                         Aberta
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { const u = [...questions]; u[qi].type = "scale"; setQuestions(u); }}
-                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "scale" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                      >
+                      <button type="button" onClick={() => { const u = [...questions]; u[qi].type = "scale"; setQuestions(u); }}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${q.type === "scale" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
                         Escala 1-5
                       </button>
                     </div>
                     {q.type === "multiple_choice" ? (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {q.options.map((opt, oi) => (
-                          <div key={oi} className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40 shrink-0" />
-                            <Input
-                              value={opt}
-                              onChange={(e) => updateOption(qi, oi, e.target.value)}
-                              placeholder={`Opção ${oi + 1}`}
-                              className="flex-1 h-8 text-sm"
-                            />
-                            {q.options.length > 2 && (
-                              <button onClick={() => removeOption(qi, oi)} className="p-0.5 text-destructive/70 hover:text-destructive">
-                                <Trash2 size={12} />
-                              </button>
+                          <div key={oi} className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                              <Input
+                                value={opt.text}
+                                onChange={(e) => updateOption(qi, oi, e.target.value)}
+                                placeholder={`Opção ${oi + 1}`}
+                                className="flex-1 h-8 text-sm"
+                              />
+                              {q.options.length > 2 && (
+                                <button onClick={() => removeOption(qi, oi)} className="p-0.5 text-destructive/70 hover:text-destructive">
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </div>
+                            {/* Conditional logic per option */}
+                            {showConditional && (
+                              <div className="ml-5 flex items-center gap-2">
+                                <GitBranch size={10} className="text-muted-foreground shrink-0" />
+                                <Select
+                                  value={opt.action.type === "goto" ? `goto-${opt.action.targetQuestionIndex}` : opt.action.type}
+                                  onValueChange={(val) => {
+                                    if (val === "next") updateOptionAction(qi, oi, { type: "next" });
+                                    else if (val === "end") updateOptionAction(qi, oi, { type: "end" });
+                                    else if (val.startsWith("goto-")) {
+                                      updateOptionAction(qi, oi, { type: "goto", targetQuestionIndex: parseInt(val.replace("goto-", "")) });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs w-full">
+                                    <SelectValue placeholder="Ação" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="next">
+                                      <span className="text-xs">→ Próxima pergunta</span>
+                                    </SelectItem>
+                                    {questions.map((_, targetQi) => {
+                                      if (targetQi === qi) return null;
+                                      return (
+                                        <SelectItem key={targetQi} value={`goto-${targetQi}`}>
+                                          <span className="text-xs">↳ Ir para pergunta {targetQi + 1}</span>
+                                        </SelectItem>
+                                      );
+                                    })}
+                                    <SelectItem value="end">
+                                      <span className="text-xs">✕ Encerrar pesquisa</span>
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -532,26 +614,18 @@ const ManageSurveys = () => {
                 </div>
                 <Switch checked={sendPush} onCheckedChange={setSendPush} />
               </div>
-
               {sendPush && (
                 <div className="space-y-3 animate-fade-in">
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPushScheduleType("now")}
-                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "now" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                    >
+                    <button type="button" onClick={() => setPushScheduleType("now")}
+                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "now" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
                       Enviar agora
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setPushScheduleType("scheduled")}
-                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "scheduled" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                    >
+                    <button type="button" onClick={() => setPushScheduleType("scheduled")}
+                      className={`text-xs px-3 py-1.5 rounded-md transition-colors ${pushScheduleType === "scheduled" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
                       Agendar
                     </button>
                   </div>
-
                   {pushScheduleType === "scheduled" && (
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
@@ -564,24 +638,13 @@ const ManageSurveys = () => {
                       </div>
                     </div>
                   )}
-
                   <div className="space-y-1">
                     <Label className="text-xs">Título da notificação</Label>
-                    <Input
-                      value={pushTitle}
-                      onChange={(e) => setPushTitle(e.target.value)}
-                      placeholder="📋 Nova pesquisa disponível"
-                      className="h-8 text-sm"
-                    />
+                    <Input value={pushTitle} onChange={(e) => setPushTitle(e.target.value)} placeholder="📋 Nova pesquisa disponível" className="h-8 text-sm" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Mensagem</Label>
-                    <Input
-                      value={pushBody}
-                      onChange={(e) => setPushBody(e.target.value)}
-                      placeholder={`Responda a pesquisa "${title}" agora!`}
-                      className="h-8 text-sm"
-                    />
+                    <Input value={pushBody} onChange={(e) => setPushBody(e.target.value)} placeholder={`Responda a pesquisa "${title}" agora!`} className="h-8 text-sm" />
                   </div>
                 </div>
               )}
@@ -626,10 +689,7 @@ const ManageSurveys = () => {
                         {options.map((opt) => (
                           <div key={opt.option} className="flex items-center gap-2">
                             <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
-                              <div
-                                className="h-full gradient-mission rounded-full flex items-center px-2"
-                                style={{ width: `${Math.max(10, (opt.count / totalRespondents) * 100)}%` }}
-                              >
+                              <div className="h-full gradient-mission rounded-full flex items-center px-2" style={{ width: `${Math.max(10, (opt.count / totalRespondents) * 100)}%` }}>
                                 <span className="text-[10px] text-primary-foreground font-bold whitespace-nowrap">{opt.count}</span>
                               </div>
                             </div>
@@ -687,7 +747,6 @@ const ManageSurveys = () => {
         </div>
       )}
 
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -705,7 +764,6 @@ const ManageSurveys = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Save edit confirmation */}
       <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
