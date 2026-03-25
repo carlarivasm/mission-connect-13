@@ -1144,24 +1144,37 @@ export type Database = {
       }
       survey_options: {
         Row: {
+          ends_survey: boolean
           id: string
+          next_question_id: string | null
           option_text: string
           question_id: string
           sort_order: number
         }
         Insert: {
+          ends_survey?: boolean
           id?: string
+          next_question_id?: string | null
           option_text: string
           question_id: string
           sort_order?: number
         }
         Update: {
+          ends_survey?: boolean
           id?: string
+          next_question_id?: string | null
           option_text?: string
           question_id?: string
           sort_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "survey_options_next_question_id_fkey"
+            columns: ["next_question_id"]
+            isOneToOne: false
+            referencedRelation: "survey_questions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "survey_options_question_id_fkey"
             columns: ["question_id"]
@@ -1264,6 +1277,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          end_message: string | null
           id: string
           title: string
         }
@@ -1272,6 +1286,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          end_message?: string | null
           id?: string
           title: string
         }
@@ -1280,6 +1295,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          end_message?: string | null
           id?: string
           title?: string
         }
