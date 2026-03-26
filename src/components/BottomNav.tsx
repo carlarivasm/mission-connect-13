@@ -1,29 +1,23 @@
 import { Home, Calendar, BookOpen, ShoppingBag, Camera, MapPin } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { approved, role } = useAuth();
-
-  const isApproved = approved || role === "admin";
 
   const navItems = [
-    { icon: Calendar, label: "Calendário", path: "/calendario", restricted: false },
-    { icon: MapPin, label: "Mapa", path: "/mapa", restricted: false },
-    { icon: Home, label: "Início", path: "/dashboard", isCenter: true, restricted: false },
-    //{ icon: Camera, label: "Fotos", path: "/galeria", restricted: true },
-    { icon: ShoppingBag, label: "Loja", path: "/loja", restricted: true },
-    { icon: BookOpen, label: "Materiais", path: "/materiais", restricted: true },
+    { icon: Calendar, label: "Calendário", path: "/calendario" },
+    { icon: MapPin, label: "Mapa", path: "/mapa" },
+    { icon: Home, label: "Início", path: "/dashboard", isCenter: true },
+    //{ icon: Camera, label: "Fotos", path: "/galeria" },
+    { icon: ShoppingBag, label: "Loja", path: "/loja" },
+    { icon: BookOpen, label: "Materiais", path: "/materiais" },
   ];
-
-  const visibleItems = navItems.filter((item) => !item.restricted || isApproved);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card safe-bottom">
       <div className="flex items-center justify-around px-2 pt-2 pb-1">
-        {visibleItems.map(({ icon: Icon, label, path, isCenter }) => {
+        {navItems.map(({ icon: Icon, label, path, isCenter }) => {
           const isActive = location.pathname === path;
           if (isCenter) {
             return (
