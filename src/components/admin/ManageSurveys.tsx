@@ -285,7 +285,7 @@ const ManageSurveys = () => {
       if (editingSurveyId) {
         const { error: surveyErr } = await supabase
           .from("surveys")
-          .update({ title: title.trim(), description: description.trim() || null, end_message: endMessage.trim() || null } as any)
+          .update({ title: title.trim(), description: description.trim() || null, end_message: endMessage.trim() || null, is_anonymous: isAnonymous } as any)
           .eq("id", editingSurveyId);
         if (surveyErr) throw surveyErr;
         await supabase.from("survey_questions").delete().eq("survey_id", editingSurveyId);
