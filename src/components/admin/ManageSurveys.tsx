@@ -184,6 +184,7 @@ const ManageSurveys = () => {
     setTitle(survey.title);
     setDescription(survey.description || "");
     setEndMessage(survey.end_message || "Obrigado pela sua participação!");
+    setIsAnonymous(survey.is_anonymous || false);
     setSendPush(false);
     setPushScheduleType("now");
     setPushDate("");
