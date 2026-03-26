@@ -1142,6 +1142,47 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_drafts: {
+        Row: {
+          answers: Json
+          created_at: string
+          current_step: number
+          id: string
+          question_path: Json
+          survey_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          current_step?: number
+          id?: string
+          question_path?: Json
+          survey_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          current_step?: number
+          id?: string
+          question_path?: Json
+          survey_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_drafts_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_options: {
         Row: {
           ends_survey: boolean
@@ -1279,6 +1320,7 @@ export type Database = {
           description: string | null
           end_message: string | null
           id: string
+          is_anonymous: boolean
           title: string
         }
         Insert: {
@@ -1288,6 +1330,7 @@ export type Database = {
           description?: string | null
           end_message?: string | null
           id?: string
+          is_anonymous?: boolean
           title: string
         }
         Update: {
@@ -1297,6 +1340,7 @@ export type Database = {
           description?: string | null
           end_message?: string | null
           id?: string
+          is_anonymous?: boolean
           title?: string
         }
         Relationships: []

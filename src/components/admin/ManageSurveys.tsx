@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell, GitBranch } from "lucide-react";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell, GitBranch, EyeOff } from "lucide-react";
 import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
@@ -34,6 +34,7 @@ interface Survey {
   active: boolean;
   created_at: string;
   end_message?: string | null;
+  is_anonymous?: boolean;
 }
 
 interface OptionAction {
@@ -75,6 +76,7 @@ const ManageSurveys = () => {
   const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
   const [submitting, setSubmitting] = useState(false);
   const [showConditional, setShowConditional] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Push notification scheduling
   const [sendPush, setSendPush] = useState(false);
@@ -182,6 +184,7 @@ const ManageSurveys = () => {
     setTitle(survey.title);
     setDescription(survey.description || "");
     setEndMessage(survey.end_message || "Obrigado pela sua participação!");
+    setIsAnonymous(survey.is_anonymous || false);
     setSendPush(false);
     setPushScheduleType("now");
     setPushDate("");
@@ -282,14 +285,14 @@ const ManageSurveys = () => {
       if (editingSurveyId) {
         const { error: surveyErr } = await supabase
           .from("surveys")
-          .update({ title: title.trim(), description: description.trim() || null, end_message: endMessage.trim() || null } as any)
+          .update({ title: title.trim(), description: description.trim() || null, end_message: endMessage.trim() || null, is_anonymous: isAnonymous } as any)
           .eq("id", editingSurveyId);
         if (surveyErr) throw surveyErr;
         await supabase.from("survey_questions").delete().eq("survey_id", editingSurveyId);
       } else {
         const { data: survey, error: surveyErr } = await supabase
           .from("surveys")
-          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id, end_message: endMessage.trim() || null } as any)
+          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id, end_message: endMessage.trim() || null, is_anonymous: isAnonymous } as any)
           .select("id")
           .single();
         if (surveyErr || !survey) throw surveyErr;
@@ -360,6 +363,7 @@ const ManageSurveys = () => {
     setPushTitle("");
     setPushBody("");
     setShowConditional(false);
+    setIsAnonymous(false);
   };
 
   const toggleActive = async (survey: Survey) => {
@@ -484,6 +488,18 @@ const ManageSurveys = () => {
                 <Label className="text-sm font-medium cursor-pointer">Lógica condicional</Label>
               </div>
               <Switch checked={showConditional} onCheckedChange={setShowConditional} />
+            </div>
+
+            {/* Anonymous toggle */}
+            <div className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <EyeOff size={16} className="text-primary" />
+                <div>
+                  <Label className="text-sm font-medium cursor-pointer">Pesquisa anônima</Label>
+                  <p className="text-[11px] text-muted-foreground">Respostas não serão vinculadas ao nome do usuário</p>
+                </div>
+              </div>
+              <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
             </div>
 
             <div className="space-y-4">
