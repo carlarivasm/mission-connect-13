@@ -292,7 +292,7 @@ const ManageSurveys = () => {
       } else {
         const { data: survey, error: surveyErr } = await supabase
           .from("surveys")
-          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id, end_message: endMessage.trim() || null } as any)
+          .insert({ title: title.trim(), description: description.trim() || null, created_by: user?.id, end_message: endMessage.trim() || null, is_anonymous: isAnonymous } as any)
           .select("id")
           .single();
         if (surveyErr || !survey) throw surveyErr;
