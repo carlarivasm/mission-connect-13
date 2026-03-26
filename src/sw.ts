@@ -33,19 +33,9 @@ const messaging = (self as any).firebase.messaging();
 // Handle background messages (when app is not in foreground)
 messaging.onBackgroundMessage((payload: any) => {
     console.log("[SW] Background message received:", payload);
-
-    const notificationData = payload.notification || {};
-    const title = notificationData.title || "JFM";
-    const options = {
-        body: notificationData.body || "",
-        icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
-        data: payload.data || {},
-        tag: payload.data?.tag || "jfm-notification-" + Date.now(),
-        renotify: true,
-    };
-
-    return self.registration.showNotification(title, options);
+    // NOTE: Do NOT call showNotification here.
+    // FCM messages with a `notification` payload are auto-displayed by the browser.
+    // Calling showNotification here would produce duplicate notifications.
 });
 
 // Handle notification click

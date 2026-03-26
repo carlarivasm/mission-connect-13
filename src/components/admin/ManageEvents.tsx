@@ -124,7 +124,7 @@ const ManageEvents = () => {
 
             if (schedulePush && schedulePushDate && schedulePushTime) {
               // Schedule push for later
-              const scheduledAt = new Date(`${schedulePushDate}T${schedulePushTime}:00`).toISOString();
+              const scheduledAt = new Date(`${schedulePushDate}T${schedulePushTime}:00-03:00`).toISOString();
               await supabase.from("scheduled_notifications").insert({
                 title: pushTitle,
                 body: pushBody,
@@ -133,6 +133,7 @@ const ManageEvents = () => {
                 source_type: "event",
                 source_id: (insertedEvent as any)?.id || null,
                 created_by: user?.id,
+                target_info: { mode: "all" },
               } as any);
               toast({ title: "Push programado!", description: `Notificação será enviada em ${new Date(scheduledAt).toLocaleString("pt-BR")}.` });
             } else {

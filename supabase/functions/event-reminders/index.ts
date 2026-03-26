@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
         const pushUserIds: string[] = [];
 
         for (const event of events) {
-          const eventDateTime = new Date(`${event.event_date}T${event.event_time || "00:00:00"}`);
+          const eventDateTime = new Date(`${event.event_date}T${event.event_time || "00:00:00"}-03:00`);
           const diffMs = eventDateTime.getTime() - now.getTime();
           const diffMinutes = diffMs / (1000 * 60);
 
