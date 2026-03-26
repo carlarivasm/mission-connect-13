@@ -76,6 +76,7 @@ const ManageSurveys = () => {
   const [questions, setQuestions] = useState<QuestionDraft[]>([{ text: "", type: "multiple_choice", options: [{ text: "", action: { type: "next" } }, { text: "", action: { type: "next" } }] }]);
   const [submitting, setSubmitting] = useState(false);
   const [showConditional, setShowConditional] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Push notification scheduling
   const [sendPush, setSendPush] = useState(false);
