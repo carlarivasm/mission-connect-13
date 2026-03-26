@@ -490,6 +490,18 @@ const ManageSurveys = () => {
               <Switch checked={showConditional} onCheckedChange={setShowConditional} />
             </div>
 
+            {/* Anonymous toggle */}
+            <div className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <EyeOff size={16} className="text-primary" />
+                <div>
+                  <Label className="text-sm font-medium cursor-pointer">Pesquisa anônima</Label>
+                  <p className="text-[11px] text-muted-foreground">Respostas não serão vinculadas ao nome do usuário</p>
+                </div>
+              </div>
+              <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+            </div>
+
             <div className="space-y-4">
               <Label>Perguntas</Label>
               {questions.map((q, qi) => (
