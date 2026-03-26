@@ -34,6 +34,7 @@ interface Survey {
   active: boolean;
   created_at: string;
   end_message?: string | null;
+  is_anonymous?: boolean;
 }
 
 interface OptionAction {
