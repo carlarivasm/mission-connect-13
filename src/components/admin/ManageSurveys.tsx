@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell, GitBranch } from "lucide-react";
+import { Trash2, Plus, ClipboardList, ChevronDown, ChevronUp, Eye, Download, Pencil, ArrowUp, ArrowDown, Bell, GitBranch, EyeOff } from "lucide-react";
 import { exportToExcel } from "@/lib/excel";
 import {
   AlertDialog,
