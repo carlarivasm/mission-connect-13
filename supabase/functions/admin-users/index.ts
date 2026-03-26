@@ -72,6 +72,20 @@ serve(async (req) => {
       });
     }
 
+    if (action === "list_users") {
+      const { data, error } = await supabase.auth.admin.listUsers();
+      if (error) throw error;
+      // Tratar e retornar apenas dados necessários para não expor tudo
+      const usersInfo = data.users.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        last_sign_in_at: u.last_sign_in_at,
+      }));
+      return new Response(JSON.stringify({ success: true, users: usersInfo }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     throw new Error("Unknown action");
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {

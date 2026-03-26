@@ -5,9 +5,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck, ChevronDown, ChevronRight, Send } from "lucide-react";
+import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck, Send } from "lucide-react";
 import { readExcelFile } from "@/lib/excel";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AuthorizedMissionary {
   id: string;
@@ -23,6 +23,8 @@ interface ProfileWithRole {
   email: string;
   is_admin: boolean;
   approved: boolean;
+  family_name?: string;
+  last_sign_in_at?: string | null;
 }
 
 const ManageMissionaries = () => {
@@ -37,9 +39,8 @@ const ManageMissionaries = () => {
   const [togglingRole, setTogglingRole] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [adminsOpen, setAdminsOpen] = useState(true);
-  const [missionariesOpen, setMissionariesOpen] = useState(true);
   const [sendingInvite, setSendingInvite] = useState<string | null>(null);
+  const [groupByFamily, setGroupByFamily] = useState(false);
 
   const fetchMissionaries = async () => {
     // Fetch all authorized missionaries that haven't been used
@@ -49,14 +50,14 @@ const ManageMissionaries = () => {
       .eq("used", false)
       .order("full_name");
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    
+
     // Also fetch all profile emails to filter out those who already registered
     const { data: profileEmails } = await supabase
       .from("profiles")
       .select("email");
-    
+
     const registeredEmails = new Set((profileEmails || []).map((p: any) => p.email?.toLowerCase()));
-    
+
     // Only show missionaries whose email is NOT in profiles (truly pending)
     const pending = (data || []).filter(m => !registeredEmails.has(m.email?.toLowerCase()));
     setMissionaries(pending);
@@ -66,22 +67,34 @@ const ManageMissionaries = () => {
   const fetchProfiles = async () => {
     const { data: allProfiles } = await supabase
       .from("profiles")
-      .select("id, full_name, email, approved")
+      .select("id, full_name, email, approved, family_name")
       .order("full_name");
 
     const { data: adminRoles } = await supabase
       .from("user_roles")
       .select("user_id, role");
 
+    // Fetch user login status from our secure view
+    const { data: userStatuses } = await supabase
+      .from("user_status" as any)
+      .select("id, last_sign_in_at");
+
     if (allProfiles) {
       const adminIds = new Set(
         (adminRoles || []).filter((r) => r.role === "admin").map((r) => r.user_id)
       );
+      
+      const statusMap = new Map(
+        (userStatuses || []).map((s: any) => [s.id, s.last_sign_in_at])
+      );
+
       setProfiles(
         allProfiles.map((p: any) => ({
           ...p,
           is_admin: adminIds.has(p.id),
           approved: p.approved ?? true,
+          family_name: p.family_name || undefined,
+          last_sign_in_at: statusMap.get(p.id) || null,
         }))
       );
     }
@@ -303,9 +316,28 @@ const ManageMissionaries = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Separate profiles into admins and missionaries, sorted alphabetically
+  // ── Categorize profiles into 3 groups ──
+  // Admins
   const adminProfiles = profiles.filter(p => p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
-  const missionaryProfiles = profiles.filter(p => !p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
+  
+  // Missionários: Aprovados, não admin, E que já fizeram login (têm last_sign_in_at)
+  const missionaryProfiles = profiles
+    .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null)
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
+  
+  // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login)
+  const pendingProfiles = profiles
+    .filter(p => !p.is_admin && (!p.approved || p.last_sign_in_at === null))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
+
+  const groupedMissionaries = groupByFamily
+    ? missionaryProfiles.reduce((acc, p) => {
+        const key = p.family_name || "Sem Família";
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(p);
+        return acc;
+      }, {} as Record<string, ProfileWithRole[]>)
+    : null;
 
   const renderProfileCard = (p: ProfileWithRole) => (
     <div key={p.id} className="flex flex-col gap-2 p-3 bg-background rounded-xl border border-border">
@@ -409,134 +441,168 @@ const ManageMissionaries = () => {
   );
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleAdd} className="bg-card rounded-xl p-4 shadow-card space-y-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <UserPlus size={18} /> Autorizar Novo Missionário
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="m-name">Nome Completo</Label>
-            <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do missionário" required />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="m-email">E-mail</Label>
-            <Input id="m-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" required />
-          </div>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
-            {submitting ? "Adicionando..." : "Autorizar"}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-xl font-bold font-display text-foreground">Gestão de Missionários</h2>
+      </div>
+
+      <Tabs defaultValue="missionaries" className="w-full">
+        <TabsList className="w-full grid grid-cols-3 mb-2">
+          <TabsTrigger value="admins">Admin ({adminProfiles.length})</TabsTrigger>
+          <TabsTrigger value="missionaries">Missionários ({missionaryProfiles.length})</TabsTrigger>
+          <TabsTrigger value="invited">Convidados ({missionaries.length + pendingProfiles.length})</TabsTrigger>
+        </TabsList>
+
+        <div className="flex justify-end mb-4 px-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGroupByFamily(!groupByFamily)}
+            className={`text-xs ${groupByFamily ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "text-muted-foreground"}`}
+          >
+            {groupByFamily ? "Desagrupar" : "Agrupar por família"}
           </Button>
-          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent transition-colors">
-            <FileSpreadsheet size={16} />
-            {uploading ? "Importando..." : "Importar Planilha"}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
-              onChange={handleFileUpload}
-              className="hidden"
-              disabled={uploading}
-            />
-          </label>
         </div>
-        <p className="text-xs text-muted-foreground">
-          📄 A planilha deve ter colunas <strong>Nome</strong> e <strong>E-mail</strong>.
-        </p>
-      </form>
 
-      {/* Pending (aguardando cadastro) */}
-      <div className="space-y-2">
-        <h3 className="font-semibold text-foreground text-sm">Aguardando Cadastro ({missionaries.length})</h3>
-        {loading ? (
-          <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>
-        ) : missionaries.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-4">Todos os missionários autorizados já se cadastraram.</p>
-        ) : (
-          missionaries.map((m) => (
-            <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
-              <div className="w-2 h-2 rounded-full bg-amber-500" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm truncate">{m.full_name}</p>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Mail size={12} /> {m.email}
-                </p>
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                Aguardando cadastro
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs gap-1"
-                disabled={sendingInvite === m.id}
-                onClick={() => handleSendInviteEmail(m)}
-              >
-                <Send size={14} />
-                {sendingInvite === m.id ? "Enviando..." : "Convidar"}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
-                    <Trash2 size={16} />
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Remover missionário?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {m.full_name} será removido da lista de autorizados.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(m.id)}>Confirmar</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+        {/* ── Administradores ── */}
+        <TabsContent value="admins" className="space-y-3 mt-0">
+          {adminProfiles.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">Nenhum administrador cadastrado.</p>
+          ) : (
+            <div className="space-y-2">
+              {adminProfiles.map(renderProfileCard)}
             </div>
-          ))
-        )}
-      </div>
+          )}
+        </TabsContent>
 
-      {/* Gerenciar Usuários - Collapsible sections */}
-      <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <ShieldCheck size={18} /> Gerenciar Usuários
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Gerencie papéis, exclua usuários ou reenvie e-mails de confirmação.
-        </p>
+        {/* ── Missionários (aprovados, não-admin) ── */}
+        <TabsContent value="missionaries" className="space-y-3 mt-0">
+          {missionaryProfiles.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">Nenhum missionário aprovado.</p>
+          ) : groupByFamily && groupedMissionaries ? (
+            <div className="space-y-6">
+              {Object.entries(groupedMissionaries)
+                .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
+                .map(([family, members]) => (
+                  <div key={family} className="space-y-2">
+                    <h3 className="text-sm font-bold text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border inline-block shadow-sm">
+                      {family} <span className="text-muted-foreground text-xs font-normal">({members.length})</span>
+                    </h3>
+                    <div className="space-y-2 pl-1">
+                      {members.map(renderProfileCard)}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {missionaryProfiles.map(renderProfileCard)}
+            </div>
+          )}
+        </TabsContent>
 
-        {profiles.length === 0 ? (
-          <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário cadastrado.</p>
-        ) : (
-          <div className="space-y-3">
-            {/* Admins section */}
-            <Collapsible open={adminsOpen} onOpenChange={setAdminsOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-accent transition-colors">
-                {adminsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                <span className="font-medium text-sm text-foreground">Administradores ({adminProfiles.length})</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 mt-2">
-                {adminProfiles.map(renderProfileCard)}
-              </CollapsibleContent>
-            </Collapsible>
+        {/* ── Convidados e Pendentes ── */}
+        <TabsContent value="invited" className="space-y-6 mt-0">
+          {/* Add/import new missionary form */}
+          <form onSubmit={handleAdd} className="bg-card rounded-xl p-4 shadow-card space-y-4">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <UserPlus size={18} /> Autorizar Novo Missionário
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="m-name">Nome Completo</Label>
+                <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do missionário" required />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="m-email">E-mail</Label>
+                <Input id="m-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" required />
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
+                {submitting ? "Adicionando..." : "Autorizar"}
+              </Button>
+              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent transition-colors">
+                <FileSpreadsheet size={16} />
+                {uploading ? "Importando..." : "Importar Planilha"}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              📄 A planilha deve ter colunas <strong>Nome</strong> e <strong>E-mail</strong>.
+            </p>
+          </form>
 
-            {/* Missionaries section */}
-            <Collapsible open={missionariesOpen} onOpenChange={setMissionariesOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-accent transition-colors">
-                {missionariesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                <span className="font-medium text-sm text-foreground">Missionários ({missionaryProfiles.length})</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 mt-2">
-                {missionaryProfiles.map(renderProfileCard)}
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        )}
-      </div>
+          {/* Convidados (authorized_missionaries not used, no profile) */}
+          {missionaries.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-foreground text-sm">Convidados — Aguardando Cadastro ({missionaries.length})</h3>
+              {missionaries.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
+                  <div className="w-2 h-2 rounded-full bg-amber-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm truncate">{m.full_name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Mail size={12} /> {m.email}
+                    </p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    Aguardando cadastro
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1"
+                    disabled={sendingInvite === m.id}
+                    onClick={() => handleSendInviteEmail(m)}
+                  >
+                    <Send size={14} />
+                    {sendingInvite === m.id ? "Enviando..." : "Convidar"}
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remover missionário?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {m.full_name} será removido da lista de autorizados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(m.id)}>Confirmar</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pendentes (profiles not approved, non-admin) */}
+          {pendingProfiles.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-foreground text-sm">Pendentes — Aguardando Aprovação ({pendingProfiles.length})</h3>
+              {pendingProfiles.map(renderProfileCard)}
+            </div>
+          )}
+
+          {missionaries.length === 0 && pendingProfiles.length === 0 && (
+            <p className="text-muted-foreground text-sm text-center py-4">Nenhum convidado ou pendente.</p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
