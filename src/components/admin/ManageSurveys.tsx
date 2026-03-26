@@ -363,6 +363,7 @@ const ManageSurveys = () => {
     setPushTitle("");
     setPushBody("");
     setShowConditional(false);
+    setIsAnonymous(false);
   };
 
   const toggleActive = async (survey: Survey) => {
