@@ -5,8 +5,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck } from "lucide-react";
+import { Trash2, UserPlus, Mail, Upload, FileSpreadsheet, ShieldCheck, ShieldOff, RefreshCw, UserX, UserCheck, ChevronDown, ChevronRight, Send } from "lucide-react";
 import { readExcelFile } from "@/lib/excel";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AuthorizedMissionary {
   id: string;
@@ -36,15 +37,29 @@ const ManageMissionaries = () => {
   const [togglingRole, setTogglingRole] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [adminsOpen, setAdminsOpen] = useState(true);
+  const [missionariesOpen, setMissionariesOpen] = useState(true);
+  const [sendingInvite, setSendingInvite] = useState<string | null>(null);
 
   const fetchMissionaries = async () => {
+    // Fetch all authorized missionaries that haven't been used
     const { data, error } = await supabase
       .from("authorized_missionaries")
       .select("*")
       .eq("used", false)
-      .order("created_at", { ascending: false });
-    if (data) setMissionaries(data);
+      .order("full_name");
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+    
+    // Also fetch all profile emails to filter out those who already registered
+    const { data: profileEmails } = await supabase
+      .from("profiles")
+      .select("email");
+    
+    const registeredEmails = new Set((profileEmails || []).map((p: any) => p.email?.toLowerCase()));
+    
+    // Only show missionaries whose email is NOT in profiles (truly pending)
+    const pending = (data || []).filter(m => !registeredEmails.has(m.email?.toLowerCase()));
+    setMissionaries(pending);
     setLoading(false);
   };
 
@@ -101,6 +116,20 @@ const ManageMissionaries = () => {
     } else {
       fetchMissionaries();
     }
+  };
+
+  const handleSendInviteEmail = async (missionary: AuthorizedMissionary) => {
+    setSendingInvite(missionary.id);
+    try {
+      const { error } = await supabase.functions.invoke("send-invite-email", {
+        body: { email: missionary.email, full_name: missionary.full_name },
+      });
+      if (error) throw error;
+      toast({ title: "Convite enviado!", description: `E-mail de convite enviado para ${missionary.email}.` });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar convite", description: err?.message || "Tente novamente.", variant: "destructive" });
+    }
+    setSendingInvite(null);
   };
 
   const handleDeleteUser = async (profileId: string, profileEmail: string) => {
@@ -274,6 +303,111 @@ const ManageMissionaries = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Separate profiles into admins and missionaries, sorted alphabetically
+  const adminProfiles = profiles.filter(p => p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
+  const missionaryProfiles = profiles.filter(p => !p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
+
+  const renderProfileCard = (p: ProfileWithRole) => (
+    <div key={p.id} className="flex flex-col gap-2 p-3 bg-background rounded-xl border border-border">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
+          <p className="text-xs text-muted-foreground">{p.email}</p>
+        </div>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+          {p.is_admin ? "Admin" : "Missionário"}
+        </span>
+        {!p.approved && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            Pendente
+          </span>
+        )}
+      </div>
+      <div className="flex gap-1 flex-wrap">
+        {!p.is_admin && (
+          <Button
+            size="sm"
+            variant={p.approved ? "outline" : "default"}
+            className={`text-xs gap-1 ${!p.approved ? "gradient-mission text-primary-foreground" : ""}`}
+            disabled={actionLoading === p.id + "_approve"}
+            onClick={() => handleToggleApproval(p.id, p.approved)}
+          >
+            {p.approved ? <ShieldOff size={14} /> : <UserCheck size={14} />}
+            {p.approved ? "Restringir" : "Aprovar Acesso"}
+          </Button>
+        )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant={p.is_admin ? "outline" : "default"}
+              disabled={togglingRole === p.id}
+              className="text-xs gap-1"
+            >
+              {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
+              {p.is_admin ? "Remover Admin" : "Tornar Admin"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {p.is_admin ? "Remover administrador?" : "Tornar administrador?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {p.is_admin
+                  ? `${p.full_name} perderá acesso ao painel administrativo.`
+                  : `${p.full_name} terá acesso total ao painel administrativo.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleToggleAdmin(p.id, p.is_admin)}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs gap-1"
+          disabled={actionLoading === p.email}
+          onClick={() => handleResendConfirmation(p.email)}
+        >
+          <RefreshCw size={14} /> Reenviar E-mail
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="text-xs gap-1"
+              disabled={actionLoading === p.id}
+            >
+              <UserX size={14} /> Excluir
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {p.full_name} será removido do sistema. Ele poderá ser reincluído depois se o e-mail estiver na lista de autorizados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleDeleteUser(p.id, p.email)}>
+                Confirmar Exclusão
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleAdd} className="bg-card rounded-xl p-4 shadow-card space-y-4">
@@ -312,7 +446,9 @@ const ManageMissionaries = () => {
         </p>
       </form>
 
+      {/* Pending (aguardando cadastro) */}
       <div className="space-y-2">
+        <h3 className="font-semibold text-foreground text-sm">Aguardando Cadastro ({missionaries.length})</h3>
         {loading ? (
           <p className="text-muted-foreground text-sm text-center py-4">Carregando...</p>
         ) : missionaries.length === 0 ? (
@@ -330,6 +466,16 @@ const ManageMissionaries = () => {
               <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                 Aguardando cadastro
               </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1"
+                disabled={sendingInvite === m.id}
+                onClick={() => handleSendInviteEmail(m)}
+              >
+                <Send size={14} />
+                {sendingInvite === m.id ? "Enviando..." : "Convidar"}
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <button className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
@@ -340,9 +486,7 @@ const ManageMissionaries = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Remover missionário?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      {m.used
-                        ? `${m.full_name} já se cadastrou. Ao remover, ele não poderá se recadastrar sem nova autorização.`
-                        : `${m.full_name} será removido da lista de autorizados.`}
+                      {m.full_name} será removido da lista de autorizados.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -356,7 +500,7 @@ const ManageMissionaries = () => {
         )}
       </div>
 
-      {/* Gerenciar Usuários */}
+      {/* Gerenciar Usuários - Collapsible sections */}
       <div className="bg-card rounded-xl p-4 shadow-card space-y-3">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <ShieldCheck size={18} /> Gerenciar Usuários
@@ -364,112 +508,34 @@ const ManageMissionaries = () => {
         <p className="text-xs text-muted-foreground">
           Gerencie papéis, exclua usuários ou reenvie e-mails de confirmação.
         </p>
-        <div className="space-y-2">
-          {profiles.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário cadastrado.</p>
-          ) : (
-            profiles.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 p-3 bg-background rounded-xl border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{p.full_name}</p>
-                    <p className="text-xs text-muted-foreground">{p.email}</p>
-                  </div>
-                   <span className={`text-xs px-2 py-0.5 rounded-full ${p.is_admin ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                     {p.is_admin ? "Admin" : "Missionário"}
-                   </span>
-                   {!p.approved && (
-                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                       Pendente
-                     </span>
-                   )}
-                </div>
-                 <div className="flex gap-1 flex-wrap">
-                   {!p.is_admin && (
-                     <Button
-                       size="sm"
-                       variant={p.approved ? "outline" : "default"}
-                       className={`text-xs gap-1 ${!p.approved ? "gradient-mission text-primary-foreground" : ""}`}
-                       disabled={actionLoading === p.id + "_approve"}
-                       onClick={() => handleToggleApproval(p.id, p.approved)}
-                     >
-                       {p.approved ? <ShieldOff size={14} /> : <UserCheck size={14} />}
-                       {p.approved ? "Restringir" : "Aprovar Acesso"}
-                     </Button>
-                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant={p.is_admin ? "outline" : "default"}
-                        disabled={togglingRole === p.id}
-                        className="text-xs gap-1"
-                      >
-                        {p.is_admin ? <ShieldOff size={14} /> : <ShieldCheck size={14} />}
-                        {p.is_admin ? "Remover Admin" : "Tornar Admin"}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          {p.is_admin ? "Remover administrador?" : "Tornar administrador?"}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {p.is_admin
-                            ? `${p.full_name} perderá acesso ao painel administrativo.`
-                            : `${p.full_name} terá acesso total ao painel administrativo.`}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleToggleAdmin(p.id, p.is_admin)}>
-                          Confirmar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs gap-1"
-                    disabled={actionLoading === p.email}
-                    onClick={() => handleResendConfirmation(p.email)}
-                  >
-                    <RefreshCw size={14} /> Reenviar E-mail
-                  </Button>
+        {profiles.length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-4">Nenhum usuário cadastrado.</p>
+        ) : (
+          <div className="space-y-3">
+            {/* Admins section */}
+            <Collapsible open={adminsOpen} onOpenChange={setAdminsOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-accent transition-colors">
+                {adminsOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                <span className="font-medium text-sm text-foreground">Administradores ({adminProfiles.length})</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2">
+                {adminProfiles.map(renderProfileCard)}
+              </CollapsibleContent>
+            </Collapsible>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="text-xs gap-1"
-                        disabled={actionLoading === p.id}
-                      >
-                        <UserX size={14} /> Excluir
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {p.full_name} será removido do sistema. Ele poderá ser reincluído depois se o e-mail estiver na lista de autorizados.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteUser(p.id, p.email)}>
-                          Confirmar Exclusão
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+            {/* Missionaries section */}
+            <Collapsible open={missionariesOpen} onOpenChange={setMissionariesOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-accent transition-colors">
+                {missionariesOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                <span className="font-medium text-sm text-foreground">Missionários ({missionaryProfiles.length})</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 mt-2">
+                {missionaryProfiles.map(renderProfileCard)}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
       </div>
     </div>
   );

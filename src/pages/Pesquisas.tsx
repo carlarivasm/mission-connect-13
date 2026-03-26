@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { ClipboardList, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardList, CheckCircle2, ChevronLeft, ChevronRight, Save, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Survey {
@@ -15,6 +15,7 @@ interface Survey {
   title: string;
   description: string | null;
   end_message?: string | null;
+  is_anonymous?: boolean;
 }
 
 interface Question {
@@ -33,6 +34,13 @@ interface Option {
   ends_survey: boolean;
 }
 
+interface DraftData {
+  answers: Record<string, string>;
+  textAnswers: Record<string, string>;
+  currentStep: number;
+  questionPath: number[];
+}
+
 const Pesquisas = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -41,6 +49,7 @@ const Pesquisas = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
+  const [draftSurveyIds, setDraftSurveyIds] = useState<Set<string>>(new Set());
 
   // Active survey
   const [activeSurvey, setActiveSurvey] = useState<Survey | null>(null);
@@ -52,26 +61,30 @@ const Pesquisas = () => {
 
   // Step-by-step navigation
   const [currentStep, setCurrentStep] = useState(0);
-  const [questionPath, setQuestionPath] = useState<number[]>([0]); // indices into questions array
+  const [questionPath, setQuestionPath] = useState<number[]>([0]);
   const [surveyEnded, setSurveyEnded] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const { data: surveyData } = await supabase
         .from("surveys")
-        .select("id, title, description, end_message")
+        .select("id, title, description, end_message, is_anonymous")
         .eq("active", true)
         .order("created_at", { ascending: false });
 
       if (surveyData) setSurveys(surveyData as Survey[]);
 
       if (user) {
-        const { data: respData } = await supabase
-          .from("survey_responses")
-          .select("survey_id")
-          .eq("user_id", user.id);
+        const [{ data: respData }, { data: draftData }] = await Promise.all([
+          supabase.from("survey_responses").select("survey_id").eq("user_id", user.id),
+          supabase.from("survey_drafts").select("survey_id").eq("user_id", user.id),
+        ]);
         if (respData) {
           setAnsweredIds(new Set(respData.map((r: any) => r.survey_id)));
+        }
+        if (draftData) {
+          setDraftSurveyIds(new Set(draftData.map((d: any) => d.survey_id)));
         }
       }
       setLoading(false);
@@ -93,6 +106,7 @@ const Pesquisas = () => {
       .eq("survey_id", survey.id)
       .order("sort_order");
 
+    let loadedOptions: Option[] = [];
     if (qs) {
       setQuestions(qs as Question[]);
       const qIds = qs.map((q: any) => q.id);
@@ -102,14 +116,35 @@ const Pesquisas = () => {
           .select("*")
           .in("question_id", qIds)
           .order("sort_order");
-        if (opts) setOptions(opts as Option[]);
+        if (opts) {
+          loadedOptions = opts as Option[];
+          setOptions(loadedOptions);
+        }
+      }
+    }
+
+    // Try to load draft
+    if (user) {
+      const { data: draft } = await supabase
+        .from("survey_drafts")
+        .select("answers, current_step, question_path")
+        .eq("survey_id", survey.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (draft) {
+        const draftAnswers = (draft.answers as any) || {};
+        setAnswers(draftAnswers.answers || {});
+        setTextAnswers(draftAnswers.textAnswers || {});
+        setCurrentStep(draft.current_step || 0);
+        setQuestionPath((draft.question_path as number[]) || [0]);
+        toast({ title: "Rascunho recuperado", description: "Continuando de onde você parou." });
       }
     }
   };
 
   const currentQuestionIndex = questionPath[currentStep] ?? 0;
   const currentQuestion = questions[currentQuestionIndex];
-  const totalSteps = questionPath.length;
   const progressPercent = questions.length > 0 ? ((currentStep + 1) / questions.length) * 100 : 0;
 
   const isCurrentAnswered = () => {
@@ -133,7 +168,6 @@ const Pesquisas = () => {
       }
     }
 
-    // Default: next sequential question
     const nextIdx = currentQuestionIndex + 1;
     if (nextIdx >= questions.length) return { nextIndex: -1, endsNow: true };
     return { nextIndex: nextIdx, endsNow: false };
@@ -148,7 +182,6 @@ const Pesquisas = () => {
     const { nextIndex, endsNow } = getNextQuestionIndex();
 
     if (endsNow) {
-      // Check if this is a conditional end or natural end
       if (currentQuestion?.question_type === "multiple_choice") {
         const selectedOption = options.find(o => o.id === answers[currentQuestion.id]);
         if (selectedOption?.ends_survey) {
@@ -157,7 +190,6 @@ const Pesquisas = () => {
           return;
         }
       }
-      // Natural end - submit
       handleSubmit();
       return;
     }
@@ -173,11 +205,35 @@ const Pesquisas = () => {
     }
   };
 
+  const saveDraft = async () => {
+    if (!user || !activeSurvey) return;
+    setSavingDraft(true);
+    const draftPayload = {
+      survey_id: activeSurvey.id,
+      user_id: user.id,
+      answers: { answers, textAnswers } as any,
+      current_step: currentStep,
+      question_path: questionPath as any,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("survey_drafts")
+      .upsert(draftPayload as any, { onConflict: "survey_id,user_id" });
+
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Progresso salvo!", description: "Você pode continuar depois." });
+      setDraftSurveyIds(new Set([...draftSurveyIds, activeSurvey.id]));
+    }
+    setSavingDraft(false);
+  };
+
   const handleSubmit = async () => {
     if (!user || !activeSurvey) return;
 
     setSubmitting(true);
-    // Collect only answered questions from the path
     const answeredQuestionIds = new Set(questionPath.slice(0, currentStep + 1).map(idx => questions[idx]?.id).filter(Boolean));
 
     const rows = Array.from(answeredQuestionIds).map((qId) => {
@@ -203,6 +259,9 @@ const Pesquisas = () => {
     } else {
       setSurveyEnded(true);
       setAnsweredIds(new Set([...answeredIds, activeSurvey.id]));
+      // Delete draft if exists
+      await supabase.from("survey_drafts").delete().eq("survey_id", activeSurvey.id).eq("user_id", user.id);
+      setDraftSurveyIds(prev => { const n = new Set(prev); n.delete(activeSurvey.id); return n; });
     }
     setSubmitting(false);
   };
@@ -244,11 +303,19 @@ const Pesquisas = () => {
               <div className="space-y-3 animate-fade-in" style={{ animationDelay: "0.1s" }}>
                 {surveys.map((s) => {
                   const answered = answeredIds.has(s.id);
+                  const hasDraft = draftSurveyIds.has(s.id);
                   return (
                     <div key={s.id} className="p-4 bg-card rounded-xl shadow-card">
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
-                          <p className="font-semibold text-foreground">{s.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground">{s.title}</p>
+                            {s.is_anonymous && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex items-center gap-1">
+                                <EyeOff size={10} /> Anônima
+                              </span>
+                            )}
+                          </div>
                           {s.description && <p className="text-sm text-muted-foreground mt-0.5">{s.description}</p>}
                         </div>
                         {answered && <CheckCircle2 size={20} className="text-green-500 shrink-0 mt-0.5" />}
@@ -256,9 +323,14 @@ const Pesquisas = () => {
                       {answered ? (
                         <p className="text-xs text-green-600 mt-2 font-medium">✓ Respondida</p>
                       ) : (
-                        <Button size="sm" onClick={() => openSurvey(s)} className="mt-3 gradient-mission text-primary-foreground">
-                          Responder
-                        </Button>
+                        <div className="flex items-center gap-2 mt-3">
+                          <Button size="sm" onClick={() => openSurvey(s)} className="gradient-mission text-primary-foreground">
+                            {hasDraft ? "Continuar" : "Responder"}
+                          </Button>
+                          {hasDraft && (
+                            <span className="text-xs text-muted-foreground">Rascunho salvo</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -267,7 +339,6 @@ const Pesquisas = () => {
             )}
           </>
         ) : surveyEnded ? (
-          /* End screen */
           <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
               <CheckCircle2 size={40} className="text-green-600" />
@@ -277,13 +348,17 @@ const Pesquisas = () => {
               <p className="text-muted-foreground text-sm max-w-xs">
                 {activeSurvey.end_message || "Obrigado pela sua participação!"}
               </p>
+              {activeSurvey.is_anonymous && (
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                  <EyeOff size={12} /> Sua resposta foi registrada anonimamente
+                </p>
+              )}
             </div>
             <Button onClick={closeSurvey} className="gradient-mission text-primary-foreground">
               Voltar às pesquisas
             </Button>
           </div>
         ) : (
-          /* Step-by-step answering */
           <div className="space-y-5 animate-fade-in">
             <div>
               <button onClick={closeSurvey} className="text-sm text-primary hover:underline mb-2">
@@ -291,9 +366,13 @@ const Pesquisas = () => {
               </button>
               <h2 className="text-xl font-display font-bold text-foreground">{activeSurvey.title}</h2>
               {activeSurvey.description && <p className="text-sm text-muted-foreground mt-0.5">{activeSurvey.description}</p>}
+              {activeSurvey.is_anonymous && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <EyeOff size={12} /> Pesquisa anônima — suas respostas não serão identificadas
+                </p>
+              )}
             </div>
 
-            {/* Progress bar */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Pergunta {currentStep + 1} de {questions.length}</span>
@@ -302,7 +381,6 @@ const Pesquisas = () => {
               <Progress value={progressPercent} className="h-2" />
             </div>
 
-            {/* Current question */}
             {currentQuestion && (
               <div className="bg-card rounded-xl shadow-card p-5 space-y-4">
                 <p className="font-medium text-foreground">
@@ -376,7 +454,6 @@ const Pesquisas = () => {
               </div>
             )}
 
-            {/* Navigation buttons */}
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -385,6 +462,15 @@ const Pesquisas = () => {
                 className="flex-1 gap-1"
               >
                 <ChevronLeft size={16} /> Anterior
+              </Button>
+              <Button
+                variant="outline"
+                onClick={saveDraft}
+                disabled={savingDraft}
+                className="gap-1"
+                title="Salvar progresso"
+              >
+                <Save size={16} />
               </Button>
               <Button
                 onClick={goNext}
