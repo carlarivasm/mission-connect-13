@@ -10,6 +10,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 import PendingCartAlert from "@/components/PendingCartAlert";
 import OnboardingCard from "@/components/OnboardingCard";
+import DashboardBanner from "@/components/DashboardBanner";
 
 interface EventData {
   id: string;
