@@ -105,14 +105,16 @@ const Calendario = () => {
 
   const getDateKey = (day: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-  const eventsForDay = (day: number) => events.filter((e) => e.event_date === getDateKey(day));
+  const eventsForDay = (day: number) => allEvents.filter((e) => e.event_date === getDateKey(day));
+
+  const filteredForDay = (day: number) => filteredEvents.filter((e) => e.event_date === getDateKey(day));
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const upcomingEvents = events.filter((e) => e.event_date >= todayStr);
+  const upcomingFiltered = filteredEvents.filter((e) => e.event_date >= todayStr);
 
   const displayedEvents = selectedDay
-    ? eventsForDay(selectedDay)
-    : upcomingEvents;
+    ? filteredForDay(selectedDay)
+    : upcomingFiltered;
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
