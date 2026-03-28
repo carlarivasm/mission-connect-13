@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone, Image } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
