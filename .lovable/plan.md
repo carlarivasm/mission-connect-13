@@ -1,26 +1,50 @@
 
 
-## Apply chronological ordering and auto-hide past events on Calendário
+## Banner System for Dashboard
 
-### Problem
-The Calendário page doesn't order events by time within the same date, and past events (whose time has passed) still appear in the list.
+### Overview
+Create a schedulable banner system where admins can upload image/video banners with publish and expiry dates, displayed between "Acesso Rápido" and "Próximas Atividades" on the Dashboard. When no active banner exists, nothing changes.
 
-### Solution
+### Database
 
-**Single file: `src/pages/Calendario.tsx`**
+**New table: `dashboard_banners`**
+- `id` uuid PK
+- `title` text (label shown, e.g. "Importante")
+- `media_url` text (public URL of image/video)
+- `media_type` text ("image" or "video")
+- `storage_path` text
+- `publish_at` timestamptz (when to start showing)
+- `expire_at` timestamptz (when to stop showing)
+- `active` boolean default true
+- `created_by` uuid
+- `created_at` timestamptz default now()
 
-1. **Add `event_time` ordering** to both queries (approved and unapproved): append `.order("event_time", { ascending: true })` after the date ordering.
+RLS: admins can ALL, authenticated can SELECT (where active=true and publish_at <= now and expire_at > now).
 
-2. **Client-side filtering for past events**: Reuse the same `filterAndSetEvents` pattern from Dashboard — for today's events with a set `event_time`, hide them if the time has already passed.
+**Storage**: reuse `product-images` bucket or the existing public buckets for banner media uploads.
 
-3. **Auto-refresh with interval**: Add a 60-second `setInterval` that re-filters the events list to remove expired ones without page reload. Clean up on unmount.
+### Admin Component: `ManageBanners.tsx`
+- List existing banners with status (active/scheduled/expired)
+- Form to create/edit: title, file upload (image or video), publish date, expire date
+- Preview of uploaded media
+- Toggle active/inactive
+- Delete banner
 
-4. **For unapproved users**: Apply the same time-based filter to the limited upcoming events list.
+### Admin Tab
+- Add a "Banners" tab (with `Image` icon) to the Admin page in one of the existing tab rows
 
-5. **For the calendar grid `eventsForDay`**: The dots on calendar days remain unchanged (they reflect all events fetched for the month, including past ones for historical context). Only the **events list below** gets filtered for today.
+### Dashboard Component: `DashboardBanner.tsx`
+- Query `dashboard_banners` where `active=true`, `publish_at <= now()`, `expire_at > now()`
+- If results exist, render between Quick Actions and Events sections:
+  - Header badge: "📢 Importante"
+  - If image: render `<img>` with rounded corners
+  - If video: render `<video>` with controls, autoplay muted
+- If no active banners, render nothing (current layout preserved)
 
-### Technical details
-- Add a `filterPastEvents` helper that checks: if `event_date === todayStr` and `event_time` exists and `event_time < currentTime`, exclude the event
-- Wrap the Supabase fetch result through this filter before calling `setEvents`
-- Add `setInterval` with 60s refresh, clearing on component unmount or dependency change
+### Files to create/edit
+1. **Migration SQL** — create `dashboard_banners` table with RLS
+2. **`src/components/admin/ManageBanners.tsx`** — admin CRUD for banners
+3. **`src/components/DashboardBanner.tsx`** — display component for Dashboard
+4. **`src/pages/Dashboard.tsx`** — import and place `<DashboardBanner />` between Quick Actions and Events
+5. **`src/pages/Admin.tsx`** — add Banners tab
 
