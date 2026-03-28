@@ -10,6 +10,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 import PendingCartAlert from "@/components/PendingCartAlert";
 import OnboardingCard from "@/components/OnboardingCard";
+import DashboardBanner from "@/components/DashboardBanner";
 
 interface EventData {
   id: string;
@@ -129,6 +130,9 @@ const Dashboard = () => {
             </div>
           )}
         </section>
+
+        {/* Banner */}
+        <DashboardBanner />
 
         {/* Upcoming Events */}
         <section className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
