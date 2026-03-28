@@ -119,6 +119,7 @@ const Admin = () => {
           <TabsContent value="surveys"><ManageSurveys /></TabsContent>
 
           <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
+          <TabsContent value="banners"><ManageBanners /></TabsContent>
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
         </Tabs>

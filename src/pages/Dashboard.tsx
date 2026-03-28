@@ -131,6 +131,9 @@ const Dashboard = () => {
           )}
         </section>
 
+        {/* Banner */}
+        <DashboardBanner />
+
         {/* Upcoming Events */}
         <section className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">{eventsLabel}</h3>
