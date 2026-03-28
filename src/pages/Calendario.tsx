@@ -25,7 +25,8 @@ const Calendario = () => {
   const { signOut, approved, role } = useAuth();
   const isApproved = approved || role === "admin";
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<EventData[]>([]);
+  const [allEvents, setAllEvents] = useState<EventData[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<EventData[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 
@@ -35,31 +36,64 @@ const Calendario = () => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
 
+  const filterPastEvents = (data: EventData[]) => {
+    const now = new Date();
+    const todayKey = now.toISOString().split("T")[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+
+    return data.filter((ev) => {
+      if (ev.event_date > todayKey) return true;
+      if (ev.event_date === todayKey) {
+        if (!ev.event_time) return true;
+        return ev.event_time.slice(0, 5) >= currentTime;
+      }
+      // Past dates: keep for calendar grid context, but filter in displayed list
+      return true;
+    });
+  };
+
   useEffect(() => {
-    if (!isApproved) {
-      // Unapproved users only see upcoming events (same as dashboard)
+    const fetchEvents = () => {
+      if (!isApproved) {
+        supabase
+          .from("events")
+          .select("*")
+          .gte("event_date", new Date().toISOString().split("T")[0])
+          .order("event_date", { ascending: true })
+          .order("event_time", { ascending: true })
+          .limit(5)
+          .then(({ data }) => {
+            if (data) {
+              setAllEvents(data);
+              setFilteredEvents(filterPastEvents(data));
+            }
+          });
+        return;
+      }
+
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${daysInMonth}`;
+
       supabase
         .from("events")
         .select("*")
-        .gte("event_date", new Date().toISOString().split("T")[0])
+        .gte("event_date", startDate)
+        .lte("event_date", endDate)
         .order("event_date", { ascending: true })
-        .limit(5)
-        .then(({ data }) => { if (data) setEvents(data); });
-      return;
-    }
+        .order("event_time", { ascending: true })
+        .then(({ data }) => {
+          if (data) {
+            setAllEvents(data);
+            setFilteredEvents(filterPastEvents(data));
+          }
+        });
+    };
 
-    const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-    const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${daysInMonth}`;
-
-    supabase
-      .from("events")
-      .select("*")
-      .gte("event_date", startDate)
-      .lte("event_date", endDate)
-      .order("event_date", { ascending: true })
-      .then(({ data }) => {
-        if (data) setEvents(data);
-      });
+    fetchEvents();
+    const interval = setInterval(() => {
+      setFilteredEvents(filterPastEvents(allEvents));
+    }, 60000);
+    return () => clearInterval(interval);
   }, [year, month, daysInMonth, isApproved]);
 
   const prevMonth = () => { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDay(null); };
@@ -71,14 +105,16 @@ const Calendario = () => {
 
   const getDateKey = (day: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-  const eventsForDay = (day: number) => events.filter((e) => e.event_date === getDateKey(day));
+  const eventsForDay = (day: number) => allEvents.filter((e) => e.event_date === getDateKey(day));
+
+  const filteredForDay = (day: number) => filteredEvents.filter((e) => e.event_date === getDateKey(day));
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const upcomingEvents = events.filter((e) => e.event_date >= todayStr);
+  const upcomingFiltered = filteredEvents.filter((e) => e.event_date >= todayStr);
 
   const displayedEvents = selectedDay
-    ? eventsForDay(selectedDay)
-    : upcomingEvents;
+    ? filteredForDay(selectedDay)
+    : upcomingFiltered;
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
