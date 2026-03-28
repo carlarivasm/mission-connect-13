@@ -25,33 +25,56 @@ const Dashboard = () => {
   const [events, setEvents] = useState<EventData[]>([]);
   const [eventsLabel, setEventsLabel] = useState("Próximas Atividades");
 
+  const filterAndSetEvents = (data: EventData[]) => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentTimeStr = now.toTimeString().slice(0, 5); // "HH:MM"
+
+    const filtered = data.filter((ev) => {
+      if (ev.event_date > todayStr) return true;
+      if (ev.event_date === todayStr) {
+        // If no time set, keep it for the whole day
+        if (!ev.event_time) return true;
+        // Hide if event time has passed
+        return ev.event_time.slice(0, 5) >= currentTimeStr;
+      }
+      return false;
+    });
+
+    const hasTodayEvents = filtered.some((ev) => ev.event_date === todayStr);
+    setEventsLabel(hasTodayEvents ? "Atividades de Hoje" : "Próximas Atividades");
+    setEvents(filtered.slice(0, 5));
+  };
+
   useEffect(() => {
     const todayStr = new Date().toISOString().split("T")[0];
 
-    // First try to get today's events
     supabase
       .from("events")
       .select("id, title, event_date, event_time, event_type")
-      .eq("event_date", todayStr)
+      .gte("event_date", todayStr)
+      .order("event_date", { ascending: true })
       .order("event_time", { ascending: true })
+      .limit(10)
       .then(({ data }) => {
-        if (data && data.length > 0) {
-          setEvents(data);
-          setEventsLabel("Atividades de Hoje");
-        } else {
-          // No events today, show upcoming
-          supabase
-            .from("events")
-            .select("id, title, event_date, event_time, event_type")
-            .gt("event_date", todayStr)
-            .order("event_date", { ascending: true })
-            .limit(5)
-            .then(({ data: upcoming }) => {
-              if (upcoming) setEvents(upcoming);
-              setEventsLabel("Próximas Atividades");
-            });
-        }
+        if (data) filterAndSetEvents(data);
       });
+
+    // Re-filter every 60s to hide past events
+    const interval = setInterval(() => {
+      supabase
+        .from("events")
+        .select("id, title, event_date, event_time, event_type")
+        .gte("event_date", todayStr)
+        .order("event_date", { ascending: true })
+        .order("event_time", { ascending: true })
+        .limit(10)
+        .then(({ data }) => {
+          if (data) filterAndSetEvents(data);
+        });
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {

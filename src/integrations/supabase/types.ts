@@ -274,7 +274,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       family_group_members: {
         Row: {
@@ -351,7 +359,22 @@ export type Database = {
           target_user_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "family_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_requests_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fcm_tokens: {
         Row: {
@@ -482,7 +505,15 @@ export type Database = {
           uploaded_by?: string | null
           uploaded_by_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gallery_photos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kit_components: {
         Row: {
@@ -616,7 +647,15 @@ export type Database = {
           storage_path?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "materials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mission_locations: {
         Row: {
@@ -664,7 +703,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mission_locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       needs_categories: {
         Row: {
@@ -981,7 +1028,15 @@ export type Database = {
           show_phone_in_org?: boolean
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_notifications: {
         Row: {
@@ -994,6 +1049,7 @@ export type Database = {
           sent: boolean
           source_id: string | null
           source_type: string
+          target_info: Json | null
           title: string
         }
         Insert: {
@@ -1006,6 +1062,7 @@ export type Database = {
           sent?: boolean
           source_id?: string | null
           source_type?: string
+          target_info?: Json | null
           title: string
         }
         Update: {
@@ -1018,6 +1075,7 @@ export type Database = {
           sent?: boolean
           source_id?: string | null
           source_type?: string
+          target_info?: Json | null
           title?: string
         }
         Relationships: []
@@ -1116,7 +1174,15 @@ export type Database = {
           sizes?: string[] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_products_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -1310,6 +1376,13 @@ export type Database = {
             referencedRelation: "surveys"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "survey_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       surveys: {
@@ -1343,7 +1416,15 @@ export type Database = {
           is_anonymous?: boolean
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "surveys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -1361,7 +1442,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1386,6 +1475,29 @@ export type Database = {
           id?: string | null
           phone?: string | null
           show_phone_in_org?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "user_status"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_status: {
+        Row: {
+          id: string | null
+          last_sign_in_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          last_sign_in_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          last_sign_in_at?: string | null
         }
         Relationships: []
       }
