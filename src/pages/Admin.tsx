@@ -94,6 +94,10 @@ const Admin = () => {
               <Network size={16} className="shrink-0" />
               <span className="text-center leading-tight">Organograma</span>
             </TabsTrigger>
+            <TabsTrigger value="banners" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Image size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Banners</span>
+            </TabsTrigger>
             <TabsTrigger value="broadcast" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
               <Megaphone size={16} className="shrink-0" />
               <span className="text-center leading-tight">Mensagens</span>
