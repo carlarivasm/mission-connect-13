@@ -132,6 +132,45 @@ export type Database = {
           },
         ]
       }
+      dashboard_banners: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          expire_at: string
+          id: string
+          media_type: string
+          media_url: string
+          publish_at: string
+          storage_path: string | null
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          expire_at: string
+          id?: string
+          media_type?: string
+          media_url: string
+          publish_at?: string
+          storage_path?: string | null
+          title?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          expire_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          publish_at?: string
+          storage_path?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
