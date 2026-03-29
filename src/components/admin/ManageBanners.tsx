@@ -84,7 +84,7 @@ const ManageBanners = () => {
 
     if (file) {
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      media_type = file.type.startsWith("video") ? "video" : "image";
+      media_type = file.type.startsWith("video") ? "video" : file.type.startsWith("audio") ? "audio" : "image";
       storage_path = `banners/${Date.now()}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
@@ -172,7 +172,7 @@ const ManageBanners = () => {
           </div>
           <div>
             <Label>Arquivo (imagem ou vídeo)</Label>
-            <Input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <Input type="file" accept="image/*,video/*,audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -211,6 +211,8 @@ const ManageBanners = () => {
             </div>
             {b.media_type === "video" ? (
               <video src={b.media_url} className="w-full max-h-32 rounded object-contain bg-black" muted />
+            ) : b.media_type === "audio" ? (
+              <audio src={b.media_url} controls className="w-full" />
             ) : (
               <img src={b.media_url} alt={b.title} className="w-full max-h-32 rounded object-contain" />
             )}
