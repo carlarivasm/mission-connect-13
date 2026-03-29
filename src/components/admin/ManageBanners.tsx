@@ -84,7 +84,7 @@ const ManageBanners = () => {
 
     if (file) {
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      media_type = file.type.startsWith("video") ? "video" : "image";
+      media_type = file.type.startsWith("video") ? "video" : file.type.startsWith("audio") ? "audio" : "image";
       storage_path = `banners/${Date.now()}_${file.name}`;
 
       const { error: upErr } = await supabase.storage
