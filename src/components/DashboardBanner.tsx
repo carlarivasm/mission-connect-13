@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -16,6 +17,8 @@ interface Banner {
 
 const DashboardBanner = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
 
   useEffect(() => {
     supabase
@@ -29,6 +32,18 @@ const DashboardBanner = () => {
         if (data) setBanners(data);
       });
   }, []);
+
+  const onSelect = useCallback(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+  }, [api]);
+
+  useEffect(() => {
+    if (!api) return;
+    onSelect();
+    api.on("select", onSelect);
+    return () => { api.off("select", onSelect); };
+  }, [api, onSelect]);
 
   if (banners.length === 0) return null;
 
@@ -47,7 +62,7 @@ const DashboardBanner = () => {
     }
     if (banner.media_type === "audio") {
       return (
-        <div className="flex items-center justify-center p-4 bg-muted/30">
+        <div className="flex items-center justify-center p-6 bg-muted/30">
           <audio src={banner.media_url} controls className="w-full" />
         </div>
       );
@@ -62,17 +77,20 @@ const DashboardBanner = () => {
     );
   };
 
+  const renderBannerCard = (banner: Banner) => (
+    <div className="rounded-xl overflow-hidden border border-primary/20 bg-card shadow-card">
+      <div className="flex items-center gap-2 px-4 py-2 bg-primary/10">
+        <span className="text-base">📢</span>
+        <span className="text-sm font-bold text-primary">{banner.title}</span>
+      </div>
+      {renderMedia(banner)}
+    </div>
+  );
+
   if (banners.length === 1) {
-    const banner = banners[0];
     return (
       <section className="animate-fade-in">
-        <div className="rounded-xl overflow-hidden border border-primary/20 bg-card shadow-card">
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10">
-            <span className="text-base">📢</span>
-            <span className="text-sm font-bold text-primary">{banner.title}</span>
-          </div>
-          {renderMedia(banner)}
-        </div>
+        {renderBannerCard(banners[0])}
       </section>
     );
   }
@@ -80,6 +98,7 @@ const DashboardBanner = () => {
   return (
     <section className="animate-fade-in">
       <Carousel
+        setApi={setApi}
         opts={{ loop: true }}
         plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
         className="w-full"
@@ -87,34 +106,23 @@ const DashboardBanner = () => {
         <CarouselContent className="-ml-0">
           {banners.map((banner) => (
             <CarouselItem key={banner.id} className="pl-0">
-              <div className="rounded-xl overflow-hidden border border-primary/20 bg-card shadow-card">
-                <div className="flex items-center gap-2 px-4 py-2 bg-primary/10">
-                  <span className="text-base">📢</span>
-                  <span className="text-sm font-bold text-primary">{banner.title}</span>
-                </div>
-                {renderMedia(banner)}
-              </div>
+              {renderBannerCard(banner)}
             </CarouselItem>
           ))}
         </CarouselContent>
-        <div className="flex justify-center gap-1.5 mt-2">
-          {banners.map((_, i) => (
-            <BannerDot key={i} index={i} />
-          ))}
-        </div>
       </Carousel>
+      <div className="flex justify-center gap-1.5 mt-2">
+        {banners.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => api?.scrollTo(i)}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              i === current ? "bg-primary" : "bg-primary/30"
+            }`}
+          />
+        ))}
+      </div>
     </section>
-  );
-};
-
-// Dot indicator that reads carousel state
-import { useContext } from "react";
-
-const BannerDot = ({ index }: { index: number }) => {
-  // We need to access the carousel API to highlight the active dot
-  // Since we can't easily use the internal context, we'll use a simpler approach
-  return (
-    <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
   );
 };
 

@@ -211,6 +211,8 @@ const ManageBanners = () => {
             </div>
             {b.media_type === "video" ? (
               <video src={b.media_url} className="w-full max-h-32 rounded object-contain bg-black" muted />
+            ) : b.media_type === "audio" ? (
+              <audio src={b.media_url} controls className="w-full" />
             ) : (
               <img src={b.media_url} alt={b.title} className="w-full max-h-32 rounded object-contain" />
             )}
