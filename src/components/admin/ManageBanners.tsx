@@ -172,7 +172,7 @@ const ManageBanners = () => {
           </div>
           <div>
             <Label>Arquivo (imagem ou vídeo)</Label>
-            <Input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <Input type="file" accept="image/*,video/*,audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
