@@ -1,50 +1,32 @@
 
 
-## Banner System for Dashboard
+## Custom Audio Player for Dashboard Banners
 
-### Overview
-Create a schedulable banner system where admins can upload image/video banners with publish and expiry dates, displayed between "Acesso Rápido" and "Próximas Atividades" on the Dashboard. When no active banner exists, nothing changes.
+### Problem
+The current audio banner uses the browser's native `<audio>` element, which is bulky and inconsistent across browsers. The user wants a minimal, clean audio player with play/pause, a progress bar, total duration display, and playback speed control (up to 2.0x).
 
-### Database
+### Solution
 
-**New table: `dashboard_banners`**
-- `id` uuid PK
-- `title` text (label shown, e.g. "Importante")
-- `media_url` text (public URL of image/video)
-- `media_type` text ("image" or "video")
-- `storage_path` text
-- `publish_at` timestamptz (when to start showing)
-- `expire_at` timestamptz (when to stop showing)
-- `active` boolean default true
-- `created_by` uuid
-- `created_at` timestamptz default now()
+**Single file change: `src/components/DashboardBanner.tsx`**
 
-RLS: admins can ALL, authenticated can SELECT (where active=true and publish_at <= now and expire_at > now).
+1. **Create a custom `AudioPlayer` component** inside the file (or as a separate component) that replaces the native `<audio>` tag:
+   - Hidden `<audio>` element for playback
+   - Play/Pause button (icon toggle)
+   - Seekable progress bar (using the existing `Slider` component)
+   - Current time / Total duration display (formatted as `mm:ss`)
+   - Speed control button that cycles through: 1.0x → 1.25x → 1.5x → 1.75x → 2.0x → back to 1.0x
 
-**Storage**: reuse `product-images` bucket or the existing public buckets for banner media uploads.
+2. **UI layout**: Single compact row inside the banner card:
+   ```
+   [▶] ━━━━━━━━━━━━━━━━━━━━ 3:45  [1.0x]
+   ```
 
-### Admin Component: `ManageBanners.tsx`
-- List existing banners with status (active/scheduled/expired)
-- Form to create/edit: title, file upload (image or video), publish date, expire date
-- Preview of uploaded media
-- Toggle active/inactive
-- Delete banner
+3. **Replace** the current `<audio>` block in `renderMedia` with the new `<AudioPlayer src={banner.media_url} />`.
 
-### Admin Tab
-- Add a "Banners" tab (with `Image` icon) to the Admin page in one of the existing tab rows
-
-### Dashboard Component: `DashboardBanner.tsx`
-- Query `dashboard_banners` where `active=true`, `publish_at <= now()`, `expire_at > now()`
-- If results exist, render between Quick Actions and Events sections:
-  - Header badge: "📢 Importante"
-  - If image: render `<img>` with rounded corners
-  - If video: render `<video>` with controls, autoplay muted
-- If no active banners, render nothing (current layout preserved)
-
-### Files to create/edit
-1. **Migration SQL** — create `dashboard_banners` table with RLS
-2. **`src/components/admin/ManageBanners.tsx`** — admin CRUD for banners
-3. **`src/components/DashboardBanner.tsx`** — display component for Dashboard
-4. **`src/pages/Dashboard.tsx`** — import and place `<DashboardBanner />` between Quick Actions and Events
-5. **`src/pages/Admin.tsx`** — add Banners tab
+### Technical details
+- Use `useRef` for the `<audio>` element, `useState` for `isPlaying`, `currentTime`, `duration`, `playbackRate`
+- Listen to `timeupdate`, `loadedmetadata`, `ended` events
+- Slider `onValueChange` seeks the audio via `audioRef.current.currentTime`
+- Speed button sets `audioRef.current.playbackRate`
+- Format seconds to `mm:ss` helper
 
