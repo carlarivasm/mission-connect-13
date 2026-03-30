@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Carousel,
@@ -7,6 +7,80 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import { Slider } from "@/components/ui/slider";
+import { Play, Pause } from "lucide-react";
+
+const SPEEDS = [1, 1.25, 1.5, 1.75, 2];
+const fmt = (s: number) => {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+};
+
+const AudioPlayer = ({ src }: { src: string }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [cur, setCur] = useState(0);
+  const [dur, setDur] = useState(0);
+  const [speedIdx, setSpeedIdx] = useState(0);
+
+  useEffect(() => {
+    const a = ref.current;
+    if (!a) return;
+    const onMeta = () => setDur(a.duration);
+    const onTime = () => setCur(a.currentTime);
+    const onEnd = () => setPlaying(false);
+    a.addEventListener("loadedmetadata", onMeta);
+    a.addEventListener("timeupdate", onTime);
+    a.addEventListener("ended", onEnd);
+    return () => {
+      a.removeEventListener("loadedmetadata", onMeta);
+      a.removeEventListener("timeupdate", onTime);
+      a.removeEventListener("ended", onEnd);
+    };
+  }, []);
+
+  const toggle = () => {
+    if (!ref.current) return;
+    playing ? ref.current.pause() : ref.current.play();
+    setPlaying(!playing);
+  };
+
+  const seek = (v: number[]) => {
+    if (ref.current) ref.current.currentTime = v[0];
+  };
+
+  const cycleSpeed = () => {
+    const next = (speedIdx + 1) % SPEEDS.length;
+    setSpeedIdx(next);
+    if (ref.current) ref.current.playbackRate = SPEEDS[next];
+  };
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-3">
+      <audio ref={ref} src={src} preload="metadata" />
+      <button onClick={toggle} className="shrink-0 text-primary">
+        {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+      </button>
+      <Slider
+        value={[cur]}
+        max={dur || 1}
+        step={0.1}
+        onValueChange={seek}
+        className="flex-1"
+      />
+      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+        {fmt(dur)}
+      </span>
+      <button
+        onClick={cycleSpeed}
+        className="text-xs font-semibold text-primary bg-primary/10 rounded px-1.5 py-0.5 shrink-0"
+      >
+        {SPEEDS[speedIdx]}x
+      </button>
+    </div>
+  );
+};
 
 interface Banner {
   id: string;
@@ -61,11 +135,7 @@ const DashboardBanner = () => {
       );
     }
     if (banner.media_type === "audio") {
-      return (
-        <div className="flex items-center justify-center p-6 bg-muted/30">
-          <audio src={banner.media_url} controls className="w-full" />
-        </div>
-      );
+      return <AudioPlayer src={banner.media_url} />;
     }
     return (
       <img
