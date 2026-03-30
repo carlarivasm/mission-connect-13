@@ -135,11 +135,7 @@ const DashboardBanner = () => {
       );
     }
     if (banner.media_type === "audio") {
-      return (
-        <div className="flex items-center justify-center p-6 bg-muted/30">
-          <audio src={banner.media_url} controls className="w-full" />
-        </div>
-      );
+      return <AudioPlayer src={banner.media_url} />;
     }
     return (
       <img
