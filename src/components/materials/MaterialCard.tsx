@@ -1,4 +1,5 @@
-import { FileText, Play, Music, File, Link2, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { FileText, Play, Music, File, Link2, ExternalLink, ImageIcon } from "lucide-react";
 import YouTubeEmbed from "./YouTubeEmbed";
 
 interface Material {
