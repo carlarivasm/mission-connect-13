@@ -6,6 +6,8 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MaterialCard, { type Material } from "@/components/materials/MaterialCard";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 const MISSIONARY_CATEGORIES: Record<string, string> = {
   formacao_missionarios: "Formação dos Missionários",
@@ -29,8 +31,6 @@ const Materiais = () => {
   const { signOut } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCatMissionary, setSelectedCatMissionary] = useState<string | null>(null);
-  const [selectedCatResp, setSelectedCatResp] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -50,43 +50,34 @@ const Materiais = () => {
   const missionaryMaterials = materials.filter((m) => !respCategories.includes(m.category));
   const responsaveisMaterials = materials.filter((m) => respCategories.includes(m.category));
 
-  const filteredMissionary = selectedCatMissionary
-    ? missionaryMaterials.filter((m) => m.category === selectedCatMissionary)
-    : missionaryMaterials;
-  const filteredResp = selectedCatResp
-    ? responsaveisMaterials.filter((m) => m.category === selectedCatResp)
-    : responsaveisMaterials;
-
   const uniqueMissionaryCategories = [...new Set(missionaryMaterials.map((m) => m.category))];
   const uniqueRespCategories = [...new Set(responsaveisMaterials.map((m) => m.category))];
 
-  const renderCategoryFilter = (
-    categories: string[],
-    selected: string | null,
-    onSelect: (cat: string | null) => void,
-  ) =>
-    categories.length > 0 && (
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        <button onClick={() => onSelect(null)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!selected ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-          Todos
-        </button>
-        {categories.map((cat) => (
-          <button key={cat} onClick={() => onSelect(cat)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${selected === cat ? "gradient-mission text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-            {allCategoryLabels[cat] || cat}
-          </button>
-        ))}
-      </div>
-    );
-
-  const renderMaterialsGrid = (items: Material[]) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-      {items.map((mat) => (
-        <MaterialCard
-          key={mat.id}
-          material={mat}
-          categoryLabel={allCategoryLabels[mat.category] || mat.category}
-        />
-      ))}
+  const renderCategoryAccordion = (items: Material[], categories: string[]) => (
+    <div className="space-y-2">
+      {categories.map((cat) => {
+        const catItems = items.filter((m) => m.category === cat);
+        if (catItems.length === 0) return null;
+        return (
+          <Collapsible key={cat}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-sm border border-border transition-colors hover:bg-accent/50 [&[data-state=open]>svg]:rotate-180">
+              {allCategoryLabels[cat] || cat}
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 pb-1 animate-fade-in">
+                {catItems.map((mat) => (
+                  <MaterialCard
+                    key={mat.id}
+                    material={mat}
+                    categoryLabel={allCategoryLabels[mat.category] || mat.category}
+                  />
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        );
+      })}
     </div>
   );
 
@@ -112,17 +103,15 @@ const Materiais = () => {
           </TabsList>
 
           <TabsContent value="missionarios" className="space-y-4">
-            {renderCategoryFilter(uniqueMissionaryCategories, selectedCatMissionary, setSelectedCatMissionary)}
-            {loading ? renderLoading() : filteredMissionary.length === 0 ? (
+            {loading ? renderLoading() : uniqueMissionaryCategories.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível.</p>
-            ) : renderMaterialsGrid(filteredMissionary)}
+            ) : renderCategoryAccordion(missionaryMaterials, uniqueMissionaryCategories)}
           </TabsContent>
 
           <TabsContent value="responsaveis" className="space-y-4">
-            {renderCategoryFilter(uniqueRespCategories, selectedCatResp, setSelectedCatResp)}
-            {loading ? renderLoading() : filteredResp.length === 0 ? (
+            {loading ? renderLoading() : uniqueRespCategories.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-8">Nenhum material disponível para responsáveis.</p>
-            ) : renderMaterialsGrid(filteredResp)}
+            ) : renderCategoryAccordion(responsaveisMaterials, uniqueRespCategories)}
           </TabsContent>
         </Tabs>
       </main>
