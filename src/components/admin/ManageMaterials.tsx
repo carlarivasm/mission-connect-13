@@ -5,10 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, Music, File, Link2, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, BookPlus, Pencil, ExternalLink, Upload, FileText, Film, Music, File, Link2, X, ArrowUp, ArrowDown, ImageIcon, Bell, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Material {
   id: string;
@@ -43,6 +48,7 @@ const MATERIAL_TYPES: Record<string, string> = {
   document: "Documento",
   audio: "Áudio",
   video: "Vídeo",
+  image: "Imagem",
   link: "Link Externo",
 };
 
@@ -51,6 +57,7 @@ const materialTypeIcon = (type: string) => {
     case "pdf": return <FileText size={16} />;
     case "video": return <Film size={16} />;
     case "audio": return <Music size={16} />;
+    case "image": return <ImageIcon size={16} />;
     case "link": return <Link2 size={16} />;
     default: return <File size={16} />;
   }
@@ -61,6 +68,7 @@ const fileAcceptByType: Record<string, string> = {
   document: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt",
   audio: "audio/*",
   video: "video/*",
+  image: "image/*",
 };
 
 const ManageMaterials = () => {
@@ -103,6 +111,12 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
 
+  // Notification states
+  const [notifyEnabled, setNotifyEnabled] = useState(false);
+  const [scheduleNotify, setScheduleNotify] = useState(false);
+  const [notifyDate, setNotifyDate] = useState<Date | undefined>(undefined);
+  const [notifyTime, setNotifyTime] = useState("12:00");
+
   const categoryKeys = Object.keys(categories);
   const respKeys = Object.keys(RESPONSAVEIS_CATEGORIES);
 
@@ -127,6 +141,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const resetForm = () => {
     setTitle(""); setDescription(""); setCategory(categoryKeys[0]); setMaterialType("document");
     setLinkUrl(""); setEditingId(null); setSelectedFile(null);
+    setNotifyEnabled(false); setScheduleNotify(false); setNotifyDate(undefined); setNotifyTime("12:00");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -143,7 +158,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
       const ext = selectedFile.name.split(".").pop();
       const bucket = materialType === "video" ? "formation-videos" : "material-documents";
       const filePath = `${area}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, selectedFile);
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, selectedFile, { contentType: selectedFile.type });
       if (uploadError) {
         toast({ title: "Erro ao enviar arquivo", description: uploadError.message, variant: "destructive" });
         setUploadingFile(false);
@@ -172,15 +187,51 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
     }
     if (fileUrl) { payload.file_url = fileUrl; payload.storage_path = storagePath; }
 
+    let saveSuccess = false;
     if (editingId) {
       const { error } = await supabase.from("materials").update(payload).eq("id", editingId);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Material atualizado!" }); resetForm(); fetchMaterials(); }
+      else { toast({ title: "Material atualizado!" }); saveSuccess = true; }
     } else {
       const { error } = await supabase.from("materials").insert(payload);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Material adicionado!" }); resetForm(); fetchMaterials(); }
+      else { toast({ title: "Material adicionado!" }); saveSuccess = true; }
     }
+
+    // Send notification if enabled and save was successful
+    if (saveSuccess && notifyEnabled && !editingId) {
+      const notifTitle = `📚 Novo material: ${title.trim()}`;
+      const notifBody = description.trim() ? description.trim().substring(0, 200) : `Um novo material foi adicionado: ${title.trim()}`;
+
+      if (scheduleNotify && notifyDate) {
+        const [h, m] = notifyTime.split(":").map(Number);
+        const scheduledAt = new Date(notifyDate);
+        scheduledAt.setHours(h, m, 0, 0);
+
+        await supabase.from("scheduled_push").insert({
+          title: notifTitle,
+          body: notifBody,
+          link: "/materiais",
+          scheduled_at: scheduledAt.toISOString(),
+          create_in_app: true,
+        });
+        toast({ title: "Notificação agendada!" });
+      } else {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          await supabase.functions.invoke("send-push-notification", {
+            body: { title: notifTitle, body: notifBody, link: "/materiais" },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          toast({ title: "Notificação enviada!" });
+        } catch (err) {
+          console.error("Push error:", err);
+        }
+      }
+    }
+
+    if (saveSuccess) { resetForm(); fetchMaterials(); }
     setSubmitting(false);
   };
 
@@ -242,7 +293,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
           </div>
           <div className="space-y-1">
             <Label>Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Sobre o material" rows={2} />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Sobre o material (pode ser texto longo)" rows={4} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -302,6 +353,46 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
             </>
           )}
         </div>
+
+        {/* Notification option (only for new materials) */}
+        {!editingId && (
+          <div className="space-y-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2"><Bell size={14} /> Enviar notificação push</Label>
+              <Switch checked={notifyEnabled} onCheckedChange={setNotifyEnabled} />
+            </div>
+            {notifyEnabled && (
+              <div className="space-y-3 pl-1">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" checked={!scheduleNotify} onChange={() => setScheduleNotify(false)} className="accent-primary" />
+                    Enviar agora
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" checked={scheduleNotify} onChange={() => setScheduleNotify(true)} className="accent-primary" />
+                    Agendar
+                  </label>
+                </div>
+                {scheduleNotify && (
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal flex-1", !notifyDate && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {notifyDate ? format(notifyDate, "dd/MM/yyyy") : "Data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={notifyDate} onSelect={setNotifyDate} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    <Input type="time" value={notifyTime} onChange={(e) => setNotifyTime(e.target.value)} className="w-28" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex gap-2">
           <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
             {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar"}
