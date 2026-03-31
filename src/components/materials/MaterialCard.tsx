@@ -93,12 +93,29 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
         <YouTubeEmbed videoId={youtubeId} title={material.title} />
         <div className="p-3 space-y-1.5">
           <p className="font-semibold text-sm text-foreground line-clamp-2">{material.title}</p>
-          {material.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>
-          )}
+          {material.description && <ExpandableDescription text={material.description} />}
           <div className="flex items-center gap-1.5 pt-0.5">
             <Badge>{categoryLabel}</Badge>
             <Badge variant="youtube"><Play size={8} fill="currentColor" /> YouTube</Badge>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Image card
+  if (material.material_type === "image" && material.file_url) {
+    return (
+      <div className="bg-card rounded-xl shadow-card overflow-hidden">
+        <button onClick={handleOpen} className="w-full">
+          <img src={material.file_url} alt={material.title} className="w-full aspect-[4/3] object-cover" loading="lazy" />
+        </button>
+        <div className="p-3 space-y-1.5">
+          <p className="font-semibold text-sm text-foreground line-clamp-2">{material.title}</p>
+          {material.description && <ExpandableDescription text={material.description} />}
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <Badge>{categoryLabel}</Badge>
+            <Badge variant="type">Imagem</Badge>
           </div>
         </div>
       </div>
@@ -115,9 +132,7 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-foreground line-clamp-2">{material.title}</p>
-            {material.description && (
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{material.description}</p>
-            )}
+            {material.description && <ExpandableDescription text={material.description} />}
           </div>
         </div>
         <audio
@@ -147,9 +162,7 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
         </button>
         <div className="p-3 space-y-1.5">
           <p className="font-semibold text-sm text-foreground line-clamp-2">{material.title}</p>
-          {material.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>
-          )}
+          {material.description && <ExpandableDescription text={material.description} />}
           <div className="flex items-center gap-1.5 pt-0.5">
             <Badge>{categoryLabel}</Badge>
             <Badge variant="type">Vídeo</Badge>
@@ -159,11 +172,11 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
     );
   }
 
-  // Default (PDF, doc, link)
+  // Default (PDF, doc, link, image without file_url)
   return (
-    <button
+    <div
       onClick={handleOpen}
-      className="w-full bg-card rounded-xl shadow-card overflow-hidden p-4 text-left hover:shadow-elevated active:scale-[0.98] transition-all duration-150"
+      className="w-full bg-card rounded-xl shadow-card overflow-hidden p-4 text-left hover:shadow-elevated active:scale-[0.98] transition-all duration-150 cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div className="p-2.5 rounded-lg gradient-mission text-primary-foreground shrink-0">
@@ -171,9 +184,7 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm text-foreground line-clamp-2">{material.title}</p>
-          {material.description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{material.description}</p>
-          )}
+          {material.description && <ExpandableDescription text={material.description} />}
           <div className="flex items-center gap-1.5 mt-2">
             <Badge>{categoryLabel}</Badge>
             <Badge variant="type">{materialTypeLabel(material.material_type)}</Badge>
@@ -181,7 +192,7 @@ const MaterialCard = ({ material, categoryLabel }: MaterialCardProps) => {
         </div>
         <ExternalLink size={16} className="shrink-0 text-primary mt-1" />
       </div>
-    </button>
+    </div>
   );
 };
 
