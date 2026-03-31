@@ -583,16 +583,61 @@ const ManageMissionaries = () => {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                     Aguardando cadastro
                   </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs gap-1"
-                    disabled={sendingInvite === m.id}
-                    onClick={() => handleSendInviteEmail(m)}
-                  >
-                    <Send size={14} />
-                    {sendingInvite === m.id ? "Enviando..." : "Reenviar Convite"}
-                  </Button>
+                   <AlertDialog>
+                     <AlertDialogTrigger asChild>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         className="text-xs gap-1"
+                         disabled={sendingInvite === m.id}
+                       >
+                         <Send size={14} />
+                         {sendingInvite === m.id ? "Enviando..." : "Reenviar Convite"}
+                       </Button>
+                     </AlertDialogTrigger>
+                     <AlertDialogContent>
+                       <AlertDialogHeader>
+                         <AlertDialogTitle>Reenviar convite?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                           Um novo e-mail de convite será enviado para <strong>{m.email}</strong>.
+                         </AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <AlertDialogFooter>
+                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction onClick={() => handleSendInviteEmail(m)}>
+                           Enviar
+                         </AlertDialogAction>
+                       </AlertDialogFooter>
+                     </AlertDialogContent>
+                   </AlertDialog>
+
+                   <AlertDialog>
+                     <AlertDialogTrigger asChild>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         className="text-xs gap-1"
+                         disabled={actionLoading === m.email}
+                       >
+                         <RefreshCw size={14} />
+                         {actionLoading === m.email ? "Enviando..." : "Reenviar Validação"}
+                       </Button>
+                     </AlertDialogTrigger>
+                     <AlertDialogContent>
+                       <AlertDialogHeader>
+                         <AlertDialogTitle>Reenviar e-mail de validação?</AlertDialogTitle>
+                         <AlertDialogDescription>
+                           Um novo e-mail de confirmação será enviado para <strong>{m.email}</strong>.
+                         </AlertDialogDescription>
+                       </AlertDialogHeader>
+                       <AlertDialogFooter>
+                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                         <AlertDialogAction onClick={() => handleResendConfirmation(m.email)}>
+                           Enviar
+                         </AlertDialogAction>
+                       </AlertDialogFooter>
+                     </AlertDialogContent>
+                   </AlertDialog>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <button className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
