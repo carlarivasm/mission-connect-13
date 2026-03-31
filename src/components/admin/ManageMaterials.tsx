@@ -68,6 +68,7 @@ const fileAcceptByType: Record<string, string> = {
   document: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt",
   audio: "audio/*",
   video: "video/*",
+  image: "image/*",
 };
 
 const ManageMaterials = () => {
