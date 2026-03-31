@@ -1,14 +1,21 @@
-## Duas Correções: Convidados e Banner com Intervalo Configurável
 
-### 1. Verificar "Convidados" que já se cadastraram
 
-**Problema**: Alguns registros em `authorized_missionaries` com `used=true` podem não ter um perfil correspondente (ex: o trigger marcou `used` mas o usuário não completou o cadastro, ou foi excluído depois). Esses devem voltar a aparecer como pendentes.
+## Botões de reenvio: convite e validação de e-mail
 
-**Solução — `src/components/admin/ManageMissionaries.tsx**`:
+### 1. Botão "Reenviar Convite" na aba Convidados
 
-- No `fetchMissionaries`, buscar TODOS os `authorized_missionaries` (não apenas `used=false`)
-- Cruzar com a lista de e-mails em `profiles`
-- Quem está em `authorized_missionaries` mas NÃO tem perfil → exibir como "Aguardando Cadastro" (convidado pendente)
-- Se `used=true` mas não tem perfil → automaticamente corrigir `used` para `false` (via update)
-- Permitir reenvio de convite para todos os pendentes (já existe o botão "Convidar")
-  &nbsp;
+O botão já existe (linha 577) e funciona — basta alterar o texto de **"Convidar"** para **"Reenviar Convite"**.
+
+### 2. Botão "Reenviar E-mail de Validação" para cadastrados
+
+O botão "Reenviar E-mail" já existe nos cards de missionários/admins cadastrados (linha 420), chamando `handleResendConfirmation` que usa a edge function `admin-users` com action `resend_confirmation`. Esse botão já cumpre a função de reenviar o e-mail de confirmação/validação.
+
+**Ajuste necessário**: tornar o texto mais claro — mudar de "Reenviar E-mail" para **"Reenviar Validação"** para deixar explícito que é o e-mail de validação de cadastro.
+
+### Arquivo: `src/components/admin/ManageMissionaries.tsx`
+
+- **Linha 577**: Alterar `"Convidar"` → `"Reenviar Convite"`
+- **Linha 420**: Alterar `"Reenviar E-mail"` → `"Reenviar Validação"`
+
+Mudança mínima — 2 linhas de texto.
+
