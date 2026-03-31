@@ -182,7 +182,7 @@ const DashboardBanner = () => {
       <Carousel
         setApi={setApi}
         opts={{ loop: true }}
-        plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
+        plugins={[Autoplay({ delay: carouselInterval, stopOnInteraction: true })]}
         className="w-full"
       >
         <CarouselContent className="-ml-0">
