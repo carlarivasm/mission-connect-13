@@ -417,7 +417,7 @@ const ManageMissionaries = () => {
           disabled={actionLoading === p.email}
           onClick={() => handleResendConfirmation(p.email)}
         >
-          <RefreshCw size={14} /> Reenviar E-mail
+          <RefreshCw size={14} /> {actionLoading === p.email ? "Enviando..." : "Reenviar Validação"}
         </Button>
 
         <AlertDialog>
