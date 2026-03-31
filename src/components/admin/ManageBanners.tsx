@@ -215,6 +215,7 @@ const ManageBanners = () => {
         <span className="text-xs text-muted-foreground">segundos {savingInterval && "(salvando...)"}</span>
       </Card>
 
+      {showForm && (
         <Card className="p-4 space-y-3">
           <div className="flex justify-between items-center">
             <h4 className="font-semibold">{editingId ? "Editar Banner" : "Novo Banner"}</h4>
