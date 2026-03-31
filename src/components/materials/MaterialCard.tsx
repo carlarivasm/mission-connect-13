@@ -43,9 +43,25 @@ const materialTypeLabel = (type: string) => {
     case "pdf": return "PDF";
     case "video": return "Vídeo";
     case "audio": return "Áudio";
+    case "image": return "Imagem";
     case "link": return "Link";
     default: return "Documento";
   }
+};
+
+const ExpandableDescription = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 150;
+  return (
+    <div>
+      <p className={`text-xs text-muted-foreground mt-0.5 ${!expanded && isLong ? "line-clamp-3" : ""}`}>{text}</p>
+      {isLong && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="text-xs text-primary font-medium mt-0.5">
+          {expanded ? "Ler menos" : "Ler mais"}
+        </button>
+      )}
+    </div>
+  );
 };
 
 const Badge = ({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "youtube" | "type" }) => {
