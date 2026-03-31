@@ -574,7 +574,7 @@ const ManageMissionaries = () => {
                     onClick={() => handleSendInviteEmail(m)}
                   >
                     <Send size={14} />
-                    {sendingInvite === m.id ? "Enviando..." : "Convidar"}
+                    {sendingInvite === m.id ? "Enviando..." : "Reenviar Convite"}
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
