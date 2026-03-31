@@ -293,7 +293,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
           </div>
           <div className="space-y-1">
             <Label>Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Sobre o material" rows={2} />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Sobre o material (pode ser texto longo)" rows={4} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
