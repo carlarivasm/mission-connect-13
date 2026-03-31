@@ -48,6 +48,7 @@ const MATERIAL_TYPES: Record<string, string> = {
   document: "Documento",
   audio: "Áudio",
   video: "Vídeo",
+  image: "Imagem",
   link: "Link Externo",
 };
 
