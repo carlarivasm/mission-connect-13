@@ -33,6 +33,8 @@ const ManageBanners = () => {
   const [expireAt, setExpireAt] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [carouselInterval, setCarouselInterval] = useState(5);
+  const [savingInterval, setSavingInterval] = useState(false);
 
   const fetchBanners = async () => {
     const { data } = await supabase
@@ -43,7 +45,43 @@ const ManageBanners = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBanners(); }, []);
+  useEffect(() => {
+    fetchBanners();
+    // Fetch carousel interval setting
+    supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "banner_carousel_interval")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          const val = parseInt(data.setting_value, 10);
+          if (val >= 2 && val <= 30) setCarouselInterval(val);
+        }
+      });
+  }, []);
+
+  const handleSaveInterval = async (val: number) => {
+    setCarouselInterval(val);
+    setSavingInterval(true);
+    const { data: existing } = await supabase
+      .from("app_settings")
+      .select("id")
+      .eq("setting_key", "banner_carousel_interval")
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from("app_settings")
+        .update({ setting_value: String(val), updated_by: user?.id })
+        .eq("setting_key", "banner_carousel_interval");
+    } else {
+      await supabase
+        .from("app_settings")
+        .insert({ setting_key: "banner_carousel_interval", setting_value: String(val), updated_by: user?.id });
+    }
+    setSavingInterval(false);
+  };
 
   const getStatus = (b: Banner) => {
     const now = new Date();
@@ -159,6 +197,23 @@ const ManageBanners = () => {
           </Button>
         )}
       </div>
+
+      {/* Carousel interval setting */}
+      <Card className="p-3 flex items-center gap-3">
+        <Label className="text-sm whitespace-nowrap">Intervalo do carrossel:</Label>
+        <Input
+          type="number"
+          min={2}
+          max={30}
+          value={carouselInterval}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (v >= 2 && v <= 30) handleSaveInterval(v);
+          }}
+          className="w-20"
+        />
+        <span className="text-xs text-muted-foreground">segundos {savingInterval && "(salvando...)"}</span>
+      </Card>
 
       {showForm && (
         <Card className="p-4 space-y-3">

@@ -43,23 +43,33 @@ const ManageMissionaries = () => {
   const [groupByFamily, setGroupByFamily] = useState(false);
 
   const fetchMissionaries = async () => {
-    // Fetch all authorized missionaries that haven't been used
+    // Fetch ALL authorized missionaries (including used=true)
     const { data, error } = await supabase
       .from("authorized_missionaries")
       .select("*")
-      .eq("used", false)
       .order("full_name");
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
 
-    // Also fetch all profile emails to filter out those who already registered
+    // Fetch all profile emails to cross-reference
     const { data: profileEmails } = await supabase
       .from("profiles")
       .select("email");
 
     const registeredEmails = new Set((profileEmails || []).map((p: any) => p.email?.toLowerCase()));
 
-    // Only show missionaries whose email is NOT in profiles (truly pending)
+    // Find missionaries who don't have a profile (truly pending)
     const pending = (data || []).filter(m => !registeredEmails.has(m.email?.toLowerCase()));
+
+    // Auto-fix: if used=true but no profile exists, reset to used=false
+    const toFix = pending.filter(m => m.used === true);
+    if (toFix.length > 0) {
+      await Promise.all(
+        toFix.map(m =>
+          supabase.from("authorized_missionaries").update({ used: false }).eq("id", m.id)
+        )
+      );
+    }
+
     setMissionaries(pending);
     setLoading(false);
   };
