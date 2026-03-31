@@ -111,6 +111,12 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
 
+  // Notification states
+  const [notifyEnabled, setNotifyEnabled] = useState(false);
+  const [scheduleNotify, setScheduleNotify] = useState(false);
+  const [notifyDate, setNotifyDate] = useState<Date | undefined>(undefined);
+  const [notifyTime, setNotifyTime] = useState("12:00");
+
   const categoryKeys = Object.keys(categories);
   const respKeys = Object.keys(RESPONSAVEIS_CATEGORIES);
 
