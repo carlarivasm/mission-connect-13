@@ -1,17 +1,14 @@
+## Duas Correções: Convidados e Banner com Intervalo Configurável
 
+### 1. Verificar "Convidados" que já se cadastraram
 
-## Melhorias no Material: Imagem, Descrição Longa e Notificação
+**Problema**: Alguns registros em `authorized_missionaries` com `used=true` podem não ter um perfil correspondente (ex: o trigger marcou `used` mas o usuário não completou o cadastro, ou foi excluído depois). Esses devem voltar a aparecer como pendentes.
 
-### O que muda
+**Solução — `src/components/admin/ManageMissionaries.tsx**`:
 
-1. **Novo tipo de material "Imagem"** — adicionar `image` ao `MATERIAL_TYPES` no admin, permitindo upload de JPEG, PNG e outros formatos de imagem. Aceitar `image/*` no input de arquivo.
-
-2. **Descrição longa expansível** — remover o limite de 2 linhas (`line-clamp-2`) na descrição do `MaterialCard`. Mostrar as primeiras 3 linhas com um botão "Ler mais" que expande o texto completo. No admin, aumentar o `rows` do Textarea e remover qualquer `maxLength`.
-
-3. **Notificação ao publicar material** — no formulário admin, adicionar opção (Switch) para enviar notificação push ao salvar o material, com escolha entre "Enviar agora" ou "Agendar" (com campos de data e hora). Reutilizar o padrão já existente no `AdminBroadcast` que insere em `scheduled_notifications` ou chama `send-push-notification`.
-
-### Arquivos a editar
-
-**`src/components/admin/ManageMaterials.tsx`**
-- Adicionar `image: "Imagem"` ao `MATERIAL_TYPES`
-- Adicionar `image: "image/*"` ao `file
+- No `fetchMissionaries`, buscar TODOS os `authorized_missionaries` (não apenas `used=false`)
+- Cruzar com a lista de e-mails em `profiles`
+- Quem está em `authorized_missionaries` mas NÃO tem perfil → exibir como "Aguardando Cadastro" (convidado pendente)
+- Se `used=true` mas não tem perfil → automaticamente corrigir `used` para `false` (via update)
+- Permitir reenvio de convite para todos os pendentes (já existe o botão "Convidar")
+  &nbsp;
