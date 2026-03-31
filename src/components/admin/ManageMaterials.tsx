@@ -141,6 +141,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
   const resetForm = () => {
     setTitle(""); setDescription(""); setCategory(categoryKeys[0]); setMaterialType("document");
     setLinkUrl(""); setEditingId(null); setSelectedFile(null);
+    setNotifyEnabled(false); setScheduleNotify(false); setNotifyDate(undefined); setNotifyTime("12:00");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
