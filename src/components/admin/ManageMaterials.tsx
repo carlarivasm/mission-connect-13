@@ -57,6 +57,7 @@ const materialTypeIcon = (type: string) => {
     case "pdf": return <FileText size={16} />;
     case "video": return <Film size={16} />;
     case "audio": return <Music size={16} />;
+    case "image": return <ImageIcon size={16} />;
     case "link": return <Link2 size={16} />;
     default: return <File size={16} />;
   }
