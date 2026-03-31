@@ -158,7 +158,7 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
       const ext = selectedFile.name.split(".").pop();
       const bucket = materialType === "video" ? "formation-videos" : "material-documents";
       const filePath = `${area}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, selectedFile);
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, selectedFile, { contentType: selectedFile.type });
       if (uploadError) {
         toast({ title: "Erro ao enviar arquivo", description: uploadError.message, variant: "destructive" });
         setUploadingFile(false);
