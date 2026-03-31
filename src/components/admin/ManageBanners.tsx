@@ -198,7 +198,23 @@ const ManageBanners = () => {
         )}
       </div>
 
-      {showForm && (
+      {/* Carousel interval setting */}
+      <Card className="p-3 flex items-center gap-3">
+        <Label className="text-sm whitespace-nowrap">Intervalo do carrossel:</Label>
+        <Input
+          type="number"
+          min={2}
+          max={30}
+          value={carouselInterval}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (v >= 2 && v <= 30) handleSaveInterval(v);
+          }}
+          className="w-20"
+        />
+        <span className="text-xs text-muted-foreground">segundos {savingInterval && "(salvando...)"}</span>
+      </Card>
+
         <Card className="p-4 space-y-3">
           <div className="flex justify-between items-center">
             <h4 className="font-semibold">{editingId ? "Editar Banner" : "Novo Banner"}</h4>
