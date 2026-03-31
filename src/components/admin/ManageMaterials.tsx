@@ -353,6 +353,46 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
             </>
           )}
         </div>
+
+        {/* Notification option (only for new materials) */}
+        {!editingId && (
+          <div className="space-y-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2"><Bell size={14} /> Enviar notificação push</Label>
+              <Switch checked={notifyEnabled} onCheckedChange={setNotifyEnabled} />
+            </div>
+            {notifyEnabled && (
+              <div className="space-y-3 pl-1">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" checked={!scheduleNotify} onChange={() => setScheduleNotify(false)} className="accent-primary" />
+                    Enviar agora
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="radio" checked={scheduleNotify} onChange={() => setScheduleNotify(true)} className="accent-primary" />
+                    Agendar
+                  </label>
+                </div>
+                {scheduleNotify && (
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal flex-1", !notifyDate && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {notifyDate ? format(notifyDate, "dd/MM/yyyy") : "Data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={notifyDate} onSelect={setNotifyDate} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    <Input type="time" value={notifyTime} onChange={(e) => setNotifyTime(e.target.value)} className="w-28" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex gap-2">
           <Button type="submit" disabled={submitting} className="gradient-mission text-primary-foreground">
             {submitting ? "Salvando..." : editingId ? "Atualizar" : "Adicionar"}
