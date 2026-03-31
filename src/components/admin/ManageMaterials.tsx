@@ -187,15 +187,51 @@ const MaterialsSection = ({ area, categories }: MaterialsSectionProps) => {
     }
     if (fileUrl) { payload.file_url = fileUrl; payload.storage_path = storagePath; }
 
+    let saveSuccess = false;
     if (editingId) {
       const { error } = await supabase.from("materials").update(payload).eq("id", editingId);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Material atualizado!" }); resetForm(); fetchMaterials(); }
+      else { toast({ title: "Material atualizado!" }); saveSuccess = true; }
     } else {
       const { error } = await supabase.from("materials").insert(payload);
       if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-      else { toast({ title: "Material adicionado!" }); resetForm(); fetchMaterials(); }
+      else { toast({ title: "Material adicionado!" }); saveSuccess = true; }
     }
+
+    // Send notification if enabled and save was successful
+    if (saveSuccess && notifyEnabled && !editingId) {
+      const notifTitle = `📚 Novo material: ${title.trim()}`;
+      const notifBody = description.trim() ? description.trim().substring(0, 200) : `Um novo material foi adicionado: ${title.trim()}`;
+
+      if (scheduleNotify && notifyDate) {
+        const [h, m] = notifyTime.split(":").map(Number);
+        const scheduledAt = new Date(notifyDate);
+        scheduledAt.setHours(h, m, 0, 0);
+
+        await supabase.from("scheduled_push").insert({
+          title: notifTitle,
+          body: notifBody,
+          link: "/materiais",
+          scheduled_at: scheduledAt.toISOString(),
+          create_in_app: true,
+        });
+        toast({ title: "Notificação agendada!" });
+      } else {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          await supabase.functions.invoke("send-push-notification", {
+            body: { title: notifTitle, body: notifBody, link: "/materiais" },
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          toast({ title: "Notificação enviada!" });
+        } catch (err) {
+          console.error("Push error:", err);
+        }
+      }
+    }
+
+    if (saveSuccess) { resetForm(); fetchMaterials(); }
     setSubmitting(false);
   };
 
