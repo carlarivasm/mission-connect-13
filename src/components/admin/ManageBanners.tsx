@@ -45,7 +45,43 @@ const ManageBanners = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBanners(); }, []);
+  useEffect(() => {
+    fetchBanners();
+    // Fetch carousel interval setting
+    supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "banner_carousel_interval")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          const val = parseInt(data.setting_value, 10);
+          if (val >= 2 && val <= 30) setCarouselInterval(val);
+        }
+      });
+  }, []);
+
+  const handleSaveInterval = async (val: number) => {
+    setCarouselInterval(val);
+    setSavingInterval(true);
+    const { data: existing } = await supabase
+      .from("app_settings")
+      .select("id")
+      .eq("setting_key", "banner_carousel_interval")
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from("app_settings")
+        .update({ setting_value: String(val), updated_by: user?.id })
+        .eq("setting_key", "banner_carousel_interval");
+    } else {
+      await supabase
+        .from("app_settings")
+        .insert({ setting_key: "banner_carousel_interval", setting_value: String(val), updated_by: user?.id });
+    }
+    setSavingInterval(false);
+  };
 
   const getStatus = (b: Banner) => {
     const now = new Date();
