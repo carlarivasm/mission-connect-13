@@ -1,39 +1,17 @@
 
 
-## Categorias em abas expansíveis na página de Materiais
+## Melhorias no Material: Imagem, Descrição Longa e Notificação
 
 ### O que muda
-Substituir os filtros horizontais (botões "Todos", "Geral", "Oração"...) por seções expansíveis (accordion/collapsible) por categoria. Cada categoria vira uma seção com título clicável que expande/colapsa para mostrar os materiais daquela categoria. Todas iniciam colapsadas.
 
-### Arquivo: `src/pages/Materiais.tsx`
+1. **Novo tipo de material "Imagem"** — adicionar `image` ao `MATERIAL_TYPES` no admin, permitindo upload de JPEG, PNG e outros formatos de imagem. Aceitar `image/*` no input de arquivo.
 
-1. **Importar** `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` de `@/components/ui/collapsible` e o ícone `ChevronDown` do lucide-react.
+2. **Descrição longa expansível** — remover o limite de 2 linhas (`line-clamp-2`) na descrição do `MaterialCard`. Mostrar as primeiras 3 linhas com um botão "Ler mais" que expande o texto completo. No admin, aumentar o `rows` do Textarea e remover qualquer `maxLength`.
 
-2. **Remover** os states `selectedCatMissionary` e `selectedCatResp` e a função `renderCategoryFilter` (não serão mais necessários).
+3. **Notificação ao publicar material** — no formulário admin, adicionar opção (Switch) para enviar notificação push ao salvar o material, com escolha entre "Enviar agora" ou "Agendar" (com campos de data e hora). Reutilizar o padrão já existente no `AdminBroadcast` que insere em `scheduled_notifications` ou chama `send-push-notification`.
 
-3. **Criar função `renderCategoryAccordion`** que recebe a lista de materiais e as categorias únicas:
-   - Para cada categoria, renderiza um `Collapsible` com:
-     - `CollapsibleTrigger`: nome da categoria + ícone chevron que rotaciona ao abrir
-     - `CollapsibleContent`: grid de `MaterialCard` filtrados por aquela categoria
-   - Estilo: card com fundo `bg-card`, bordas arredondadas, padding, sombra leve
+### Arquivos a editar
 
-4. **Substituir** o conteúdo de cada `TabsContent` para usar `renderCategoryAccordion` em vez do filtro + grid atual.
-
-### Resultado visual
-```text
-┌─────────────────────────┐
-│ ▶ Formação dos Mission. │  ← clicável, colapsa/expande
-├─────────────────────────┤
-│ ▶ Geral                 │
-├─────────────────────────┤
-│ ▶ Oração                │
-├─────────────────────────┤
-│ ▼ Liturgia              │  ← expandido
-│   ┌──────────────────┐  │
-│   │  Material Card   │  │
-│   ├──────────────────┤  │
-│   │  Material Card   │  │
-│   └──────────────────┘  │
-└─────────────────────────┘
-```
-
+**`src/components/admin/ManageMaterials.tsx`**
+- Adicionar `image: "Imagem"` ao `MATERIAL_TYPES`
+- Adicionar `image: "image/*"` ao `file
