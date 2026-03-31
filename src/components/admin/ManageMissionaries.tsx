@@ -410,15 +410,32 @@ const ManageMissionaries = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-xs gap-1"
-          disabled={actionLoading === p.email}
-          onClick={() => handleResendConfirmation(p.email)}
-        >
-          <RefreshCw size={14} /> {actionLoading === p.email ? "Enviando..." : "Reenviar Validação"}
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1"
+              disabled={actionLoading === p.email}
+            >
+              <RefreshCw size={14} /> {actionLoading === p.email ? "Enviando..." : "Reenviar Validação"}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reenviar e-mail de validação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Um novo e-mail de confirmação será enviado para <strong>{p.email}</strong>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleResendConfirmation(p.email)}>
+                Enviar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
