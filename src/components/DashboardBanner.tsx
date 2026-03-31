@@ -93,18 +93,30 @@ const DashboardBanner = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const [carouselInterval, setCarouselInterval] = useState(5000);
 
   useEffect(() => {
-    supabase
-      .from("dashboard_banners")
-      .select("id, title, media_url, media_type")
-      .eq("active", true)
-      .lte("publish_at", new Date().toISOString())
-      .gt("expire_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setBanners(data);
-      });
+    // Fetch banners and interval setting in parallel
+    Promise.all([
+      supabase
+        .from("dashboard_banners")
+        .select("id, title, media_url, media_type")
+        .eq("active", true)
+        .lte("publish_at", new Date().toISOString())
+        .gt("expire_at", new Date().toISOString())
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "banner_carousel_interval")
+        .maybeSingle(),
+    ]).then(([bannersRes, settingRes]) => {
+      if (bannersRes.data) setBanners(bannersRes.data);
+      if (settingRes.data) {
+        const seconds = parseInt(settingRes.data.setting_value, 10);
+        if (seconds >= 2 && seconds <= 30) setCarouselInterval(seconds * 1000);
+      }
+    });
   }, []);
 
   const onSelect = useCallback(() => {
