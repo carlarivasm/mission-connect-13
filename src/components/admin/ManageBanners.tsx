@@ -33,6 +33,8 @@ const ManageBanners = () => {
   const [expireAt, setExpireAt] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [carouselInterval, setCarouselInterval] = useState(5);
+  const [savingInterval, setSavingInterval] = useState(false);
 
   const fetchBanners = async () => {
     const { data } = await supabase
