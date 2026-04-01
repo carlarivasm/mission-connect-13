@@ -98,7 +98,7 @@ const ManageMissionaries = () => {
     // Fetch user login status from our secure view
     const { data: userStatuses } = await supabase
       .from("user_status" as any)
-      .select("id, last_sign_in_at");
+      .select("id, last_sign_in_at, email_confirmed_at");
 
     if (allProfiles) {
       const adminIds = new Set(
@@ -106,7 +106,7 @@ const ManageMissionaries = () => {
       );
       
       const statusMap = new Map(
-        (userStatuses || []).map((s: any) => [s.id, s.last_sign_in_at])
+        (userStatuses || []).map((s: any) => [s.id, { last_sign_in_at: s.last_sign_in_at, email_confirmed_at: s.email_confirmed_at }])
       );
 
       setProfiles(
@@ -115,7 +115,8 @@ const ManageMissionaries = () => {
           is_admin: adminIds.has(p.id),
           approved: p.approved ?? true,
           family_name: p.family_name || undefined,
-          last_sign_in_at: statusMap.get(p.id) || null,
+          last_sign_in_at: statusMap.get(p.id)?.last_sign_in_at || null,
+          email_confirmed_at: statusMap.get(p.id)?.email_confirmed_at || null,
         }))
       );
     }
