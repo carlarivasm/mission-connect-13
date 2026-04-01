@@ -19,6 +19,7 @@ import ManageOrgChart from "@/components/admin/ManageOrgChart";
 import ManageOrders from "@/components/admin/ManageOrders";
 import AdminBroadcast from "@/components/admin/AdminBroadcast";
 import ManageBanners from "@/components/admin/ManageBanners";
+import ManageAnalytics from "@/components/admin/ManageAnalytics";
 
 const Admin = () => {
   const navigate = useNavigate();
