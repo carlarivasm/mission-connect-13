@@ -1527,14 +1527,17 @@ export type Database = {
       }
       user_status: {
         Row: {
+          email_confirmed_at: string | null
           id: string | null
           last_sign_in_at: string | null
         }
         Insert: {
+          email_confirmed_at?: string | null
           id?: string | null
           last_sign_in_at?: string | null
         }
         Update: {
+          email_confirmed_at?: string | null
           id?: string | null
           last_sign_in_at?: string | null
         }
