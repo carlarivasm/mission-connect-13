@@ -26,6 +26,7 @@ const Dashboard = () => {
   const { signOut, user, role, approved } = useAuth();
   const [events, setEvents] = useState<EventData[]>([]);
   const [eventsLabel, setEventsLabel] = useState("Próximas Atividades");
+  usePageTracking("dashboard");
 
   const filterAndSetEvents = (data: EventData[]) => {
     const now = new Date();
