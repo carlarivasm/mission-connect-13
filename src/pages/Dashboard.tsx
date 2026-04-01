@@ -11,6 +11,7 @@ import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 import PendingCartAlert from "@/components/PendingCartAlert";
 import OnboardingCard from "@/components/OnboardingCard";
 import DashboardBanner from "@/components/DashboardBanner";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 interface EventData {
   id: string;
