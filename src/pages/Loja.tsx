@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { useCart } from "@/contexts/CartContext";
 import { ShoppingBag, ShoppingCart, Plus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
