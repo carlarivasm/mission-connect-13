@@ -376,6 +376,11 @@ const ManageMissionaries = () => {
             Pendente
           </span>
         )}
+        {p.approved && !p.email_confirmed_at && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+            E-mail não confirmado
+          </span>
+        )}
       </div>
       <div className="flex gap-1 flex-wrap">
         {!p.is_admin && (
