@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { useToast } from "@/hooks/use-toast";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -47,6 +48,7 @@ const Familia = () => {
   const [saving, setSaving] = useState(false);
   const [familyName, setFamilyName] = useState("");
   const [members, setMembers] = useState<FamilyMember[]>([]);
+  usePageTracking("familia");
 
   // Linked users state
   const [familyGroupId, setFamilyGroupId] = useState<string | null>(null);

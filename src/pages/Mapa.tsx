@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LocationCard, MissionLocation, UserNote } from "@/components/map/LocationCard";
@@ -33,6 +34,7 @@ const Mapa = () => {
   const [userNotes, setUserNotes] = useState<Record<string, UserNote[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [needsCategories, setNeedsCategories] = useState<any[]>([]);
+  usePageTracking("mapa");
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
   // Reference point ordering & pinning

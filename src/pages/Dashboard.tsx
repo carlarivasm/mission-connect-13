@@ -11,6 +11,7 @@ import PendingSurveyAlert from "@/components/PendingSurveyAlert";
 import PendingCartAlert from "@/components/PendingCartAlert";
 import OnboardingCard from "@/components/OnboardingCard";
 import DashboardBanner from "@/components/DashboardBanner";
+import { usePageTracking } from "@/hooks/usePageTracking";
 
 interface EventData {
   id: string;
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const { signOut, user, role, approved } = useAuth();
   const [events, setEvents] = useState<EventData[]>([]);
   const [eventsLabel, setEventsLabel] = useState("Próximas Atividades");
+  usePageTracking("dashboard");
 
   const filterAndSetEvents = (data: EventData[]) => {
     const now = new Date();

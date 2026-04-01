@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import OrgMemberCard from "@/components/org/OrgMemberCard";
@@ -63,6 +64,7 @@ const Organograma = () => {
   const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [teamColors, setTeamColors] = useState<Record<string, string>>({});
+  usePageTracking("organograma");
   const [teamOrder, setTeamOrder] = useState<string[]>([]);
 
   useEffect(() => {

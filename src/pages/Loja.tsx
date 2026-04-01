@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { useCart } from "@/contexts/CartContext";
 import { ShoppingBag, ShoppingCart, Plus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ const Loja = () => {
   const { totalItems } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [stock, setStock] = useState<StockEntry[]>([]);
+  usePageTracking("loja");
   const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

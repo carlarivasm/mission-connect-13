@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import { useToast } from "@/hooks/use-toast";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -50,6 +51,7 @@ const Pesquisas = () => {
   const [loading, setLoading] = useState(true);
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
   const [draftSurveyIds, setDraftSurveyIds] = useState<Set<string>>(new Set());
+  usePageTracking("pesquisas");
 
   // Active survey
   const [activeSurvey, setActiveSurvey] = useState<Survey | null>(null);

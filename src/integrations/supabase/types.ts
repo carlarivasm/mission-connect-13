@@ -962,6 +962,30 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string
+          id: string
+          page: string
+          page_detail: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          page: string
+          page_detail?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          page?: string
+          page_detail?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       product_stock: {
         Row: {
           color: string | null

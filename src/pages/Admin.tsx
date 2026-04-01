@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone, Image } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone, Image, BarChart3 } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
@@ -19,6 +19,7 @@ import ManageOrgChart from "@/components/admin/ManageOrgChart";
 import ManageOrders from "@/components/admin/ManageOrders";
 import AdminBroadcast from "@/components/admin/AdminBroadcast";
 import ManageBanners from "@/components/admin/ManageBanners";
+import ManageAnalytics from "@/components/admin/ManageAnalytics";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -102,6 +103,12 @@ const Admin = () => {
               <Megaphone size={16} className="shrink-0" />
               <span className="text-center leading-tight">Mensagens</span>
             </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full h-auto p-1 grid grid-cols-4 mb-2 gap-1">
+            <TabsTrigger value="analytics" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <BarChart3 size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Acessos</span>
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
               <Settings size={16} className="shrink-0" />
               <span className="text-center leading-tight">Configurações</span>
@@ -121,6 +128,7 @@ const Admin = () => {
           <TabsContent value="orgchart"><ManageOrgChart /></TabsContent>
           <TabsContent value="banners"><ManageBanners /></TabsContent>
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
+          <TabsContent value="analytics"><ManageAnalytics /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
         </Tabs>
       </main>
