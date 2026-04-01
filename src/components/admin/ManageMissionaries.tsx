@@ -347,9 +347,9 @@ const ManageMissionaries = () => {
     .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null)
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   
-  // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login)
+  // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login OU e-mail não confirmado)
   const pendingProfiles = profiles
-    .filter(p => !p.is_admin && (!p.approved || p.last_sign_in_at === null))
+    .filter(p => !p.is_admin && (!p.approved || p.last_sign_in_at === null || !p.email_confirmed_at))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
 
   const groupedMissionaries = groupByFamily
