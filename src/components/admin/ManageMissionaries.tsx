@@ -25,6 +25,7 @@ interface ProfileWithRole {
   approved: boolean;
   family_name?: string;
   last_sign_in_at?: string | null;
+  email_confirmed_at?: string | null;
 }
 
 const ManageMissionaries = () => {
@@ -61,11 +62,21 @@ const ManageMissionaries = () => {
     const pending = (data || []).filter(m => !registeredEmails.has(m.email?.toLowerCase()));
 
     // Auto-fix: if used=true but no profile exists, reset to used=false
-    const toFix = pending.filter(m => m.used === true);
-    if (toFix.length > 0) {
+    const toFixFalse = pending.filter(m => m.used === true);
+    if (toFixFalse.length > 0) {
       await Promise.all(
-        toFix.map(m =>
+        toFixFalse.map(m =>
           supabase.from("authorized_missionaries").update({ used: false }).eq("id", m.id)
+        )
+      );
+    }
+
+    // Auto-fix reverse: if used=false but profile EXISTS, set to used=true
+    const withProfile = (data || []).filter(m => registeredEmails.has(m.email?.toLowerCase()) && !m.used);
+    if (withProfile.length > 0) {
+      await Promise.all(
+        withProfile.map(m =>
+          supabase.from("authorized_missionaries").update({ used: true }).eq("id", m.id)
         )
       );
     }
@@ -87,7 +98,7 @@ const ManageMissionaries = () => {
     // Fetch user login status from our secure view
     const { data: userStatuses } = await supabase
       .from("user_status" as any)
-      .select("id, last_sign_in_at");
+      .select("id, last_sign_in_at, email_confirmed_at");
 
     if (allProfiles) {
       const adminIds = new Set(
@@ -95,7 +106,7 @@ const ManageMissionaries = () => {
       );
       
       const statusMap = new Map(
-        (userStatuses || []).map((s: any) => [s.id, s.last_sign_in_at])
+        (userStatuses || []).map((s: any) => [s.id, { last_sign_in_at: s.last_sign_in_at, email_confirmed_at: s.email_confirmed_at }])
       );
 
       setProfiles(
@@ -104,7 +115,8 @@ const ManageMissionaries = () => {
           is_admin: adminIds.has(p.id),
           approved: p.approved ?? true,
           family_name: p.family_name || undefined,
-          last_sign_in_at: statusMap.get(p.id) || null,
+          last_sign_in_at: statusMap.get(p.id)?.last_sign_in_at || null,
+          email_confirmed_at: statusMap.get(p.id)?.email_confirmed_at || null,
         }))
       );
     }
@@ -330,14 +342,14 @@ const ManageMissionaries = () => {
   // Admins
   const adminProfiles = profiles.filter(p => p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   
-  // Missionários: Aprovados, não admin, E que já fizeram login (têm last_sign_in_at)
+  // Missionários: Aprovados, não admin, E que já fizeram login E confirmaram e-mail
   const missionaryProfiles = profiles
-    .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null)
+    .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null && !!p.email_confirmed_at)
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   
-  // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login)
+  // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login OU e-mail não confirmado)
   const pendingProfiles = profiles
-    .filter(p => !p.is_admin && (!p.approved || p.last_sign_in_at === null))
+    .filter(p => !p.is_admin && (!p.approved || p.last_sign_in_at === null || !p.email_confirmed_at))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
 
   const groupedMissionaries = groupByFamily
@@ -362,6 +374,11 @@ const ManageMissionaries = () => {
         {!p.approved && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
             Pendente
+          </span>
+        )}
+        {p.approved && !p.email_confirmed_at && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+            E-mail não confirmado
           </span>
         )}
       </div>
@@ -665,8 +682,12 @@ const ManageMissionaries = () => {
           {/* Pendentes (profiles not approved, non-admin) */}
           {pendingProfiles.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-semibold text-foreground text-sm">Pendentes — Aguardando Aprovação ({pendingProfiles.length})</h3>
-              {pendingProfiles.map(renderProfileCard)}
+              <h3 className="font-semibold text-foreground text-sm">Pendentes — Aguardando Aprovação / Confirmação ({pendingProfiles.length})</h3>
+              {pendingProfiles.map((p) => (
+                <div key={p.id + "-pending-section"}>
+                  {renderProfileCard(p)}
+                </div>
+              ))}
             </div>
           )}
 
