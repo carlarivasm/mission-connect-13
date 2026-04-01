@@ -342,9 +342,9 @@ const ManageMissionaries = () => {
   // Admins
   const adminProfiles = profiles.filter(p => p.is_admin).sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   
-  // Missionários: Aprovados, não admin, E que já fizeram login (têm last_sign_in_at)
+  // Missionários: Aprovados, não admin, E que já fizeram login E confirmaram e-mail
   const missionaryProfiles = profiles
-    .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null)
+    .filter(p => !p.is_admin && p.approved && p.last_sign_in_at !== null && !!p.email_confirmed_at)
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "pt-BR"));
   
   // Pendentes: Não admin, e (não aprovados OU aprovados mas que nunca fizeram login OU e-mail não confirmado)
