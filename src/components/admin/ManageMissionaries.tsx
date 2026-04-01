@@ -682,8 +682,12 @@ const ManageMissionaries = () => {
           {/* Pendentes (profiles not approved, non-admin) */}
           {pendingProfiles.length > 0 && (
             <div className="space-y-2">
-              <h3 className="font-semibold text-foreground text-sm">Pendentes — Aguardando Aprovação ({pendingProfiles.length})</h3>
-              {pendingProfiles.map(renderProfileCard)}
+              <h3 className="font-semibold text-foreground text-sm">Pendentes — Aguardando Aprovação / Confirmação ({pendingProfiles.length})</h3>
+              {pendingProfiles.map((p) => (
+                <div key={p.id + "-pending-section"}>
+                  {renderProfileCard(p)}
+                </div>
+              ))}
             </div>
           )}
 
