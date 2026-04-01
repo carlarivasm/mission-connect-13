@@ -39,6 +39,7 @@ const Galeria = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [items, setItems] = useState<GalleryItem[]>([]);
+  usePageTracking("galeria");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);

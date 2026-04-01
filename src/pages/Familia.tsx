@@ -48,6 +48,7 @@ const Familia = () => {
   const [saving, setSaving] = useState(false);
   const [familyName, setFamilyName] = useState("");
   const [members, setMembers] = useState<FamilyMember[]>([]);
+  usePageTracking("familia");
 
   // Linked users state
   const [familyGroupId, setFamilyGroupId] = useState<string | null>(null);

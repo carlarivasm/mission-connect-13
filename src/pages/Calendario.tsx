@@ -30,6 +30,7 @@ const Calendario = () => {
   const [filteredEvents, setFilteredEvents] = useState<EventData[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  usePageTracking("calendario");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

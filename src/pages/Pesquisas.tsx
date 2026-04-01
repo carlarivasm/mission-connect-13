@@ -51,6 +51,7 @@ const Pesquisas = () => {
   const [loading, setLoading] = useState(true);
   const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
   const [draftSurveyIds, setDraftSurveyIds] = useState<Set<string>>(new Set());
+  usePageTracking("pesquisas");
 
   // Active survey
   const [activeSurvey, setActiveSurvey] = useState<Survey | null>(null);

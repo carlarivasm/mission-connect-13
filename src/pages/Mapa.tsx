@@ -34,6 +34,7 @@ const Mapa = () => {
   const [userNotes, setUserNotes] = useState<Record<string, UserNote[]>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [needsCategories, setNeedsCategories] = useState<any[]>([]);
+  usePageTracking("mapa");
   // Draft for new note per location
   const [drafts, setDrafts] = useState<Record<string, UserNote>>({});
   // Reference point ordering & pinning

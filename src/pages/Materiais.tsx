@@ -32,6 +32,7 @@ const Materiais = () => {
   const { signOut } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
+  usePageTracking("materiais");
 
   useEffect(() => {
     supabase

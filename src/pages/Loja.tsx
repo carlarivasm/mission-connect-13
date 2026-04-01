@@ -69,6 +69,7 @@ const Loja = () => {
   const { totalItems } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [stock, setStock] = useState<StockEntry[]>([]);
+  usePageTracking("loja");
   const [whatsapp, setWhatsapp] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
