@@ -103,6 +103,12 @@ const Admin = () => {
               <Megaphone size={16} className="shrink-0" />
               <span className="text-center leading-tight">Mensagens</span>
             </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full h-auto p-1 grid grid-cols-4 mb-2 gap-1">
+            <TabsTrigger value="analytics" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <BarChart3 size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Acessos</span>
+            </TabsTrigger>
             <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
               <Settings size={16} className="shrink-0" />
               <span className="text-center leading-tight">Configurações</span>
