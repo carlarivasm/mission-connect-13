@@ -61,11 +61,21 @@ const ManageMissionaries = () => {
     const pending = (data || []).filter(m => !registeredEmails.has(m.email?.toLowerCase()));
 
     // Auto-fix: if used=true but no profile exists, reset to used=false
-    const toFix = pending.filter(m => m.used === true);
-    if (toFix.length > 0) {
+    const toFixFalse = pending.filter(m => m.used === true);
+    if (toFixFalse.length > 0) {
       await Promise.all(
-        toFix.map(m =>
+        toFixFalse.map(m =>
           supabase.from("authorized_missionaries").update({ used: false }).eq("id", m.id)
+        )
+      );
+    }
+
+    // Auto-fix reverse: if used=false but profile EXISTS, set to used=true
+    const withProfile = (data || []).filter(m => registeredEmails.has(m.email?.toLowerCase()) && !m.used);
+    if (withProfile.length > 0) {
+      await Promise.all(
+        withProfile.map(m =>
+          supabase.from("authorized_missionaries").update({ used: true }).eq("id", m.id)
         )
       );
     }
