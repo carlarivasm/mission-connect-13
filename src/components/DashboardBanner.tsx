@@ -85,6 +85,7 @@ const AudioPlayer = ({ src }: { src: string }) => {
 interface Banner {
   id: string;
   title: string;
+  body_text: string | null;
   media_url: string;
   media_type: string;
 }
