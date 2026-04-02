@@ -66,11 +66,23 @@ export function NoteFormModal({
         return String((draft as any)[field] || "");
     };
 
-    const handleChange = (field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
+    const handleChange = (field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => {
         if (isEditing) {
             updateExistingNote(locId, note!.id!, field, value);
         } else {
             updateDraft(locId, field, value);
+        }
+    };
+
+    const acceptsId = getValue("accepts_identification") === "true";
+
+    const handleToggleAcceptsId = (checked: boolean) => {
+        handleChange("accepts_identification", String(checked));
+        if (!checked) {
+            handleChange("resident_name", "");
+            handleChange("house_number", "");
+            handleChange("user_address", "");
+            handleChange("exact_location_url", "");
         }
     };
 
