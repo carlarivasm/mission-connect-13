@@ -169,11 +169,11 @@ const Mapa = () => {
     }));
   };
 
-  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: (prev[locationId] || []).map((n) =>
-        n.id === noteId ? { ...n, [field]: value } : n
+        n.id === noteId ? { ...n, [field]: field === "accepts_identification" ? value === "true" : value } : n
       ),
     }));
   };
