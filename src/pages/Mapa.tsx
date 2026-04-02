@@ -105,7 +105,7 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at, user_id")
+          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, accepts_identification, created_at, user_id")
           .order("created_at", { ascending: false });
 
         if (notes) {
