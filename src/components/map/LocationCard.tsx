@@ -115,63 +115,18 @@ export function LocationCard({
                 onDrop={onDrop}
             >
                 <div className="flex items-start gap-3">
+                    {draggable && (
+                        <div className="p-1 mt-1 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground">
+                            <GripVertical size={16} />
+                        </div>
+                    )}
                     <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5 shrink-0">
                         <MapPin size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm text-foreground truncate">{loc.name}</p>
-                            {isPinned && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
-                                    Fixado
-                                </span>
-                            )}
-                            {loc.category === "mission_zone" && (
-                                <span
-                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[loc.status] || "bg-muted text-muted-foreground"}`}
-                                >
-                                    {statusLabels[loc.status] || loc.status}
-                                </span>
-                            )}
-                        </div>
+                        <p className="font-semibold text-sm text-foreground truncate">{loc.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
                     </div>
-
-                    {/* Reorder & Pin controls */}
-                    {onTogglePin && (
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={onMoveUp || undefined}
-                                disabled={!onMoveUp}
-                                className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                title="Mover para cima"
-                            >
-                                <ArrowUp size={14} className="text-muted-foreground" />
-                            </button>
-                            <button
-                                onClick={onMoveDown || undefined}
-                                disabled={!onMoveDown}
-                                className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                title="Mover para baixo"
-                            >
-                                <ArrowDown size={14} className="text-muted-foreground" />
-                            </button>
-                            <button
-                                onClick={onTogglePin}
-                                disabled={!isPinned && !canPinMore}
-                                className={`p-1.5 rounded-md transition-colors ${
-                                    isPinned
-                                        ? "bg-primary/10 text-primary hover:bg-primary/20"
-                                        : canPinMore
-                                        ? "hover:bg-muted text-muted-foreground"
-                                        : "opacity-30 cursor-not-allowed text-muted-foreground"
-                                }`}
-                                title={isPinned ? "Desfixar" : canPinMore ? "Fixar como principal" : "Máximo de 2 fixados"}
-                            >
-                                <Pin size={14} className={isPinned ? "fill-current" : ""} />
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
