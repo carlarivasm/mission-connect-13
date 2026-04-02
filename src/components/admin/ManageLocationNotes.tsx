@@ -100,6 +100,7 @@ const ManageLocationNotes = () => {
       "Endereço do Local": r.location_address,
       "Missionário": r.user_name,
       "Email": r.user_email,
+      "Aceita Identificação": r.accepts_identification ? "Sim" : "Não",
       "Nº Casa": r.house_number,
       "Morador": r.resident_name,
       "Complemento": r.user_address,
