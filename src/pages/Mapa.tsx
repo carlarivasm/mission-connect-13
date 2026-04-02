@@ -139,6 +139,7 @@ const Mapa = () => {
               user_address: n.user_address || "",
               exact_location_url: n.exact_location_url || "",
               summary: n.summary || "",
+              accepts_identification: !!n.accepts_identification,
               created_at: n.created_at,
               user_id: n.user_id,
               user_name: profileMap[n.user_id] || "Usuário",
