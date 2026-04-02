@@ -19,6 +19,7 @@ interface NoteRow {
   notes: string;
   updated_at: string;
   team_color: string | null;
+  accepts_identification: boolean;
 }
 
 const ManageLocationNotes = () => {
