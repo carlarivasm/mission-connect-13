@@ -105,7 +105,7 @@ const Mapa = () => {
       if (user) {
         const { data: notes } = await supabase
           .from("location_user_notes")
-          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at, user_id")
+          .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, accepts_identification, created_at, user_id")
           .order("created_at", { ascending: false });
 
         if (notes) {
@@ -139,6 +139,7 @@ const Mapa = () => {
               user_address: n.user_address || "",
               exact_location_url: n.exact_location_url || "",
               summary: n.summary || "",
+              accepts_identification: !!n.accepts_identification,
               created_at: n.created_at,
               user_id: n.user_id,
               user_name: profileMap[n.user_id] || "Usuário",
@@ -155,24 +156,24 @@ const Mapa = () => {
   const handleLogout = async () => { await signOut(); navigate("/"); };
 
   const getDraft = (locationId: string): UserNote => {
-    return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" };
+    return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "", accepts_identification: false };
   };
 
-  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
+  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" }),
-        [field]: value,
+        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "", accepts_identification: false }),
+        [field]: field === "accepts_identification" ? value === "true" : value,
       },
     }));
   };
 
-  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
+  const updateExistingNote = (locationId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => {
     setUserNotes((prev) => ({
       ...prev,
       [locationId]: (prev[locationId] || []).map((n) =>
-        n.id === noteId ? { ...n, [field]: value } : n
+        n.id === noteId ? { ...n, [field]: field === "accepts_identification" ? value === "true" : value } : n
       ),
     }));
   };
@@ -198,8 +199,9 @@ const Mapa = () => {
         user_address: draft.user_address.trim() || null,
         exact_location_url: draft.exact_location_url.trim() || null,
         summary: draft.summary.trim() || null,
+        accepts_identification: draft.accepts_identification,
       } as any)
-      .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, created_at")
+      .select("id, location_id, house_number, resident_name, needs, notes, user_address, exact_location_url, summary, accepts_identification, created_at")
       .single();
 
     if (error) {
@@ -215,6 +217,7 @@ const Mapa = () => {
         user_address: (data as any).user_address || "",
         exact_location_url: (data as any).exact_location_url || "",
         summary: (data as any).summary || "",
+        accepts_identification: !!(data as any).accepts_identification,
         created_at: (data as any).created_at,
         user_id: user.id,
         user_name: "Você",
@@ -223,7 +226,7 @@ const Mapa = () => {
         ...prev,
         [locationId]: [newNote, ...(prev[locationId] || [])],
       }));
-      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" } }));
+      setDrafts((prev) => ({ ...prev, [locationId]: { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "", accepts_identification: false } }));
       toast({ title: "Salvo!", description: "Observação registrada com sucesso." });
     }
     setSavingId(null);
@@ -245,6 +248,7 @@ const Mapa = () => {
         user_address: note.user_address.trim() || null,
         exact_location_url: note.exact_location_url.trim() || null,
         summary: note.summary.trim() || null,
+        accepts_identification: note.accepts_identification,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", noteId);

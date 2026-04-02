@@ -595,6 +595,7 @@ export type Database = {
       }
       location_user_notes: {
         Row: {
+          accepts_identification: boolean
           created_at: string
           exact_location_url: string | null
           house_number: string | null
@@ -609,6 +610,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accepts_identification?: boolean
           created_at?: string
           exact_location_url?: string | null
           house_number?: string | null
@@ -623,6 +625,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accepts_identification?: boolean
           created_at?: string
           exact_location_url?: string | null
           house_number?: string | null

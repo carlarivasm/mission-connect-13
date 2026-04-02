@@ -23,6 +23,7 @@ export interface UserNote {
     user_address: string;
     exact_location_url: string;
     summary: string;
+    accepts_identification: boolean;
     created_at?: string;
     user_id?: string;
     user_name?: string;
@@ -46,9 +47,9 @@ interface LocationCardProps {
     isSelected: boolean;
     onSelect: () => void;
     draft: UserNote;
-    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
+    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => void;
     saveNewNote: (locId: string) => Promise<void>;
-    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
+    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => void;
     saveExistingNote: (locId: string, noteId: string) => Promise<void>;
     deleteNote: (locId: string, noteId: string) => Promise<void>;
     savingId: string | null;

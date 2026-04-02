@@ -19,6 +19,7 @@ interface NoteRow {
   notes: string;
   updated_at: string;
   team_color: string | null;
+  accepts_identification: boolean;
 }
 
 const ManageLocationNotes = () => {
@@ -41,7 +42,7 @@ const ManageLocationNotes = () => {
       // Get all notes with location and user info
       const { data: notes } = await supabase
         .from("location_user_notes")
-        .select("location_id, user_id, house_number, resident_name, needs, notes, user_address, updated_at")
+        .select("location_id, user_id, house_number, resident_name, needs, notes, user_address, updated_at, accepts_identification")
         .order("updated_at", { ascending: false });
 
       if (!notes || notes.length === 0) { setLoading(false); return; }
@@ -85,6 +86,7 @@ const ManageLocationNotes = () => {
         notes: n.notes || "",
         updated_at: n.updated_at,
         team_color: teamMap[n.user_id] ? teamColors[teamMap[n.user_id]] || null : null,
+        accepts_identification: !!n.accepts_identification,
       }));
       setRows(mapped);
       setLoading(false);
@@ -98,6 +100,7 @@ const ManageLocationNotes = () => {
       "Endereço do Local": r.location_address,
       "Missionário": r.user_name,
       "Email": r.user_email,
+      "Aceita Identificação": r.accepts_identification ? "Sim" : "Não",
       "Nº Casa": r.house_number,
       "Morador": r.resident_name,
       "Complemento": r.user_address,
@@ -173,6 +176,7 @@ const ManageLocationNotes = () => {
                   }`}
                 >
                   <div className="text-xs space-y-1">
+                    <p><span className="font-semibold text-foreground">Aceita ser identificado:</span> <span className={r.accepts_identification ? "text-green-600 font-semibold" : "text-muted-foreground"}>{r.accepts_identification ? "Sim" : "Não"}</span></p>
                     <p><span className="font-semibold text-foreground">Local:</span> <span className="text-muted-foreground">{r.location_address}</span></p>
                     {r.house_number && <p><span className="font-semibold text-foreground">Nº Casa:</span> <span className="text-muted-foreground">{r.house_number}</span></p>}
                     {r.resident_name && <p><span className="font-semibold text-foreground">Morador:</span> <span className="text-muted-foreground">{r.resident_name}</span></p>}
