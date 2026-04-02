@@ -248,6 +248,7 @@ const Mapa = () => {
         user_address: note.user_address.trim() || null,
         exact_location_url: note.exact_location_url.trim() || null,
         summary: note.summary.trim() || null,
+        accepts_identification: note.accepts_identification,
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", noteId);

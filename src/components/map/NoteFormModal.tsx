@@ -20,9 +20,9 @@ interface NoteFormModalProps {
     needsCategories: any[];
     savingId: string | null;
     /** Called when fields change for a NEW note */
-    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
+    updateDraft: (locId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => void;
     /** Called when fields change for an EXISTING note */
-    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => void;
+    updateExistingNote: (locId: string, noteId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => void;
     /** Save new note */
     saveNewNote: (locId: string) => Promise<void>;
     /** Save existing note */
