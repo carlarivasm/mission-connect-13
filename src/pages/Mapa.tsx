@@ -217,6 +217,7 @@ const Mapa = () => {
         user_address: (data as any).user_address || "",
         exact_location_url: (data as any).exact_location_url || "",
         summary: (data as any).summary || "",
+        accepts_identification: !!(data as any).accepts_identification,
         created_at: (data as any).created_at,
         user_id: user.id,
         user_name: "Você",
