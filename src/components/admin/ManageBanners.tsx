@@ -144,6 +144,7 @@ const ManageBanners = () => {
     if (editingId) {
       const updates: Record<string, unknown> = {
         title,
+        body_text: bodyText || null,
         publish_at: new Date(publishAt).toISOString(),
         expire_at: new Date(expireAt).toISOString(),
       };
