@@ -101,7 +101,7 @@ const DashboardBanner = () => {
     Promise.all([
       supabase
         .from("dashboard_banners")
-        .select("id, title, media_url, media_type")
+        .select("id, title, body_text, media_url, media_type")
         .eq("active", true)
         .lte("publish_at", new Date().toISOString())
         .gt("expire_at", new Date().toISOString())
