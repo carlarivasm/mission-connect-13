@@ -32,6 +32,7 @@ const ManageBanners = () => {
   const [title, setTitle] = useState("Importante");
   const [publishAt, setPublishAt] = useState("");
   const [expireAt, setExpireAt] = useState("");
+  const [bodyText, setBodyText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [carouselInterval, setCarouselInterval] = useState(5);
