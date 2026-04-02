@@ -85,6 +85,7 @@ const AudioPlayer = ({ src }: { src: string }) => {
 interface Banner {
   id: string;
   title: string;
+  body_text: string | null;
   media_url: string;
   media_type: string;
 }
@@ -100,7 +101,7 @@ const DashboardBanner = () => {
     Promise.all([
       supabase
         .from("dashboard_banners")
-        .select("id, title, media_url, media_type")
+        .select("id, title, body_text, media_url, media_type")
         .eq("active", true)
         .lte("publish_at", new Date().toISOString())
         .gt("expire_at", new Date().toISOString())
@@ -166,6 +167,9 @@ const DashboardBanner = () => {
         <span className="text-sm font-bold text-primary">{banner.title}</span>
       </div>
       {renderMedia(banner)}
+      {banner.body_text && (
+        <p className="px-4 py-2 text-sm text-foreground whitespace-pre-line">{banner.body_text}</p>
+      )}
     </div>
   );
 

@@ -135,6 +135,7 @@ export type Database = {
       dashboard_banners: {
         Row: {
           active: boolean
+          body_text: string | null
           created_at: string
           created_by: string | null
           expire_at: string
@@ -147,6 +148,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          body_text?: string | null
           created_at?: string
           created_by?: string | null
           expire_at: string
@@ -159,6 +161,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          body_text?: string | null
           created_at?: string
           created_by?: string | null
           expire_at?: string

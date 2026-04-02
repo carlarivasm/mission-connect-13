@@ -13,6 +13,7 @@ import { Plus, Trash2, Pencil, X } from "lucide-react";
 interface Banner {
   id: string;
   title: string;
+  body_text: string | null;
   media_url: string;
   media_type: string;
   storage_path: string | null;
@@ -31,6 +32,7 @@ const ManageBanners = () => {
   const [title, setTitle] = useState("Importante");
   const [publishAt, setPublishAt] = useState("");
   const [expireAt, setExpireAt] = useState("");
+  const [bodyText, setBodyText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [carouselInterval, setCarouselInterval] = useState(5);
@@ -97,6 +99,7 @@ const ManageBanners = () => {
     setShowForm(false);
     setEditingId(null);
     setTitle("Importante");
+    setBodyText("");
     setPublishAt("");
     setExpireAt("");
     setFile(null);
@@ -105,6 +108,7 @@ const ManageBanners = () => {
   const handleEdit = (b: Banner) => {
     setEditingId(b.id);
     setTitle(b.title);
+    setBodyText(b.body_text || "");
     setPublishAt(b.publish_at.slice(0, 16));
     setExpireAt(b.expire_at.slice(0, 16));
     setFile(null);
@@ -140,6 +144,7 @@ const ManageBanners = () => {
     if (editingId) {
       const updates: Record<string, unknown> = {
         title,
+        body_text: bodyText || null,
         publish_at: new Date(publishAt).toISOString(),
         expire_at: new Date(expireAt).toISOString(),
       };
@@ -154,6 +159,7 @@ const ManageBanners = () => {
     } else {
       const { error } = await supabase.from("dashboard_banners").insert({
         title,
+        body_text: bodyText || null,
         media_url,
         media_type,
         storage_path,
@@ -226,7 +232,17 @@ const ManageBanners = () => {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Importante" />
           </div>
           <div>
-            <Label>Arquivo (imagem ou vídeo)</Label>
+            <Label>Texto (opcional)</Label>
+            <textarea
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              placeholder="Texto exibido no banner..."
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label>Arquivo (imagem, vídeo ou áudio)</Label>
             <Input type="file" accept="image/*,video/*,audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
           <div className="grid grid-cols-2 gap-3">

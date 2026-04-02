@@ -1,0 +1,1 @@
+ALTER TABLE public.dashboard_banners ADD COLUMN body_text text;
