@@ -176,6 +176,7 @@ const ManageLocationNotes = () => {
                   }`}
                 >
                   <div className="text-xs space-y-1">
+                    <p><span className="font-semibold text-foreground">Aceita ser identificado:</span> <span className={r.accepts_identification ? "text-green-600 font-semibold" : "text-muted-foreground"}>{r.accepts_identification ? "Sim" : "Não"}</span></p>
                     <p><span className="font-semibold text-foreground">Local:</span> <span className="text-muted-foreground">{r.location_address}</span></p>
                     {r.house_number && <p><span className="font-semibold text-foreground">Nº Casa:</span> <span className="text-muted-foreground">{r.house_number}</span></p>}
                     {r.resident_name && <p><span className="font-semibold text-foreground">Morador:</span> <span className="text-muted-foreground">{r.resident_name}</span></p>}
