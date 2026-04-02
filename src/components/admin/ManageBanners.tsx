@@ -159,6 +159,7 @@ const ManageBanners = () => {
     } else {
       const { error } = await supabase.from("dashboard_banners").insert({
         title,
+        body_text: bodyText || null,
         media_url,
         media_type,
         storage_path,
