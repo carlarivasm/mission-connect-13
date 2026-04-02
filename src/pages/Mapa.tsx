@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -322,21 +322,9 @@ const Mapa = () => {
     saveOrder(currentIds);
   };
 
-  const handleToggleMzPin = (id: string) => {
-    if (mzPinnedIds.includes(id)) {
-      saveMzPinned(mzPinnedIds.filter((p) => p !== id));
-    } else if (mzPinnedIds.length < 2) {
-      saveMzPinned([...mzPinnedIds, id]);
-    }
-  };
-
   const missionZonesRaw = filteredLocations.filter((l) => l.category === "mission_zone");
 
   const sortedMissionZones = [...missionZonesRaw].sort((a, b) => {
-    const aPinned = mzPinnedIds.includes(a.id);
-    const bPinned = mzPinnedIds.includes(b.id);
-    if (aPinned && !bPinned) return -1;
-    if (!aPinned && bPinned) return 1;
     const aOrder = mzCustomOrder.indexOf(a.id);
     const bOrder = mzCustomOrder.indexOf(b.id);
     if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
@@ -345,18 +333,31 @@ const Mapa = () => {
     return 0;
   });
 
-  const handleMoveMz = (id: string, direction: "up" | "down") => {
-    const currentIds = sortedMissionZones.map((l) => l.id);
-    const idx = currentIds.indexOf(id);
-    if (direction === "up" && idx > 0) {
-      [currentIds[idx - 1], currentIds[idx]] = [currentIds[idx], currentIds[idx - 1]];
-    } else if (direction === "down" && idx < currentIds.length - 1) {
-      [currentIds[idx + 1], currentIds[idx]] = [currentIds[idx], currentIds[idx + 1]];
-    }
-    saveMzOrder(currentIds);
+  const missionZones = sortedMissionZones.slice(0, 6);
+
+  // Drag-and-drop for mission zones
+  const dragIndexRef = useRef<number | null>(null);
+
+  const handleMzDragStart = (idx: number) => (e: React.DragEvent) => {
+    dragIndexRef.current = idx;
+    e.dataTransfer.effectAllowed = "move";
   };
 
-  const missionZones = sortedMissionZones;
+  const handleMzDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleMzDrop = (dropIdx: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const dragIdx = dragIndexRef.current;
+    if (dragIdx === null || dragIdx === dropIdx) return;
+    const ids = missionZones.map((l) => l.id);
+    const [moved] = ids.splice(dragIdx, 1);
+    ids.splice(dropIdx, 0, moved);
+    saveMzOrder(ids);
+    dragIndexRef.current = null;
+  };
 
   // Build Google Maps embed URL
   const getEmbedUrl = (loc: MissionLocation | null) => {
@@ -500,11 +501,10 @@ const Mapa = () => {
                       needsCategories={needsCategories}
                       userId={user?.id || ""}
                       role={role}
-                      isPinned={mzPinnedIds.includes(loc.id)}
-                      onTogglePin={() => handleToggleMzPin(loc.id)}
-                      canPinMore={mzPinnedIds.length < 2}
-                      onMoveUp={idx > 0 ? () => handleMoveMz(loc.id, "up") : null}
-                      onMoveDown={idx < missionZones.length - 1 ? () => handleMoveMz(loc.id, "down") : null}
+                      draggable
+                      onDragStart={handleMzDragStart(idx)}
+                      onDragOver={handleMzDragOver}
+                      onDrop={handleMzDrop(idx)}
                     />
                   ))}
                 </div>
