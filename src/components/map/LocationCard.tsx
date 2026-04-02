@@ -133,6 +133,20 @@ export function LocationCard({
                         <p className="font-semibold text-sm text-foreground truncate">{loc.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
                     </div>
+                    {onTogglePin && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+                            disabled={!isPinned && !canPinMore}
+                            className={`p-1.5 rounded-md border shadow-sm transition-colors shrink-0 mt-0.5 ${
+                                isPinned
+                                    ? "bg-primary/10 text-primary border-primary/30"
+                                    : "bg-background text-muted-foreground border-border hover:text-primary"
+                            } ${!isPinned && !canPinMore ? "opacity-40 cursor-not-allowed" : ""}`}
+                            title={isPinned ? "Desafixar" : "Fixar"}
+                        >
+                            <Pin size={14} className={isPinned ? "fill-current" : ""} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
