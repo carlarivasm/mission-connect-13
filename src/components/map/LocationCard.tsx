@@ -56,11 +56,10 @@ interface LocationCardProps {
     needsCategories: any[];
     userId: string;
     role: "admin" | "missionary" | null;
-    isPinned?: boolean;
-    onTogglePin?: () => void;
-    canPinMore?: boolean;
-    onMoveUp?: (() => void) | null;
-    onMoveDown?: (() => void) | null;
+    draggable?: boolean;
+    onDragStart?: (e: React.DragEvent) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent) => void;
 }
 
 export function LocationCard({
