@@ -324,16 +324,13 @@ const Mapa = () => {
 
   const missionZonesRaw = filteredLocations.filter((l) => l.category === "mission_zone");
 
-  const sortedMissionZones = [...missionZonesRaw].sort((a, b) => {
-    const aOrder = mzCustomOrder.indexOf(a.id);
-    const bOrder = mzCustomOrder.indexOf(b.id);
-    if (aOrder !== -1 && bOrder !== -1) return aOrder - bOrder;
-    if (aOrder !== -1) return -1;
-    if (bOrder !== -1) return 1;
-    return 0;
-  });
+  // Pinned mission zones (up to 6), ordered by mzCustomOrder
+  const pinnedMissionZones = mzPinnedIds
+    .map((id) => missionZonesRaw.find((l) => l.id === id))
+    .filter(Boolean) as MissionLocation[];
 
-  const missionZones = sortedMissionZones.slice(0, 6);
+  // Unpinned mission zones (everything else)
+  const unpinnedMissionZones = missionZonesRaw.filter((l) => !mzPinnedIds.includes(l.id));
 
   // Drag-and-drop for mission zones
   const dragIndexRef = useRef<number | null>(null);
