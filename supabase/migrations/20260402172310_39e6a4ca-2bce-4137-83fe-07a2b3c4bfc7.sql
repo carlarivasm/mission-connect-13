@@ -1,0 +1,1 @@
+ALTER TABLE public.location_user_notes ADD COLUMN accepts_identification boolean NOT NULL DEFAULT false;
