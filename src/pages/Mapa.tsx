@@ -332,7 +332,15 @@ const Mapa = () => {
   // Unpinned mission zones (everything else)
   const unpinnedMissionZones = missionZonesRaw.filter((l) => !mzPinnedIds.includes(l.id));
 
-  // Drag-and-drop for mission zones
+  const handleToggleMzPin = (id: string) => {
+    if (mzPinnedIds.includes(id)) {
+      saveMzPinned(mzPinnedIds.filter((p) => p !== id));
+    } else if (mzPinnedIds.length < 6) {
+      saveMzPinned([...mzPinnedIds, id]);
+    }
+  };
+
+  // Drag-and-drop for pinned mission zones
   const dragIndexRef = useRef<number | null>(null);
 
   const handleMzDragStart = (idx: number) => (e: React.DragEvent) => {
@@ -349,10 +357,10 @@ const Mapa = () => {
     e.preventDefault();
     const dragIdx = dragIndexRef.current;
     if (dragIdx === null || dragIdx === dropIdx) return;
-    const ids = missionZones.map((l) => l.id);
+    const ids = [...mzPinnedIds];
     const [moved] = ids.splice(dragIdx, 1);
     ids.splice(dropIdx, 0, moved);
-    saveMzOrder(ids);
+    saveMzPinned(ids);
     dragIndexRef.current = null;
   };
 
