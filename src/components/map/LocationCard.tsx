@@ -23,6 +23,7 @@ export interface UserNote {
     user_address: string;
     exact_location_url: string;
     summary: string;
+    accepts_identification: boolean;
     created_at?: string;
     user_id?: string;
     user_name?: string;

@@ -178,15 +178,28 @@ export function NoteFormModal({
 
                 {/* Scrollable form body */}
                 <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                    {/* Aceita ser identificado */}
+                    <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30">
+                        <Checkbox
+                            id="accepts_identification"
+                            checked={acceptsId}
+                            onCheckedChange={(checked) => handleToggleAcceptsId(!!checked)}
+                        />
+                        <label htmlFor="accepts_identification" className="text-sm font-medium text-foreground cursor-pointer select-none">
+                            Aceita ser identificado
+                        </label>
+                    </div>
+
                     {/* Nome do morador */}
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nome do morador</label>
                         <input
                             type="text"
-                            value={getValue("resident_name")}
+                            value={acceptsId ? getValue("resident_name") : ""}
                             onChange={(e) => handleChange("resident_name", e.target.value)}
                             placeholder="Nome de quem mora na casa..."
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            disabled={!acceptsId}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted"
                         />
                     </div>
 
@@ -195,10 +208,11 @@ export function NoteFormModal({
                         <label className="text-[10px] font-semibold text-muted-foreground uppercase">Nº da casa / identificação</label>
                         <input
                             type="text"
-                            value={getValue("house_number")}
+                            value={acceptsId ? getValue("house_number") : ""}
                             onChange={(e) => handleChange("house_number", e.target.value)}
                             placeholder="Ex: 123, 45A, S/N..."
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            disabled={!acceptsId}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted"
                         />
                     </div>
 
@@ -206,11 +220,12 @@ export function NoteFormModal({
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-muted-foreground uppercase">Complemento</label>
                         <Textarea
-                            value={getValue("user_address")}
+                            value={acceptsId ? getValue("user_address") : ""}
                             onChange={(e) => handleChange("user_address", e.target.value)}
                             placeholder="Apt, bloco, referência..."
                             rows={1}
-                            className="text-sm min-h-[36px] py-2"
+                            disabled={!acceptsId}
+                            className="text-sm min-h-[36px] py-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted"
                         />
                     </div>
 
@@ -219,10 +234,11 @@ export function NoteFormModal({
                         <label className="text-[10px] font-semibold text-muted-foreground uppercase">Link do local exato (Maps)</label>
                         <input
                             type="url"
-                            value={getValue("exact_location_url")}
+                            value={acceptsId ? getValue("exact_location_url") : ""}
                             onChange={(e) => handleChange("exact_location_url", e.target.value)}
                             placeholder="https://maps.google.com/..."
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            disabled={!acceptsId}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted"
                         />
                     </div>
 
