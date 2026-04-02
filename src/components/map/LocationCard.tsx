@@ -56,6 +56,9 @@ interface LocationCardProps {
     needsCategories: any[];
     userId: string;
     role: "admin" | "missionary" | null;
+    isPinned?: boolean;
+    onTogglePin?: () => void;
+    canPinMore?: boolean;
     draggable?: boolean;
     onDragStart?: (e: React.DragEvent) => void;
     onDragOver?: (e: React.DragEvent) => void;
