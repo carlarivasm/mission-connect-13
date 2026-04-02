@@ -86,6 +86,7 @@ const ManageLocationNotes = () => {
         notes: n.notes || "",
         updated_at: n.updated_at,
         team_color: teamMap[n.user_id] ? teamColors[teamMap[n.user_id]] || null : null,
+        accepts_identification: !!n.accepts_identification,
       }));
       setRows(mapped);
       setLoading(false);
