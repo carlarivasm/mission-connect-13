@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Pencil, Sparkles, GripVertical } from "lucide-react";
+import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Pencil, Sparkles, GripVertical, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NoteFormModal } from "./NoteFormModal";
 import { renderNeedsNames } from "@/lib/utils";
