@@ -167,6 +167,9 @@ const DashboardBanner = () => {
         <span className="text-sm font-bold text-primary">{banner.title}</span>
       </div>
       {renderMedia(banner)}
+      {banner.body_text && (
+        <p className="px-4 py-2 text-sm text-foreground whitespace-pre-line">{banner.body_text}</p>
+      )}
     </div>
   );
 
