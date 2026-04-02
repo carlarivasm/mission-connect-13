@@ -159,12 +159,12 @@ const Mapa = () => {
     return drafts[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "", accepts_identification: false };
   };
 
-  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary", value: string) => {
+  const updateDraft = (locationId: string, field: "house_number" | "resident_name" | "needs" | "notes" | "user_address" | "exact_location_url" | "summary" | "accepts_identification", value: string) => {
     setDrafts((prev) => ({
       ...prev,
       [locationId]: {
-        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "" }),
-        [field]: value,
+        ...(prev[locationId] || { location_id: locationId, house_number: "", resident_name: "", needs: "", notes: "", user_address: "", exact_location_url: "", summary: "", accepts_identification: false }),
+        [field]: field === "accepts_identification" ? value === "true" : value,
       },
     }));
   };
