@@ -1,35 +1,38 @@
 
 
-## Analytics de Acesso para o Admin
+## Marcador "Aceita ser identificado" no Censo
 
-### O que será feito
+### Resumo
 
-Criar um sistema de rastreamento de visualizações de páginas e um painel no admin para exibir os dados.
+Adicionar um campo booleano `accepts_identification` à tabela `location_user_notes` e ao formulário de censo. Quando marcado, os campos de identificação (nome, nº casa, complemento, link exato) ficam editáveis. Quando desmarcado, esses campos ficam em branco e desabilitados. No admin (Observações), exibir "Sim" ou "Não".
 
-### 1. Tabela `page_views` (migration)
+### Alterações
 
-```sql
-CREATE TABLE public.page_views (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid,
-  page text NOT NULL,        -- ex: 'dashboard', 'materiais', 'loja', 'calendario'
-  page_detail text,          -- ex: categoria do material ('formação', 'oração', etc.)
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+**1. Migration SQL** — adicionar coluna `accepts_identification boolean NOT NULL DEFAULT false` à tabela `location_user_notes`.
 
-ALTER TABLE public.page_views ENABLE ROW LEVEL SECURITY;
+**2. `src/components/map/LocationCard.tsx`** — adicionar `accepts_identification` ao tipo `UserNote`.
 
--- Qualquer autenticado pode inserir seus próprios acessos
-CREATE POLICY "Users can insert own views" ON public.page_views
-  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+**3. `src/components/map/NoteFormModal.tsx`**:
+- Adicionar um toggle/checkbox no topo do formulário com o texto "Aceita ser identificado".
+- Quando ativado: campos nome, nº casa, complemento e link exato ficam editáveis normalmente.
+- Quando desativado: limpar os valores desses 4 campos e renderizá-los como `disabled` (cinza/não editável).
+- Incluir `accepts_identification` no fluxo de `handleChange` / save.
 
--- Admins podem ler todos os acessos
-CREATE POLICY "Admins can read all views" ON public.page_views
-  FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'));
-```
+**4. `src/components/admin/ManageLocationNotes.tsx`**:
+- Buscar `accepts_identification` na query.
+- Adicionar ao `NoteRow` e exibir no card expandido: **"Aceita ser identificado: Sim/Não"**.
+- Incluir na exportação CSV/Excel.
 
-### 2. Hook `usePageTracking` — `src/hooks/usePageTracking.ts`
+**5. `src/pages/Mapa.tsx`** (ou onde o draft/save lógica vive):
+- Garantir que `accepts_identification` é passado no insert/update do `location_user_notes`.
 
-- Chamado em cada página protegida (Dashboard, Materiais, Loja, Calendario, Mapa, Galeria, Pesquisas, Organograma, Familia)
-- Insere um registro em `page_views` com `user_id`, `page` e opcionalmente `page_detail`
--
+### Arquivos
+
+| Arquivo | Ação |
+|---|---|
+| Migration SQL | Adicionar coluna `accepts_identification` |
+| `src/components/map/LocationCard.tsx` | Atualizar tipo `UserNote` |
+| `src/components/map/NoteFormModal.tsx` | Toggle + lógica de habilitar/desabilitar campos |
+| `src/components/admin/ManageLocationNotes.tsx` | Exibir Sim/Não + exportação |
+| `src/pages/Mapa.tsx` | Incluir campo no draft/save |
+
