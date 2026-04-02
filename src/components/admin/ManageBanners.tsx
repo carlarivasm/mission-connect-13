@@ -13,6 +13,7 @@ import { Plus, Trash2, Pencil, X } from "lucide-react";
 interface Banner {
   id: string;
   title: string;
+  body_text: string | null;
   media_url: string;
   media_type: string;
   storage_path: string | null;
