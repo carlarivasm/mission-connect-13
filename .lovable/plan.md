@@ -1,38 +1,28 @@
 
 
-## Marcador "Aceita ser identificado" no Censo
+## Drag-and-drop nos cards de Zona de Missão + remoção de tags
 
-### Resumo
+### O que será feito
 
-Adicionar um campo booleano `accepts_identification` à tabela `location_user_notes` e ao formulário de censo. Quando marcado, os campos de identificação (nome, nº casa, complemento, link exato) ficam editáveis. Quando desmarcado, esses campos ficam em branco e desabilitados. No admin (Observações), exibir "Sim" ou "Não".
+1. **Drag-and-drop para reordenar cards** — substituir os botões de seta (ArrowUp/ArrowDown) por reordenação via arrastar e soltar nos cards de Zona de Missão. Limitar a **6 cards visíveis** (se houver mais, exibir apenas os 6 primeiros na ordem personalizada).
 
-### Alterações
+2. **Remover tags visuais dos cards** — tirar o badge "Fixado" e o badge de status ("Em andamento", "Pendente", etc.) de cada card de zona de missão. Os filtros de status no topo (contadores Pendentes/Em andamento/Visitados) continuam funcionando normalmente.
 
-**1. Migration SQL** — adicionar coluna `accepts_identification boolean NOT NULL DEFAULT false` à tabela `location_user_notes`.
+### Implementação
 
-**2. `src/components/map/LocationCard.tsx`** — adicionar `accepts_identification` ao tipo `UserNote`.
+**Abordagem de drag-and-drop**: Usar a API nativa HTML5 Drag and Drop (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) — sem dependência externa. Cada card recebe um ícone de "grip" (☰) para indicar que é arrastável.
 
-**3. `src/components/map/NoteFormModal.tsx`**:
-- Adicionar um toggle/checkbox no topo do formulário com o texto "Aceita ser identificado".
-- Quando ativado: campos nome, nº casa, complemento e link exato ficam editáveis normalmente.
-- Quando desativado: limpar os valores desses 4 campos e renderizá-los como `disabled` (cinza/não editável).
-- Incluir `accepts_identification` no fluxo de `handleChange` / save.
+### Arquivos alterados
 
-**4. `src/components/admin/ManageLocationNotes.tsx`**:
-- Buscar `accepts_identification` na query.
-- Adicionar ao `NoteRow` e exibir no card expandido: **"Aceita ser identificado: Sim/Não"**.
-- Incluir na exportação CSV/Excel.
-
-**5. `src/pages/Mapa.tsx`** (ou onde o draft/save lógica vive):
-- Garantir que `accepts_identification` é passado no insert/update do `location_user_notes`.
-
-### Arquivos
-
-| Arquivo | Ação |
+| Arquivo | Mudança |
 |---|---|
-| Migration SQL | Adicionar coluna `accepts_identification` |
-| `src/components/map/LocationCard.tsx` | Atualizar tipo `UserNote` |
-| `src/components/map/NoteFormModal.tsx` | Toggle + lógica de habilitar/desabilitar campos |
-| `src/components/admin/ManageLocationNotes.tsx` | Exibir Sim/Não + exportação |
-| `src/pages/Mapa.tsx` | Incluir campo no draft/save |
+| `src/components/map/LocationCard.tsx` | Remover badges "Fixado" e status. Remover botões ArrowUp/ArrowDown/Pin. Adicionar props `onDragStart`, `onDragOver`, `onDrop`, `draggable` e ícone grip (GripVertical). |
+| `src/pages/Mapa.tsx` | Implementar lógica de drag-and-drop nos cards de missão (estado `dragIndex`, handlers). Limitar renderização a 6 cards. Remover lógica de pin para zonas de missão (`mzPinnedIds`, `handleToggleMzPin`, etc.). Manter pin para pontos de referência. |
+
+### Detalhes técnicos
+
+- O card terá `draggable` e um ícone `GripVertical` à esquerda para o usuário segurar e arrastar.
+- No `onDrop`, a nova ordem é salva no `localStorage` (mesmo mecanismo já existente com `mzCustomOrder`).
+- Limite de 6: `missionZones.slice(0, 6)` na renderização.
+- Props `isPinned`, `onTogglePin`, `canPinMore`, `onMoveUp`, `onMoveDown` deixam de ser passadas para `LocationCard` nas zonas de missão.
 
