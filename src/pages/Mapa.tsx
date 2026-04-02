@@ -501,11 +501,10 @@ const Mapa = () => {
                       needsCategories={needsCategories}
                       userId={user?.id || ""}
                       role={role}
-                      isPinned={mzPinnedIds.includes(loc.id)}
-                      onTogglePin={() => handleToggleMzPin(loc.id)}
-                      canPinMore={mzPinnedIds.length < 2}
-                      onMoveUp={idx > 0 ? () => handleMoveMz(loc.id, "up") : null}
-                      onMoveDown={idx < missionZones.length - 1 ? () => handleMoveMz(loc.id, "down") : null}
+                      draggable
+                      onDragStart={handleMzDragStart(idx)}
+                      onDragOver={handleMzDragOver}
+                      onDrop={handleMzDrop(idx)}
                     />
                   ))}
                 </div>
