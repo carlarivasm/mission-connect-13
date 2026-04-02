@@ -77,11 +77,10 @@ export function LocationCard({
     needsCategories = [],
     userId,
     role,
-    isPinned = false,
-    onTogglePin,
-    canPinMore = true,
-    onMoveUp,
-    onMoveDown,
+    draggable = false,
+    onDragStart,
+    onDragOver,
+    onDrop,
 }: LocationCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
