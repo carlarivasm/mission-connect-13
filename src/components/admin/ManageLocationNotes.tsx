@@ -42,7 +42,7 @@ const ManageLocationNotes = () => {
       // Get all notes with location and user info
       const { data: notes } = await supabase
         .from("location_user_notes")
-        .select("location_id, user_id, house_number, resident_name, needs, notes, user_address, updated_at")
+        .select("location_id, user_id, house_number, resident_name, needs, notes, user_address, updated_at, accepts_identification")
         .order("updated_at", { ascending: false });
 
       if (!notes || notes.length === 0) { setLoading(false); return; }
