@@ -187,7 +187,7 @@ export function LocationCard({
                         className="flex-1 text-xs h-auto py-2 bg-background hover:bg-muted font-semibold text-primary/80 border-primary/20 hover:text-primary transition-colors"
                         onClick={openCreateModal}
                     >
-                        <Plus size={14} className="mr-1" /> Adicionar observações
+                        <Plus size={14} className="mr-1" /> Adicionar Censo
                     </Button>
                 </div>
 
