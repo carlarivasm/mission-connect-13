@@ -485,33 +485,71 @@ const Mapa = () => {
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-              ) : missionZones.length === 0 ? (
+              ) : missionZonesRaw.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-4">Nenhuma zona de missão cadastrada.</p>
               ) : (
                 <div className="space-y-3">
-                  {missionZones.map((loc, idx) => (
-                    <LocationCard
-                      key={loc.id}
-                      loc={loc}
-                      notes={userNotes[loc.id] || []}
-                      isSelected={selectedLocation?.id === loc.id}
-                      onSelect={() => setSelectedLocation(loc)}
-                      draft={getDraft(loc.id)}
-                      updateDraft={updateDraft}
-                      saveNewNote={saveNewNote}
-                      updateExistingNote={updateExistingNote}
-                      saveExistingNote={saveExistingNote}
-                      deleteNote={deleteNote}
-                      savingId={savingId}
-                      needsCategories={needsCategories}
-                      userId={user?.id || ""}
-                      role={role}
-                      draggable
-                      onDragStart={handleMzDragStart(idx)}
-                      onDragOver={handleMzDragOver}
-                      onDrop={handleMzDrop(idx)}
-                    />
-                  ))}
+                  {/* Pinned cards – draggable */}
+                  {pinnedMissionZones.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fixados ({pinnedMissionZones.length}/6)</p>
+                      {pinnedMissionZones.map((loc, idx) => (
+                        <LocationCard
+                          key={loc.id}
+                          loc={loc}
+                          notes={userNotes[loc.id] || []}
+                          isSelected={selectedLocation?.id === loc.id}
+                          onSelect={() => setSelectedLocation(loc)}
+                          draft={getDraft(loc.id)}
+                          updateDraft={updateDraft}
+                          saveNewNote={saveNewNote}
+                          updateExistingNote={updateExistingNote}
+                          saveExistingNote={saveExistingNote}
+                          deleteNote={deleteNote}
+                          savingId={savingId}
+                          needsCategories={needsCategories}
+                          userId={user?.id || ""}
+                          role={role}
+                          isPinned
+                          onTogglePin={() => handleToggleMzPin(loc.id)}
+                          canPinMore={mzPinnedIds.length < 6}
+                          draggable
+                          onDragStart={handleMzDragStart(idx)}
+                          onDragOver={handleMzDragOver}
+                          onDrop={handleMzDrop(idx)}
+                        />
+                      ))}
+                    </>
+                  )}
+
+                  {/* Unpinned cards */}
+                  {unpinnedMissionZones.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Todos</p>
+                      {unpinnedMissionZones.map((loc) => (
+                        <LocationCard
+                          key={loc.id}
+                          loc={loc}
+                          notes={userNotes[loc.id] || []}
+                          isSelected={selectedLocation?.id === loc.id}
+                          onSelect={() => setSelectedLocation(loc)}
+                          draft={getDraft(loc.id)}
+                          updateDraft={updateDraft}
+                          saveNewNote={saveNewNote}
+                          updateExistingNote={updateExistingNote}
+                          saveExistingNote={saveExistingNote}
+                          deleteNote={deleteNote}
+                          savingId={savingId}
+                          needsCategories={needsCategories}
+                          userId={user?.id || ""}
+                          role={role}
+                          isPinned={false}
+                          onTogglePin={() => handleToggleMzPin(loc.id)}
+                          canPinMore={mzPinnedIds.length < 6}
+                        />
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </section>
