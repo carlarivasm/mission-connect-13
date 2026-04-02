@@ -107,8 +107,12 @@ export function LocationCard({
     return (
         <>
             <div
-                className={`p-4 bg-card rounded-xl shadow-card space-y-3 transition-all cursor-pointer ${isSelected ? "ring-2 ring-primary" : ""} ${isPinned ? "border-2 border-primary/40" : ""}`}
+                className={`p-4 bg-card rounded-xl shadow-card space-y-3 transition-all cursor-pointer ${isSelected ? "ring-2 ring-primary" : ""}`}
                 onClick={onSelect}
+                draggable={draggable}
+                onDragStart={onDragStart}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
             >
                 <div className="flex items-start gap-3">
                     <div className="p-2 rounded-lg gradient-mission text-primary-foreground mt-0.5 shrink-0">
