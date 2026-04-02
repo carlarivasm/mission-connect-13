@@ -99,6 +99,7 @@ const ManageBanners = () => {
     setShowForm(false);
     setEditingId(null);
     setTitle("Importante");
+    setBodyText("");
     setPublishAt("");
     setExpireAt("");
     setFile(null);
