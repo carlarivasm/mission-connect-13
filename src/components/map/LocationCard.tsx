@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Pencil, Sparkles, GripVertical } from "lucide-react";
+import { MapPin, Navigation, ChevronDown, ChevronUp, Plus, FileText, Pencil, Sparkles, GripVertical, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NoteFormModal } from "./NoteFormModal";
 import { renderNeedsNames } from "@/lib/utils";
@@ -56,6 +56,9 @@ interface LocationCardProps {
     needsCategories: any[];
     userId: string;
     role: "admin" | "missionary" | null;
+    isPinned?: boolean;
+    onTogglePin?: () => void;
+    canPinMore?: boolean;
     draggable?: boolean;
     onDragStart?: (e: React.DragEvent) => void;
     onDragOver?: (e: React.DragEvent) => void;
@@ -77,6 +80,9 @@ export function LocationCard({
     needsCategories = [],
     userId,
     role,
+    isPinned = false,
+    onTogglePin,
+    canPinMore = true,
     draggable = false,
     onDragStart,
     onDragOver,
@@ -127,6 +133,20 @@ export function LocationCard({
                         <p className="font-semibold text-sm text-foreground truncate">{loc.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{loc.address}</p>
                     </div>
+                    {onTogglePin && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+                            disabled={!isPinned && !canPinMore}
+                            className={`p-1.5 rounded-md border shadow-sm transition-colors shrink-0 mt-0.5 ${
+                                isPinned
+                                    ? "bg-primary/10 text-primary border-primary/30"
+                                    : "bg-background text-muted-foreground border-border hover:text-primary"
+                            } ${!isPinned && !canPinMore ? "opacity-40 cursor-not-allowed" : ""}`}
+                            title={isPinned ? "Desafixar" : "Fixar"}
+                        >
+                            <Pin size={14} className={isPinned ? "fill-current" : ""} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
