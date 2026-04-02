@@ -108,6 +108,7 @@ const ManageBanners = () => {
   const handleEdit = (b: Banner) => {
     setEditingId(b.id);
     setTitle(b.title);
+    setBodyText(b.body_text || "");
     setPublishAt(b.publish_at.slice(0, 16));
     setExpireAt(b.expire_at.slice(0, 16));
     setFile(null);
