@@ -40,9 +40,8 @@ const Calendario = () => {
   const today = new Date();
 
   const filterPastEvents = (data: EventData[]) => {
-    const now = new Date();
-    const todayKey = now.toISOString().split("T")[0];
-    const currentTime = now.toTimeString().slice(0, 5);
+    const todayKey = todayBrasilia();
+    const currentTime = nowTimeBrasilia();
 
     return data.filter((ev) => {
       if (ev.event_date > todayKey) return true;
