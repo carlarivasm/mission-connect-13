@@ -52,7 +52,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = todayBrasilia();
 
     supabase
       .from("events")
