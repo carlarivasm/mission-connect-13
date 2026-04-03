@@ -32,9 +32,8 @@ const Dashboard = () => {
   usePageTracking("dashboard");
 
   const filterAndSetEvents = (data: EventData[]) => {
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentTimeStr = now.toTimeString().slice(0, 5); // "HH:MM"
+    const todayStr = todayBrasilia();
+    const currentTimeStr = nowTimeBrasilia();
 
     const filtered = data.filter((ev) => {
       if (ev.event_date > todayStr) return true;
