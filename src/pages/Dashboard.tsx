@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BookOpen, MapPin, ShoppingBag, Shield, Camera } from "lucide-react";
+import { todayBrasilia, nowTimeBrasilia } from "@/lib/dateBrasilia";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -31,9 +32,8 @@ const Dashboard = () => {
   usePageTracking("dashboard");
 
   const filterAndSetEvents = (data: EventData[]) => {
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const currentTimeStr = now.toTimeString().slice(0, 5); // "HH:MM"
+    const todayStr = todayBrasilia();
+    const currentTimeStr = nowTimeBrasilia();
 
     const filtered = data.filter((ev) => {
       if (ev.event_date > todayStr) return true;
@@ -52,7 +52,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = todayBrasilia();
 
     supabase
       .from("events")
@@ -67,10 +67,11 @@ const Dashboard = () => {
 
     // Re-filter every 60s to hide past events
     const interval = setInterval(() => {
+      const refreshTodayStr = todayBrasilia();
       supabase
         .from("events")
         .select("id, title, event_date, event_time, event_type")
-        .gte("event_date", todayStr)
+        .gte("event_date", refreshTodayStr)
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true })
         .limit(10)

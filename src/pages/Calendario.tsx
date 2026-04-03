@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Link2, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
+import { todayBrasilia, nowTimeBrasilia } from "@/lib/dateBrasilia";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
@@ -39,9 +40,8 @@ const Calendario = () => {
   const today = new Date();
 
   const filterPastEvents = (data: EventData[]) => {
-    const now = new Date();
-    const todayKey = now.toISOString().split("T")[0];
-    const currentTime = now.toTimeString().slice(0, 5);
+    const todayKey = todayBrasilia();
+    const currentTime = nowTimeBrasilia();
 
     return data.filter((ev) => {
       if (ev.event_date > todayKey) return true;
@@ -60,7 +60,7 @@ const Calendario = () => {
         supabase
           .from("events")
           .select("*")
-          .gte("event_date", new Date().toISOString().split("T")[0])
+          .gte("event_date", todayBrasilia())
           .order("event_date", { ascending: true })
           .order("event_time", { ascending: true })
           .limit(5)

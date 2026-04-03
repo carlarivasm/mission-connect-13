@@ -94,7 +94,7 @@ const ManageAnalytics = () => {
     for (let i = 0; i < days; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      dayMap.set(d.toISOString().slice(0, 10), 0);
+      dayMap.set(d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }), 0);
     }
     for (const v of views) {
       const day = v.created_at.slice(0, 10);

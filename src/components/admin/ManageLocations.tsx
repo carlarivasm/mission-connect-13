@@ -242,7 +242,7 @@ const ManageLocations = () => {
       Missionário: n.user_email || "",
       Necessidades: n.needs || "",
       Observações: n.notes || "",
-      Data: new Date(n.created_at).toLocaleDateString("pt-BR"),
+      Data: new Date(n.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
     }));
     exportToExcel(rows, "Observações", "observacoes_locais_missao.xlsx");
   };
@@ -466,7 +466,7 @@ const ManageLocations = () => {
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
                             <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
-                              {new Date(n.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              {new Date(n.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                             </span>
                             <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                           </div>
