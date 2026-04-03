@@ -67,10 +67,11 @@ const Dashboard = () => {
 
     // Re-filter every 60s to hide past events
     const interval = setInterval(() => {
+      const refreshTodayStr = todayBrasilia();
       supabase
         .from("events")
         .select("id, title, event_date, event_time, event_type")
-        .gte("event_date", todayStr)
+        .gte("event_date", refreshTodayStr)
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true })
         .limit(10)
