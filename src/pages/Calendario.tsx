@@ -60,7 +60,7 @@ const Calendario = () => {
         supabase
           .from("events")
           .select("*")
-          .gte("event_date", new Date().toISOString().split("T")[0])
+          .gte("event_date", todayBrasilia())
           .order("event_date", { ascending: true })
           .order("event_time", { ascending: true })
           .limit(5)
