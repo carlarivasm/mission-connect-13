@@ -195,7 +195,7 @@ export function LocationCard({
                                                     </span>
                                                     {note.created_at && (
                                                         <span className="text-[10px] ml-2 text-muted-foreground">
-                                                            {new Date(note.created_at).toLocaleDateString('pt-BR')}
+                                                            {new Date(note.created_at).toLocaleDateString('pt-BR', { timeZone: "America/Sao_Paulo" })}
                                                         </span>
                                                     )}
                                                 </div>
