@@ -13,8 +13,7 @@ const BottomNav = () => {
     { icon: Calendar, label: "Calendário", path: "/calendario", restricted: false },
     { icon: MapPin, label: "Mapa", path: "/mapa", restricted: false },
     { icon: Home, label: "Início", path: "/dashboard", isCenter: true, restricted: false },
-    //{ icon: Camera, label: "Fotos", path: "/galeria", restricted: true },
-    { icon: ShoppingBag, label: "Loja", path: "/loja", restricted: true },
+    { icon: Camera, label: "Galeria", path: "/galeria", restricted: true },
     { icon: BookOpen, label: "Materiais", path: "/materiais", restricted: true },
   ];
 

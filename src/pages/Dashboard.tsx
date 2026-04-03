@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, MapPin, ShoppingBag, Shield } from "lucide-react";
+import { BookOpen, MapPin, ShoppingBag, Shield, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
@@ -12,6 +12,7 @@ import PendingCartAlert from "@/components/PendingCartAlert";
 import OnboardingCard from "@/components/OnboardingCard";
 import DashboardBanner from "@/components/DashboardBanner";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { useAppSettings } from "@/contexts/AppSettingsContext";
 
 interface EventData {
   id: string;
@@ -24,6 +25,7 @@ interface EventData {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { signOut, user, role, approved } = useAuth();
+  const { settings } = useAppSettings();
   const [events, setEvents] = useState<EventData[]>([]);
   const [eventsLabel, setEventsLabel] = useState("Próximas Atividades");
   usePageTracking("dashboard");
@@ -129,6 +131,26 @@ const Dashboard = () => {
           {role === "admin" && (
             <div className="grid grid-cols-1 gap-3 mt-3">
               <QuickAction icon={Shield} label="Admin" onClick={() => navigate("/admin")} />
+            </div>
+          )}
+
+          {/* Quick Access Banner for Gallery Link */}
+          {settings.gallery_link && (
+            <div className="mt-4 animate-fade-in" style={{ animationDelay: "0.15s" }}>
+              <a 
+                href={settings.gallery_link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 p-4 rounded-xl gradient-mission text-primary-foreground shadow-card hover:scale-[1.02] transition-transform"
+              >
+                <div className="flex-1">
+                  <h4 className="font-bold text-lg leading-tight">Galeria de Fotos</h4>
+                  <p className="text-sm text-primary-foreground/80 mt-1">Acesse as fotos e vídeos</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <Camera size={20} className="text-white" />
+                </div>
+              </a>
             </div>
           )}
         </section>

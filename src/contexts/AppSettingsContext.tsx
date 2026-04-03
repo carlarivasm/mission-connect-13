@@ -7,6 +7,7 @@ interface AppSettings {
   secondary_color: string;
   logo_url: string;
   login_subtitle: string;
+  gallery_link: string;
 }
 
 const defaults: AppSettings = {
@@ -15,6 +16,7 @@ const defaults: AppSettings = {
   secondary_color: "38 80% 55%",
   logo_url: "",
   login_subtitle: "Um em Cristo, unidos na missão",
+  gallery_link: "",
 };
 
 interface AppSettingsContextType {
@@ -66,6 +68,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
         secondary_color: map.secondary_color || defaults.secondary_color,
         logo_url: map.logo_url || defaults.logo_url,
         login_subtitle: map.login_subtitle || defaults.login_subtitle,
+        gallery_link: map.gallery_link || defaults.gallery_link,
       };
       setSettings(s);
 

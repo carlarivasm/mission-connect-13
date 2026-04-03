@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone, Image, BarChart3 } from "lucide-react";
+import { Users, Calendar, BookOpen, MapPin, ShoppingBag, ClipboardList, Heart, Settings, FileText, Network, ShoppingCart, Megaphone, Image, BarChart3, Camera } from "lucide-react";
 import ManageMissionaries from "@/components/admin/ManageMissionaries";
 import ManageEvents from "@/components/admin/ManageEvents";
 import ManageMaterials from "@/components/admin/ManageMaterials";
@@ -20,6 +20,7 @@ import ManageOrders from "@/components/admin/ManageOrders";
 import AdminBroadcast from "@/components/admin/AdminBroadcast";
 import ManageBanners from "@/components/admin/ManageBanners";
 import ManageAnalytics from "@/components/admin/ManageAnalytics";
+import ManageGallery from "@/components/admin/ManageGallery";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -113,6 +114,10 @@ const Admin = () => {
               <Settings size={16} className="shrink-0" />
               <span className="text-center leading-tight">Configurações</span>
             </TabsTrigger>
+            <TabsTrigger value="gallery" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Camera size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Galeria</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="missionaries"><ManageMissionaries /></TabsContent>
@@ -130,6 +135,7 @@ const Admin = () => {
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="analytics"><ManageAnalytics /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
+          <TabsContent value="gallery"><ManageGallery /></TabsContent>
         </Tabs>
       </main>
 
