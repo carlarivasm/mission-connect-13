@@ -272,7 +272,7 @@ export function LocationCard({
             <NoteFormModal
                 open={modalOpen}
                 onClose={closeModal}
-                note={editingNote}
+                note={editingNote ? notes.find(n => n.id === editingNote.id) || editingNote : null}
                 draft={draft}
                 locId={loc.id}
                 locName={loc.name}

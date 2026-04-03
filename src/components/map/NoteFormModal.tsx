@@ -266,8 +266,10 @@ export function NoteFormModal({
 
                     {/* Resumo IA */}
                     <div className="space-y-1 relative">
-                        <div className="flex items-center justify-between mb-1">
-                            <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
+                        <div className={`flex items-center ${isEditing || getValue("summary") || summarizingId === idToTrack ? "justify-between" : "justify-end"} mb-1`}>
+                            {(isEditing || getValue("summary") || summarizingId === idToTrack) && (
+                                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Resumo</label>
+                            )}
                             <button
                                 type="button"
                                 onClick={handleSummarize}
@@ -279,24 +281,26 @@ export function NoteFormModal({
                                 </div>
                             </button>
                         </div>
-                        <div className={`relative rounded-md overflow-hidden p-[1px] transition-all ${summarizingId === idToTrack ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse" : "bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-pink-500/50"}`}>
-                            <Textarea
-                                value={getValue("summary")}
-                                onChange={(e) => handleChange("summary", e.target.value)}
-                                placeholder="Resumo..."
-                                rows={3}
-                                className={`text-sm border-0 min-h-[48px] m-0 bg-background relative z-10 transition-opacity ${summarizingId === idToTrack ? "opacity-30" : "opacity-100"}`}
-                                disabled={summarizingId === idToTrack}
-                            />
-                            {summarizingId === idToTrack && (
-                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
-                                    <Sparkles className="text-purple-500 animate-spin mb-1" size={16} />
-                                    <span className="text-[10px] font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent uppercase tracking-wider">
-                                        Resumindo
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        {(isEditing || getValue("summary") || summarizingId === idToTrack) && (
+                            <div className={`relative rounded-md overflow-hidden p-[1px] transition-all ${summarizingId === idToTrack ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse" : "bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-pink-500/50"}`}>
+                                <Textarea
+                                    value={getValue("summary")}
+                                    onChange={(e) => handleChange("summary", e.target.value)}
+                                    placeholder="Resumo..."
+                                    rows={3}
+                                    className={`text-sm border-0 min-h-[48px] m-0 bg-background relative z-10 transition-opacity ${summarizingId === idToTrack ? "opacity-30" : "opacity-100"}`}
+                                    disabled={summarizingId === idToTrack}
+                                />
+                                {summarizingId === idToTrack && (
+                                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/60 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
+                                        <Sparkles className="text-purple-500 animate-spin mb-1" size={16} />
+                                        <span className="text-[10px] font-bold bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent uppercase tracking-wider">
+                                            Resumindo
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
