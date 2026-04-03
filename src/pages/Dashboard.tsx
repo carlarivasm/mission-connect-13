@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BookOpen, MapPin, ShoppingBag, Shield, Camera } from "lucide-react";
+import { todayBrasilia, nowTimeBrasilia } from "@/lib/dateBrasilia";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import BottomNav from "@/components/BottomNav";

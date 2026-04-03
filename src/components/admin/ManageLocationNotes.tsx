@@ -106,7 +106,7 @@ const ManageLocationNotes = () => {
       "Complemento": r.user_address,
       "Necessidades": r.needs,
       "Observações": r.notes,
-      "Atualizado em": new Date(r.updated_at).toLocaleDateString("pt-BR"),
+      "Atualizado em": new Date(r.updated_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
     }));
 
     if (format === "csv") {

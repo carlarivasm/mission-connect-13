@@ -242,7 +242,7 @@ const ManageLocations = () => {
       Missionário: n.user_email || "",
       Necessidades: n.needs || "",
       Observações: n.notes || "",
-      Data: new Date(n.created_at).toLocaleDateString("pt-BR"),
+      Data: new Date(n.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
     }));
     exportToExcel(rows, "Observações", "observacoes_locais_missao.xlsx");
   };
