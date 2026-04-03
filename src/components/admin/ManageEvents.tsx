@@ -212,6 +212,7 @@ const ManageEvents = () => {
                   <SelectItem value="reunião">Reunião</SelectItem>
                   <SelectItem value="formação">Formação</SelectItem>
                   <SelectItem value="evento">Evento</SelectItem>
+                  <SelectItem value="refeição">Refeição</SelectItem>
                   <SelectItem value="outro">Outro</SelectItem>
                 </SelectContent>
               </Select>

@@ -41,8 +41,8 @@ const Galeria = () => {
               className="flex items-center gap-4 p-4 rounded-xl gradient-mission text-primary-foreground shadow-card hover:scale-[1.02] transition-transform"
             >
               <div className="flex-1">
-                <h4 className="font-bold text-lg leading-tight">Acesso Rápido</h4>
-                <p className="text-sm text-primary-foreground/80 mt-1">Acesse a pasta completa no Drive e adicione seus arquivos.</p>
+                <h4 className="font-bold text-lg leading-tight">Acesse a pasta completa</h4>
+                <p className="text-sm text-primary-foreground/80 mt-1">Adicione suas fotos e vídeos.</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                 <Camera size={20} className="text-white" />

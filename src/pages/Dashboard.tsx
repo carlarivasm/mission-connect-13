@@ -13,14 +13,7 @@ import OnboardingCard from "@/components/OnboardingCard";
 import DashboardBanner from "@/components/DashboardBanner";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
-
-interface EventData {
-  id: string;
-  title: string;
-  event_date: string;
-  event_time: string | null;
-  event_type: string;
-}
+import EventCard, { EventData } from "@/components/events/EventCard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -56,7 +49,7 @@ const Dashboard = () => {
 
     supabase
       .from("events")
-      .select("id, title, event_date, event_time, event_type")
+      .select("*")
       .gte("event_date", todayStr)
       .order("event_date", { ascending: true })
       .order("event_time", { ascending: true })
@@ -69,7 +62,7 @@ const Dashboard = () => {
     const interval = setInterval(() => {
       supabase
         .from("events")
-        .select("id, title, event_date, event_time, event_type")
+        .select("*")
         .gte("event_date", todayStr)
         .order("event_date", { ascending: true })
         .order("event_time", { ascending: true })
@@ -137,20 +130,18 @@ const Dashboard = () => {
           {/* Quick Access Banner for Gallery Link */}
           {settings.gallery_link && (
             <div className="mt-4 animate-fade-in" style={{ animationDelay: "0.15s" }}>
-              <a 
-                href={settings.gallery_link} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl gradient-mission text-primary-foreground shadow-card hover:scale-[1.02] transition-transform"
+              <button 
+                onClick={() => navigate("/galeria")}
+                className="w-full text-left flex items-center gap-4 p-4 rounded-xl gradient-mission text-primary-foreground shadow-card hover:scale-[1.02] transition-transform"
               >
                 <div className="flex-1">
                   <h4 className="font-bold text-lg leading-tight">Galeria de Fotos</h4>
-                  <p className="text-sm text-primary-foreground/80 mt-1">Acesse as fotos e vídeos</p>
+                  <p className="text-sm text-primary-foreground/80 mt-1">Adicione e veja as fotos e vídeos</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                   <Camera size={20} className="text-white" />
                 </div>
-              </a>
+              </button>
             </div>
           )}
         </section>
@@ -166,19 +157,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground text-sm text-center py-4">Nenhuma atividade próxima.</p>
             ) : (
               events.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-4 p-4 bg-card rounded-xl shadow-card"
-                >
-                  <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg gradient-mission text-primary-foreground">
-                    <span className="text-xs font-bold leading-none">{new Date(`${event.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit' })}</span>
-                    <span className="text-[10px] leading-none mt-0.5">{new Date(`${event.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', month: 'short' })}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground text-sm truncate">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">{event.event_time?.slice(0, 5) || ""} • {event.event_type}</p>
-                  </div>
-                </div>
+                <EventCard key={event.id} event={event} />
               ))
             )}
           </div>
