@@ -119,7 +119,8 @@ Deno.serve(async (req) => {
             const tolerance = 2;
             if (diffMinutes >= interval.minutes - tolerance && diffMinutes <= interval.minutes + tolerance) {
               const timeStr = event.event_time ? ` às ${event.event_time.slice(0, 5)}` : "";
-              const dateStr = new Date(`${event.event_date}T00:00:00`).toLocaleDateString("pt-BR", {
+              const dateStr = new Date(`${event.event_date}T12:00:00Z`).toLocaleDateString("pt-BR", {
+                timeZone: "UTC",
                 day: "2-digit",
                 month: "short",
               });

@@ -110,13 +110,13 @@ const Admin = () => {
               <BarChart3 size={16} className="shrink-0" />
               <span className="text-center leading-tight">Acessos</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
-              <Settings size={16} className="shrink-0" />
-              <span className="text-center leading-tight">Configurações</span>
-            </TabsTrigger>
             <TabsTrigger value="gallery" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
               <Camera size={16} className="shrink-0" />
               <span className="text-center leading-tight">Galeria</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Settings size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Configurações</span>
             </TabsTrigger>
           </TabsList>
 
@@ -134,8 +134,9 @@ const Admin = () => {
           <TabsContent value="banners"><ManageBanners /></TabsContent>
           <TabsContent value="broadcast"><AdminBroadcast /></TabsContent>
           <TabsContent value="analytics"><ManageAnalytics /></TabsContent>
-          <TabsContent value="settings"><ManageAppSettings /></TabsContent>
           <TabsContent value="gallery"><ManageGallery /></TabsContent>
+          <TabsContent value="settings"><ManageAppSettings /></TabsContent>
+
         </Tabs>
       </main>
 

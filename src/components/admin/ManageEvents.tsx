@@ -106,7 +106,7 @@ const ManageEvents = () => {
 
         const { data: allProfiles } = await supabase.from("profiles").select("id, notify_events");
         if (allProfiles) {
-          const dateStr = new Date(eventDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+          const dateStr = new Date(`${eventDate}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" });
           const timeStr = eventTime ? ` às ${eventTime.slice(0, 5)}` : "";
           const notifs = allProfiles
             .filter((p: any) => p.id !== user?.id && p.notify_events !== false)
@@ -307,8 +307,8 @@ const ManageEvents = () => {
           events.map((ev) => (
             <div key={ev.id} className="flex items-center gap-3 p-3 bg-card rounded-xl shadow-card">
               <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg gradient-mission text-primary-foreground shrink-0">
-                <span className="text-xs font-bold leading-none">{new Date(ev.event_date + 'T00:00:00').getDate()}</span>
-                <span className="text-[10px] leading-none mt-0.5">{new Date(ev.event_date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' })}</span>
+                <span className="text-xs font-bold leading-none">{new Date(`${ev.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit' })}</span>
+                <span className="text-[10px] leading-none mt-0.5">{new Date(`${ev.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', month: 'short' })}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm truncate">{ev.title}</p>

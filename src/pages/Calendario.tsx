@@ -210,8 +210,8 @@ const Calendario = () => {
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg gradient-mission text-primary-foreground shrink-0">
-                      <span className="text-xs font-bold leading-none">{new Date(event.event_date + 'T00:00:00').getDate()}</span>
-                      <span className="text-[10px] leading-none mt-0.5">{new Date(event.event_date + 'T00:00:00').toLocaleString('pt-BR', { month: 'short' })}</span>
+                      <span className="text-xs font-bold leading-none">{new Date(`${event.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', day: '2-digit' })}</span>
+                      <span className="text-[10px] leading-none mt-0.5">{new Date(`${event.event_date}T12:00:00Z`).toLocaleString('pt-BR', { timeZone: 'UTC', month: 'short' })}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-foreground truncate">{event.title}</p>
