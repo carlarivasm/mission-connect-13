@@ -1,28 +1,19 @@
 
 
-## Drag-and-drop nos cards de Zona de Missão + remoção de tags
+## Exportação com dados de identificação preservados
 
-### O que será feito
+### Problema
+Atualmente, quando o missionário desmarca "Aceita ser identificado", os campos nome, nº casa, complemento e link são **apagados** no formulário. Isso faz com que esses dados não existam no banco e consequentemente não apareçam na exportação.
 
-1. **Drag-and-drop para reordenar cards** — substituir os botões de seta (ArrowUp/ArrowDown) por reordenação via arrastar e soltar nos cards de Zona de Missão. Limitar a **6 cards visíveis** (se houver mais, exibir apenas os 6 primeiros na ordem personalizada).
-
-2. **Remover tags visuais dos cards** — tirar o badge "Fixado" e o badge de status ("Em andamento", "Pendente", etc.) de cada card de zona de missão. Os filtros de status no topo (contadores Pendentes/Em andamento/Visitados) continuam funcionando normalmente.
-
-### Implementação
-
-**Abordagem de drag-and-drop**: Usar a API nativa HTML5 Drag and Drop (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) — sem dependência externa. Cada card recebe um ícone de "grip" (☰) para indicar que é arrastável.
+### Solução
+Parar de apagar os campos de identificação quando o marcador é desmarcado. Os campos continuarão **desabilitados visualmente** (não editáveis), mas os dados já preenchidos serão **preservados** no banco de dados. Assim, a exportação CSV/Excel mostrará esses dados para todos os registros que os possuem, independente do status de identificação.
 
 ### Arquivos alterados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/map/LocationCard.tsx` | Remover badges "Fixado" e status. Remover botões ArrowUp/ArrowDown/Pin. Adicionar props `onDragStart`, `onDragOver`, `onDrop`, `draggable` e ícone grip (GripVertical). |
-| `src/pages/Mapa.tsx` | Implementar lógica de drag-and-drop nos cards de missão (estado `dragIndex`, handlers). Limitar renderização a 6 cards. Remover lógica de pin para zonas de missão (`mzPinnedIds`, `handleToggleMzPin`, etc.). Manter pin para pontos de referência. |
+| `src/components/map/NoteFormModal.tsx` | Remover as linhas que limpam `resident_name`, `house_number`, `user_address` e `exact_location_url` ao desmarcar o checkbox. Manter apenas a desabilitação visual dos campos. |
 
-### Detalhes técnicos
-
-- O card terá `draggable` e um ícone `GripVertical` à esquerda para o usuário segurar e arrastar.
-- No `onDrop`, a nova ordem é salva no `localStorage` (mesmo mecanismo já existente com `mzCustomOrder`).
-- Limite de 6: `missionZones.slice(0, 6)` na renderização.
-- Props `isPinned`, `onTogglePin`, `canPinMore`, `onMoveUp`, `onMoveDown` deixam de ser passadas para `LocationCard` nas zonas de missão.
+### Detalhe técnico
+No `handleToggleAcceptsId`, remover as 4 chamadas `handleChange("resident_name", "")`, `handleChange("house_number", "")`, `handleChange("user_address", "")` e `handleChange("exact_location_url", "")`. Os campos continuarão com `disabled={!acceptsId}` para impedir edição quando desmarcado, mas os valores existentes permanecerão salvos.
 
