@@ -49,10 +49,22 @@ const ManageAnalytics = () => {
     since.setDate(since.getDate() - days);
     const sinceISO = since.toISOString();
 
-    const { data: views } = await supabase
-      .from("page_views")
-      .select("page, page_detail, user_id, created_at")
-      .gte("created_at", sinceISO);
+    // Fetch all rows (bypass 1000-row default limit)
+    let allViews: { page: string; page_detail: string | null; user_id: string | null; created_at: string }[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from("page_views")
+        .select("page, page_detail, user_id, created_at")
+        .gte("created_at", sinceISO)
+        .range(from, from + pageSize - 1);
+      if (error || !data || data.length === 0) break;
+      allViews = allViews.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    const views = allViews;
 
     if (!views) {
       setLoading(false);
