@@ -78,12 +78,6 @@ export function NoteFormModal({
 
     const handleToggleAcceptsId = (checked: boolean) => {
         handleChange("accepts_identification", String(checked));
-        if (!checked) {
-            handleChange("resident_name", "");
-            handleChange("house_number", "");
-            handleChange("user_address", "");
-            handleChange("exact_location_url", "");
-        }
     };
 
     const handleSummarize = async () => {
