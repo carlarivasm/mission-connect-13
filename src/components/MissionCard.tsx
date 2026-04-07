@@ -36,7 +36,7 @@ const MissionCard = () => {
 
     const { data: missions } = await supabase
       .from("missoes")
-      .select("id, titulo, data, datas, datas_titulos, descricao, valor")
+      .select("id, titulo, data, datas, datas_titulos, descricao, valor, pix_key, pix_qr_url, idade_gratuito, idade_meia, whatsapp_responsavel")
       .eq("ativa", true)
       .gte("data", todayStr)
       .order("data", { ascending: true })
