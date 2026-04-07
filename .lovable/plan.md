@@ -1,19 +1,42 @@
+Funcionalidade de Inscrição para Missões
 
+### Resumo
 
-## Exportação com dados de identificação preservados
+Criar sistema completo de inscrição em missões: tabelas no banco, popup automático no dashboard, card de próxima missão, e painel admin para gerenciar missões e visualizar inscritos.
 
-### Problema
-Atualmente, quando o missionário desmarca "Aceita ser identificado", os campos nome, nº casa, complemento e link são **apagados** no formulário. Isso faz com que esses dados não existam no banco e consequentemente não apareçam na exportação.
+### 1. Migração de banco de dados
 
-### Solução
-Parar de apagar os campos de identificação quando o marcador é desmarcado. Os campos continuarão **desabilitados visualmente** (não editáveis), mas os dados já preenchidos serão **preservados** no banco de dados. Assim, a exportação CSV/Excel mostrará esses dados para todos os registros que os possuem, independente do status de identificação.
+Criar 3 tabelas:
 
-### Arquivos alterados
+```sql
+-- Missões cadastradas pelo admin
+CREATE TABLE public.missoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo text NOT NULL,
+  data date NOT NULL,
+  descricao text,
+  ativa boolean NOT NULL DEFAULT true,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-| Arquivo | Mudança |
-|---|---|
-| `src/components/map/NoteFormModal.tsx` | Remover as linhas que limpam `resident_name`, `house_number`, `user_address` e `exact_location_url` ao desmarcar o checkbox. Manter apenas a desabilitação visual dos campos. |
+-- Inscrições dos usuários
+CREATE TABLE public.missao_inscricoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  missao_id uuid NOT NULL REFERENCES public.missoes(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  telefone text,
+  acompanhantes integer NOT NULL DEFAULT 0,
+  observacoes text,
+  status text NOT NULL DEFAULT 'confirmado',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, missao_id)
+);
 
-### Detalhe técnico
-No `handleToggleAcceptsId`, remover as 4 chamadas `handleChange("resident_name", "")`, `handleChange("house_number", "")`, `handleChange("user_address", "")` e `handleChange("exact_location_url", "")`. Os campos continuarão com `disabled={!acceptsId}` para impedir edição quando desmarcado, mas os valores existentes permanecerão salvos.
-
+-- Controle de visualização do popup
+CREATE TABLE public.missao_visualizacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  missao_id uuid NOT NULL REFERENCES public.missoes(id) ON DELETE CASCADE,
+```
