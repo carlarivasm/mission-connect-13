@@ -15,7 +15,9 @@ interface Mission {
   id: string;
   titulo: string;
   data: string;
+  datas: string[];
   descricao: string | null;
+  valor: number | null;
   ativa: boolean;
   created_at: string;
 }
@@ -28,9 +30,11 @@ interface AcompanhanteDetalhe {
 interface Inscricao {
   id: string;
   nome: string;
+  email: string | null;
   telefone: string | null;
   acompanhantes: number;
   acompanhantes_detalhes: unknown[] | null;
+  datas_escolhidas: string[];
   observacoes: string | null;
   created_at: string;
 }
@@ -39,8 +43,9 @@ const ManageMissions = () => {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [titulo, setTitulo] = useState("");
-  const [data, setData] = useState("");
+  const [datas, setDatas] = useState<string[]>([""]);
   const [descricao, setDescricao] = useState("");
+  const [valor, setValor] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [inscricoes, setInscricoes] = useState<Inscricao[]>([]);
@@ -51,35 +56,56 @@ const ManageMissions = () => {
       .from("missoes")
       .select("*")
       .order("data", { ascending: false });
-    if (m) setMissions(m);
+    if (m) setMissions(m as unknown as Mission[]);
   };
 
   useEffect(() => { fetchMissions(); }, []);
 
+  const addDateField = () => setDatas(prev => [...prev, ""]);
+  const removeDateField = (idx: number) => setDatas(prev => prev.filter((_, i) => i !== idx));
+  const updateDate = (idx: number, val: string) => setDatas(prev => prev.map((d, i) => i === idx ? val : d));
+
   const handleSave = async () => {
-    if (!titulo.trim() || !data) return;
+    const validDates = datas.filter(d => d.trim());
+    if (!titulo.trim() || validDates.length === 0) return;
+
+    const sortedDates = [...validDates].sort();
+    const primaryDate = sortedDates[0];
+    const valorNum = valor.trim() ? parseFloat(valor) : null;
 
     if (editingId) {
       const { error } = await supabase.from("missoes").update({
         titulo: titulo.trim(),
-        data,
+        data: primaryDate,
+        datas: sortedDates,
         descricao: descricao.trim() || null,
-      }).eq("id", editingId);
+        valor: valorNum,
+      } as any).eq("id", editingId);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Missão atualizada!");
     } else {
       const { error } = await supabase.from("missoes").insert({
         titulo: titulo.trim(),
-        data,
+        data: primaryDate,
+        datas: sortedDates,
         descricao: descricao.trim() || null,
+        valor: valorNum,
         created_by: user?.id,
-      });
+      } as any);
       if (error) { toast.error("Erro ao criar"); return; }
       toast.success("Missão criada!");
     }
 
-    setTitulo(""); setData(""); setDescricao(""); setEditingId(null);
+    resetForm();
     fetchMissions();
+  };
+
+  const resetForm = () => {
+    setTitulo("");
+    setDatas([""]);
+    setDescricao("");
+    setValor("");
+    setEditingId(null);
   };
 
   const toggleAtiva = async (id: string, ativa: boolean) => {
@@ -100,16 +126,17 @@ const ManageMissions = () => {
     setLoadingInscritos(true);
     const { data: insc } = await supabase
       .from("missao_inscricoes")
-      .select("id, nome, telefone, acompanhantes, acompanhantes_detalhes, observacoes, created_at")
+      .select("id, nome, email, telefone, acompanhantes, acompanhantes_detalhes, datas_escolhidas, observacoes, created_at")
       .eq("missao_id", id)
       .order("created_at", { ascending: true });
     setInscricoes((insc || []) as unknown as Inscricao[]);
     setLoadingInscritos(false);
   };
 
+  const formatDateBR = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
+
   const buildExportData = () => {
     if (!inscricoes.length) return [];
-    // Find max companions to create dynamic columns
     const maxAcomp = inscricoes.reduce((max, i) => {
       const det = Array.isArray(i.acompanhantes_detalhes) ? i.acompanhantes_detalhes.length : 0;
       return Math.max(max, det);
@@ -118,7 +145,9 @@ const ManageMissions = () => {
     return inscricoes.map(i => {
       const row: Record<string, string | number> = {
         "Nome": i.nome,
+        "E-mail": i.email || "",
         "Telefone": i.telefone || "",
+        "Datas Escolhidas": Array.isArray(i.datas_escolhidas) ? i.datas_escolhidas.map(formatDateBR).join(", ") : "",
       };
       const detalhes = Array.isArray(i.acompanhantes_detalhes) ? i.acompanhantes_detalhes as AcompanhanteDetalhe[] : [];
       for (let idx = 0; idx < maxAcomp; idx++) {
@@ -152,8 +181,9 @@ const ManageMissions = () => {
   const startEdit = (m: Mission) => {
     setEditingId(m.id);
     setTitulo(m.titulo);
-    setData(m.data);
+    setDatas(m.datas?.length ? [...m.datas] : [m.data]);
     setDescricao(m.descricao || "");
+    setValor(m.valor != null ? String(m.valor) : "");
   };
 
   return (
@@ -168,22 +198,48 @@ const ManageMissions = () => {
             <Label>Título *</Label>
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Missão Jardim das Flores" />
           </div>
-          <div>
-            <Label>Data *</Label>
-            <Input type="date" value={data} onChange={e => setData(e.target.value)} />
+
+          {/* Multiple dates */}
+          <div className="space-y-2">
+            <Label>Datas da Missão *</Label>
+            {datas.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input type="date" value={d} onChange={e => updateDate(i, e.target.value)} className="flex-1" />
+                {datas.length > 1 && (
+                  <Button type="button" size="icon" variant="ghost" onClick={() => removeDateField(i)}>
+                    <Trash2 size={14} className="text-destructive" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addDateField}>
+              <Plus size={14} className="mr-1" /> Adicionar data
+            </Button>
           </div>
+
+          <div>
+            <Label>Valor (R$)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              placeholder="Ex: 50.00 (deixe vazio se gratuito)"
+            />
+          </div>
+
           <div>
             <Label>Descrição</Label>
-            <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da missão..." rows={3} />
+            <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da missão (suporta parágrafos e emojis)..." rows={3} />
           </div>
+
           <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={!titulo.trim() || !data}>
+            <Button onClick={handleSave} disabled={!titulo.trim() || !datas.some(d => d.trim())}>
               <Plus size={16} className="mr-1" /> {editingId ? "Salvar" : "Criar"}
             </Button>
             {editingId && (
-              <Button variant="outline" onClick={() => { setEditingId(null); setTitulo(""); setData(""); setDescricao(""); }}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={resetForm}>Cancelar</Button>
             )}
           </div>
         </CardContent>
@@ -193,7 +249,8 @@ const ManageMissions = () => {
       <div className="space-y-3">
         {missions.map(m => {
           const isExpanded = expandedId === m.id;
-          const formattedDate = new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR");
+          const allDates = m.datas?.length ? m.datas : [m.data];
+          const datesStr = allDates.map(formatDateBR).join(", ");
           return (
             <Card key={m.id} className={!m.ativa ? "opacity-60" : ""}>
               <CardContent className="p-4 space-y-2">
@@ -202,7 +259,10 @@ const ManageMissions = () => {
                     <p className="font-semibold text-sm truncate cursor-pointer hover:underline" onClick={() => startEdit(m)}>
                       {m.titulo}
                     </p>
-                    <p className="text-xs text-muted-foreground">{formattedDate}</p>
+                    <p className="text-xs text-muted-foreground">📅 {datesStr}</p>
+                    {m.valor != null && m.valor > 0 && (
+                      <p className="text-xs font-medium text-primary">💰 R$ {Number(m.valor).toFixed(2)}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Switch checked={m.ativa} onCheckedChange={() => toggleAtiva(m.id, m.ativa)} />
@@ -240,7 +300,11 @@ const ManageMissions = () => {
                           {inscricoes.map(i => (
                             <div key={i.id} className="text-xs bg-muted/50 rounded-lg p-2">
                               <p className="font-medium">{i.nome}</p>
+                              {i.email && <p className="text-muted-foreground">✉️ {i.email}</p>}
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
+                              {Array.isArray(i.datas_escolhidas) && i.datas_escolhidas.length > 0 && (
+                                <p className="text-muted-foreground">📅 {i.datas_escolhidas.map(formatDateBR).join(", ")}</p>
+                              )}
                               {i.acompanhantes > 0 && Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0 ? (
                                 <div className="mt-1">
                                   <p className="text-muted-foreground font-medium">👥 {i.acompanhantes} acompanhante(s):</p>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flag, CheckCircle2 } from "lucide-react";
+import { Flag, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,9 @@ interface Mission {
   id: string;
   titulo: string;
   data: string;
+  datas?: string[];
   descricao: string | null;
+  valor?: number | null;
 }
 
 const MissionCard = () => {
@@ -18,6 +20,7 @@ const MissionCard = () => {
   const [mission, setMission] = useState<Mission | null>(null);
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchMission = async () => {
     if (!user) return;
@@ -25,14 +28,14 @@ const MissionCard = () => {
 
     const { data: missions } = await supabase
       .from("missoes")
-      .select("id, titulo, data, descricao")
+      .select("id, titulo, data, datas, descricao, valor")
       .eq("ativa", true)
       .gte("data", todayStr)
       .order("data", { ascending: true })
       .limit(1);
 
     if (!missions?.length) { setMission(null); return; }
-    const m = missions[0];
+    const m = missions[0] as unknown as Mission;
     setMission(m);
 
     const { data: inscricao } = await supabase
@@ -49,10 +52,11 @@ const MissionCard = () => {
 
   if (!mission) return null;
 
-  const formattedDate = new Date(mission.data + "T12:00:00").toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-  });
+  const formatDateBR = (d: string) =>
+    new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+
+  const allDates = mission.datas?.length ? mission.datas : [mission.data];
+  const datesStr = allDates.map(formatDateBR).join(" · ");
 
   return (
     <>
@@ -62,10 +66,27 @@ const MissionCard = () => {
           <h3 className="font-bold text-foreground text-sm">Próxima Missão</h3>
         </div>
         <p className="font-semibold text-foreground">{mission.titulo}</p>
-        <p className="text-xs text-muted-foreground">📅 {formattedDate}</p>
-        {mission.descricao && (
-          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{mission.descricao}</p>
+        <p className="text-xs text-muted-foreground">📅 {datesStr}</p>
+        {mission.valor != null && Number(mission.valor) > 0 && (
+          <p className="text-xs font-medium text-primary">💰 R$ {Number(mission.valor).toFixed(2)}</p>
         )}
+
+        {/* Expandable description */}
+        {mission.descricao && (
+          <>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              {expanded ? "Ocultar detalhes" : "Ver detalhes"}
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {expanded && (
+              <p className="text-xs text-muted-foreground whitespace-pre-line animate-fade-in">{mission.descricao}</p>
+            )}
+          </>
+        )}
+
         {isSignedUp ? (
           <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium pt-1">
             <CheckCircle2 size={16} /> Inscrito ✓
