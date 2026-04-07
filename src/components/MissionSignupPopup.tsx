@@ -4,16 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { todayBrasilia } from "@/lib/dateBrasilia";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 
 interface Mission {
   id: string;
   titulo: string;
   data: string;
   descricao: string | null;
+}
+
+interface Acompanhante {
+  nome: string;
+  idade: string;
 }
 
 interface MissionSignupPopupProps {
@@ -28,7 +35,8 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
   const [mission, setMission] = useState<Mission | null>(null);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
-  const [acompanhantes, setAcompanhantes] = useState(0);
+  const [temAcompanhantes, setTemAcompanhantes] = useState(false);
+  const [acompanhantesList, setAcompanhantesList] = useState<Acompanhante[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
@@ -38,13 +46,10 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
     ? (v: boolean) => onOpenChange?.(v)
     : setInternalOpen;
 
-  // Auto-detect active mission on mount (only if not externally controlled)
   useEffect(() => {
     if (externalMission || !user) return;
-
     const check = async () => {
       const todayStr = todayBrasilia();
-
       const { data: missions } = await supabase
         .from("missoes")
         .select("id, titulo, data, descricao")
@@ -52,43 +57,32 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
         .gte("data", todayStr)
         .order("data", { ascending: true })
         .limit(1);
-
       if (!missions?.length) return;
       const m = missions[0];
-
-      // Check if already signed up
       const { data: inscricao } = await supabase
         .from("missao_inscricoes")
         .select("id")
         .eq("user_id", user.id)
         .eq("missao_id", m.id)
         .maybeSingle();
-
       if (inscricao) return;
-
-      // Check if already viewed popup
       const { data: viz } = await supabase
         .from("missao_visualizacoes")
         .select("id")
         .eq("user_id", user.id)
         .eq("missao_id", m.id)
         .maybeSingle();
-
       if (viz) return;
-
       setMission(m);
       setAutoMode(true);
       setInternalOpen(true);
     };
-
     check();
   }, [user, externalMission]);
 
-  // Pre-fill from profile
   useEffect(() => {
     if (!user) return;
     setNome(user.user_metadata?.full_name || "");
-
     supabase
       .from("profiles")
       .select("phone")
@@ -99,7 +93,6 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
       });
   }, [user]);
 
-  // Use external mission when provided
   useEffect(() => {
     if (externalMission) setMission(externalMission);
   }, [externalMission]);
@@ -117,16 +110,31 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
     setIsOpen(false);
   };
 
+  const addAcompanhante = () => {
+    setAcompanhantesList(prev => [...prev, { nome: "", idade: "" }]);
+  };
+
+  const removeAcompanhante = (index: number) => {
+    setAcompanhantesList(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateAcompanhante = (index: number, field: keyof Acompanhante, value: string) => {
+    setAcompanhantesList(prev => prev.map((a, i) => i === index ? { ...a, [field]: value } : a));
+  };
+
   const handleSubmit = async () => {
     if (!user || !mission || !nome.trim()) return;
     setSubmitting(true);
+
+    const detalhes = temAcompanhantes ? acompanhantesList.filter(a => a.nome.trim()) : [];
 
     const { error } = await supabase.from("missao_inscricoes").insert({
       user_id: user.id,
       missao_id: mission.id,
       nome: nome.trim(),
       telefone: telefone.trim() || null,
-      acompanhantes,
+      acompanhantes: detalhes.length,
+      acompanhantes_detalhes: detalhes,
       observacoes: observacoes.trim() || null,
     });
 
@@ -141,7 +149,6 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
       toast.success("Inscrição realizada com sucesso! 🎉");
       setIsOpen(false);
     }
-
     setSubmitting(false);
   };
 
@@ -176,10 +183,58 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
             <Label htmlFor="mission-tel">Telefone</Label>
             <Input id="mission-tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
           </div>
-          <div>
-            <Label htmlFor="mission-acomp">Quantidade de acompanhantes</Label>
-            <Input id="mission-acomp" type="number" min={0} value={acompanhantes} onChange={(e) => setAcompanhantes(Number(e.target.value) || 0)} />
+
+          {/* Acompanhantes toggle */}
+          <div className="flex items-center justify-between">
+            <Label>Levará acompanhantes?</Label>
+            <Switch
+              checked={temAcompanhantes}
+              onCheckedChange={(v) => {
+                setTemAcompanhantes(v);
+                if (v && acompanhantesList.length === 0) addAcompanhante();
+              }}
+            />
           </div>
+
+          {temAcompanhantes && (
+            <div className="space-y-3 pl-1">
+              {acompanhantesList.map((a, i) => (
+                <div key={i} className="flex items-end gap-2 bg-muted/40 rounded-lg p-2">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Nome</Label>
+                    <Input
+                      value={a.nome}
+                      onChange={(e) => updateAcompanhante(i, "nome", e.target.value)}
+                      placeholder="Nome do acompanhante"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="w-20 space-y-1">
+                    <Label className="text-xs">Idade</Label>
+                    <Input
+                      value={a.idade}
+                      onChange={(e) => updateAcompanhante(i, "idade", e.target.value)}
+                      placeholder="Ex: 8"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => removeAcompanhante(i)}
+                  >
+                    <Trash2 size={14} className="text-destructive" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addAcompanhante} className="w-full">
+                <Plus size={14} className="mr-1" /> Adicionar acompanhante
+              </Button>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="mission-obs">Observações</Label>
             <Textarea id="mission-obs" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Alguma informação adicional..." rows={3} />

@@ -19,11 +19,17 @@ interface Mission {
   created_at: string;
 }
 
+interface AcompanhanteDetalhe {
+  nome: string;
+  idade: string;
+}
+
 interface Inscricao {
   id: string;
   nome: string;
   telefone: string | null;
   acompanhantes: number;
+  acompanhantes_detalhes: AcompanhanteDetalhe[] | null;
   observacoes: string | null;
   created_at: string;
 }
