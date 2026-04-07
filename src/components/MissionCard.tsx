@@ -64,7 +64,7 @@ const MissionCard = () => {
         <p className="font-semibold text-foreground">{mission.titulo}</p>
         <p className="text-xs text-muted-foreground">📅 {formattedDate}</p>
         {mission.descricao && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{mission.descricao}</p>
+          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{mission.descricao}</p>
         )}
         {isSignedUp ? (
           <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium pt-1">
