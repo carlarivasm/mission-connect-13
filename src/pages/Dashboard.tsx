@@ -170,6 +170,7 @@ const Dashboard = () => {
         </section>
       </main>
 
+      <MissionSignupPopup />
       <NotificationPopup />
       <BottomNav />
     </div>

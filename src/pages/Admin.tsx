@@ -21,6 +21,7 @@ import AdminBroadcast from "@/components/admin/AdminBroadcast";
 import ManageBanners from "@/components/admin/ManageBanners";
 import ManageAnalytics from "@/components/admin/ManageAnalytics";
 import ManageGallery from "@/components/admin/ManageGallery";
+import ManageMissions from "@/components/admin/ManageMissions";
 
 const Admin = () => {
   const navigate = useNavigate();
