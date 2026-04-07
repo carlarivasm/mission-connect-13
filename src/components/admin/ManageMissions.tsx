@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet, Pencil, Bell } from "lucide-react";
 import { exportToExcel, exportToCsv } from "@/lib/excel";
 
 interface Mission {
@@ -52,6 +52,7 @@ const ManageMissions = () => {
   const [dateEntries, setDateEntries] = useState<DateEntry[]>([{ date: "", title: "" }]);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+  const [notifyPush, setNotifyPush] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [inscricoes, setInscricoes] = useState<Inscricao[]>([]);
@@ -72,6 +73,35 @@ const ManageMissions = () => {
   const updateDateEntry = (idx: number, field: keyof DateEntry, val: string) =>
     setDateEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e));
 
+  const sendPushNotification = async (missionTitle: string, datesStr: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.functions.invoke("send-push-notification", {
+        body: {
+          title: "🚀 Nova Missão Disponível!",
+          body: `${missionTitle} — ${datesStr}. Inscreva-se agora!`,
+          link: "/dashboard",
+        },
+      });
+
+      // Create in-app notifications for all users
+      const { data: profiles } = await supabase.from("profiles").select("id");
+      if (profiles?.length) {
+        const notifications = profiles.map(p => ({
+          user_id: p.id,
+          title: "🚀 Nova Missão Disponível!",
+          message: `${missionTitle} — ${datesStr}. Inscreva-se agora!`,
+          type: "mission",
+          data: {} as import("@/integrations/supabase/types").Json,
+        }));
+        await supabase.from("notifications").insert(notifications as any);
+      }
+    } catch (err) {
+      console.error("Push error:", err);
+    }
+  };
+
   const handleSave = async () => {
     const validEntries = dateEntries.filter(e => e.date.trim());
     if (!titulo.trim() || validEntries.length === 0) return;
@@ -81,6 +111,9 @@ const ManageMissions = () => {
     const sortedTitles = sorted.map(e => e.title.trim());
     const primaryDate = sortedDates[0];
     const valorNum = valor.trim() ? parseFloat(valor) : null;
+
+    const formatDateBRShort = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
+    const datesStr = sortedDates.map(formatDateBRShort).join(", ");
 
     if (editingId) {
       const { error } = await supabase.from("missoes").update({
@@ -105,6 +138,12 @@ const ManageMissions = () => {
       } as any);
       if (error) { toast.error("Erro ao criar"); return; }
       toast.success("Missão criada!");
+
+      if (notifyPush) {
+        toast.info("Enviando notificação push...");
+        await sendPushNotification(titulo.trim(), datesStr);
+        toast.success("Notificação enviada! 🔔");
+      }
     }
 
     resetForm();
@@ -116,6 +155,7 @@ const ManageMissions = () => {
     setDateEntries([{ date: "", title: "" }]);
     setDescricao("");
     setValor("");
+    setNotifyPush(false);
     setEditingId(null);
   };
 
@@ -204,6 +244,7 @@ const ManageMissions = () => {
     setDateEntries(allDates.map((d, i) => ({ date: d, title: titles[i] || "" })));
     setDescricao(m.descricao || "");
     setValor(m.valor != null ? String(m.valor) : "");
+    setNotifyPush(false);
   };
 
   return (
@@ -265,9 +306,27 @@ const ManageMissions = () => {
             <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da missão (suporta parágrafos e emojis)..." rows={3} />
           </div>
 
+          {/* Push notification toggle - only for new missions */}
+          {!editingId && (
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Bell size={16} className="text-primary" />
+                <div>
+                  <Label className="text-sm font-medium">Notificar por push</Label>
+                  <p className="text-xs text-muted-foreground">Enviar notificação para todos os missionários</p>
+                </div>
+              </div>
+              <Switch checked={notifyPush} onCheckedChange={setNotifyPush} />
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button onClick={handleSave} disabled={!titulo.trim() || !dateEntries.some(e => e.date.trim())}>
-              <Plus size={16} className="mr-1" /> {editingId ? "Salvar" : "Criar"}
+              {editingId ? (
+                <><Pencil size={16} className="mr-1" /> Salvar</>
+              ) : (
+                <><Plus size={16} className="mr-1" /> Criar</>
+              )}
             </Button>
             {editingId && (
               <Button variant="outline" onClick={resetForm}>Cancelar</Button>
@@ -290,7 +349,7 @@ const ManageMissions = () => {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate cursor-pointer hover:underline" onClick={() => startEdit(m)}>
+                    <p className="font-semibold text-sm truncate">
                       {m.titulo}
                     </p>
                     <p className="text-xs text-muted-foreground">📅 {datesDisplay}</p>
@@ -298,10 +357,13 @@ const ManageMissions = () => {
                       <p className="text-xs font-medium text-primary">💰 R$ {Number(m.valor).toFixed(2)}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(m)} title="Editar">
+                      <Pencil size={14} />
+                    </Button>
                     <Switch checked={m.ativa} onCheckedChange={() => toggleAtiva(m.id, m.ativa)} />
                     <Button size="icon" variant="ghost" onClick={() => deleteMission(m.id)}>
-                      <Trash2 size={16} className="text-destructive" />
+                      <Trash2 size={14} className="text-destructive" />
                     </Button>
                   </div>
                 </div>
