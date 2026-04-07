@@ -120,6 +120,13 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
     if (externalMission) setMission(externalMission);
   }, [externalMission]);
 
+  // Load existing inscription for editing
+  useEffect(() => {
+    if (editOnOpen && isOpen && user && mission) {
+      loadExistingInscricao();
+    }
+  }, [editOnOpen, isOpen]);
+
   const markViewed = async () => {
     if (!user || !mission) return;
     await supabase.from("missao_visualizacoes").upsert(
