@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Flag, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Flag, CheckCircle2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ interface Mission {
   titulo: string;
   data: string;
   datas?: string[];
+  datas_titulos?: string[];
   descricao: string | null;
   valor?: number | null;
 }
@@ -21,6 +22,8 @@ const MissionCard = () => {
   const [isSignedUp, setIsSignedUp] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const signupRef = useRef<{ loadExisting: () => void }>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const fetchMission = async () => {
     if (!user) return;
@@ -28,7 +31,7 @@ const MissionCard = () => {
 
     const { data: missions } = await supabase
       .from("missoes")
-      .select("id, titulo, data, datas, descricao, valor")
+      .select("id, titulo, data, datas, datas_titulos, descricao, valor")
       .eq("ativa", true)
       .gte("data", todayStr)
       .order("data", { ascending: true })
@@ -56,7 +59,15 @@ const MissionCard = () => {
     new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
 
   const allDates = mission.datas?.length ? mission.datas : [mission.data];
-  const datesStr = allDates.map(formatDateBR).join(" · ");
+  const datesStr = allDates.map((d, i) => {
+    const t = mission.datas_titulos?.[i];
+    return t ? `${formatDateBR(d)} — ${t}` : formatDateBR(d);
+  }).join(" · ");
+
+  const handleEdit = () => {
+    setEditMode(true);
+    setPopupOpen(true);
+  };
 
   return (
     <>
@@ -88,11 +99,16 @@ const MissionCard = () => {
         )}
 
         {isSignedUp ? (
-          <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium pt-1">
-            <CheckCircle2 size={16} /> Inscrito ✓
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium">
+              <CheckCircle2 size={16} /> Inscrito ✓
+            </div>
+            <Button size="sm" variant="outline" onClick={handleEdit}>
+              <Pencil size={14} className="mr-1" /> Editar
+            </Button>
           </div>
         ) : (
-          <Button size="sm" className="w-full mt-1" onClick={() => setPopupOpen(true)}>
+          <Button size="sm" className="w-full mt-1" onClick={() => { setEditMode(false); setPopupOpen(true); }}>
             Inscrever-se
           </Button>
         )}
@@ -103,8 +119,12 @@ const MissionCard = () => {
         open={popupOpen}
         onOpenChange={(v) => {
           setPopupOpen(v);
-          if (!v) fetchMission();
+          if (!v) {
+            setEditMode(false);
+            fetchMission();
+          }
         }}
+        editOnOpen={editMode}
       />
     </>
   );
