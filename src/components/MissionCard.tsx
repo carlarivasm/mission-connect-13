@@ -14,6 +14,11 @@ interface Mission {
   datas_titulos?: string[];
   descricao: string | null;
   valor?: number | null;
+  pix_key?: string | null;
+  pix_qr_url?: string | null;
+  idade_gratuito?: number | null;
+  idade_meia?: number | null;
+  whatsapp_responsavel?: string | null;
 }
 
 const MissionCard = () => {
