@@ -227,9 +227,14 @@ const ManageMissions = () => {
                       <>
                         <div className="flex justify-between items-center">
                           <p className="text-xs font-semibold">{inscricoes.length} inscrito(s) · {inscricoes.reduce((s, i) => s + i.acompanhantes, 0)} acompanhante(s)</p>
-                          <Button size="sm" variant="outline" onClick={exportCSV}>
-                            <Download size={14} className="mr-1" /> CSV
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={handleExportCSV}>
+                              <Download size={14} className="mr-1" /> CSV
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleExportExcel}>
+                              <FileSpreadsheet size={14} className="mr-1" /> Excel
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1.5 max-h-60 overflow-y-auto">
                           {inscricoes.map(i => (
