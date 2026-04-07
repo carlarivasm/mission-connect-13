@@ -210,7 +210,18 @@ const ManageMissions = () => {
                             <div key={i.id} className="text-xs bg-muted/50 rounded-lg p-2">
                               <p className="font-medium">{i.nome}</p>
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
-                              <p className="text-muted-foreground">👥 {i.acompanhantes} acompanhante(s)</p>
+                              {i.acompanhantes > 0 && Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0 ? (
+                                <div className="mt-1">
+                                  <p className="text-muted-foreground font-medium">👥 {i.acompanhantes} acompanhante(s):</p>
+                                  <ul className="ml-4 list-disc">
+                                    {(i.acompanhantes_detalhes as AcompanhanteDetalhe[]).map((a, idx) => (
+                                      <li key={idx} className="text-muted-foreground">{a.nome}{a.idade ? ` (${a.idade} anos)` : ""}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : i.acompanhantes > 0 ? (
+                                <p className="text-muted-foreground">👥 {i.acompanhantes} acompanhante(s)</p>
+                              ) : null}
                               {i.observacoes && <p className="text-muted-foreground italic">"{i.observacoes}"</p>}
                             </div>
                           ))}
