@@ -16,6 +16,7 @@ interface Mission {
   titulo: string;
   data: string;
   datas: string[];
+  datas_titulos: string[];
   descricao: string | null;
   valor: number | null;
   ativa: boolean;
@@ -39,11 +40,16 @@ interface Inscricao {
   created_at: string;
 }
 
+interface DateEntry {
+  date: string;
+  title: string;
+}
+
 const ManageMissions = () => {
   const { user } = useAuth();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [titulo, setTitulo] = useState("");
-  const [datas, setDatas] = useState<string[]>([""]);
+  const [dateEntries, setDateEntries] = useState<DateEntry[]>([{ date: "", title: "" }]);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,15 +67,18 @@ const ManageMissions = () => {
 
   useEffect(() => { fetchMissions(); }, []);
 
-  const addDateField = () => setDatas(prev => [...prev, ""]);
-  const removeDateField = (idx: number) => setDatas(prev => prev.filter((_, i) => i !== idx));
-  const updateDate = (idx: number, val: string) => setDatas(prev => prev.map((d, i) => i === idx ? val : d));
+  const addDateEntry = () => setDateEntries(prev => [...prev, { date: "", title: "" }]);
+  const removeDateEntry = (idx: number) => setDateEntries(prev => prev.filter((_, i) => i !== idx));
+  const updateDateEntry = (idx: number, field: keyof DateEntry, val: string) =>
+    setDateEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e));
 
   const handleSave = async () => {
-    const validDates = datas.filter(d => d.trim());
-    if (!titulo.trim() || validDates.length === 0) return;
+    const validEntries = dateEntries.filter(e => e.date.trim());
+    if (!titulo.trim() || validEntries.length === 0) return;
 
-    const sortedDates = [...validDates].sort();
+    const sorted = [...validEntries].sort((a, b) => a.date.localeCompare(b.date));
+    const sortedDates = sorted.map(e => e.date);
+    const sortedTitles = sorted.map(e => e.title.trim());
     const primaryDate = sortedDates[0];
     const valorNum = valor.trim() ? parseFloat(valor) : null;
 
@@ -78,6 +87,7 @@ const ManageMissions = () => {
         titulo: titulo.trim(),
         data: primaryDate,
         datas: sortedDates,
+        datas_titulos: sortedTitles,
         descricao: descricao.trim() || null,
         valor: valorNum,
       } as any).eq("id", editingId);
@@ -88,6 +98,7 @@ const ManageMissions = () => {
         titulo: titulo.trim(),
         data: primaryDate,
         datas: sortedDates,
+        datas_titulos: sortedTitles,
         descricao: descricao.trim() || null,
         valor: valorNum,
         created_by: user?.id,
@@ -102,7 +113,7 @@ const ManageMissions = () => {
 
   const resetForm = () => {
     setTitulo("");
-    setDatas([""]);
+    setDateEntries([{ date: "", title: "" }]);
     setDescricao("");
     setValor("");
     setEditingId(null);
@@ -134,6 +145,13 @@ const ManageMissions = () => {
   };
 
   const formatDateBR = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
+
+  const getDateLabel = (m: Mission, dateStr: string) => {
+    const allDates = m.datas?.length ? m.datas : [m.data];
+    const idx = allDates.indexOf(dateStr);
+    const title = m.datas_titulos?.[idx];
+    return title ? `${formatDateBR(dateStr)} — ${title}` : formatDateBR(dateStr);
+  };
 
   const buildExportData = () => {
     if (!inscricoes.length) return [];
@@ -181,7 +199,9 @@ const ManageMissions = () => {
   const startEdit = (m: Mission) => {
     setEditingId(m.id);
     setTitulo(m.titulo);
-    setDatas(m.datas?.length ? [...m.datas] : [m.data]);
+    const allDates = m.datas?.length ? m.datas : [m.data];
+    const titles = m.datas_titulos || [];
+    setDateEntries(allDates.map((d, i) => ({ date: d, title: titles[i] || "" })));
     setDescricao(m.descricao || "");
     setValor(m.valor != null ? String(m.valor) : "");
   };
@@ -199,20 +219,31 @@ const ManageMissions = () => {
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Missão Jardim das Flores" />
           </div>
 
-          {/* Multiple dates */}
+          {/* Multiple dates with titles */}
           <div className="space-y-2">
             <Label>Datas da Missão *</Label>
-            {datas.map((d, i) => (
+            {dateEntries.map((entry, i) => (
               <div key={i} className="flex items-center gap-2">
-                <Input type="date" value={d} onChange={e => updateDate(i, e.target.value)} className="flex-1" />
-                {datas.length > 1 && (
-                  <Button type="button" size="icon" variant="ghost" onClick={() => removeDateField(i)}>
+                <Input
+                  type="date"
+                  value={entry.date}
+                  onChange={e => updateDateEntry(i, "date", e.target.value)}
+                  className="w-[160px]"
+                />
+                <Input
+                  value={entry.title}
+                  onChange={e => updateDateEntry(i, "title", e.target.value)}
+                  placeholder="Título da data (opcional)"
+                  className="flex-1"
+                />
+                {dateEntries.length > 1 && (
+                  <Button type="button" size="icon" variant="ghost" onClick={() => removeDateEntry(i)}>
                     <Trash2 size={14} className="text-destructive" />
                   </Button>
                 )}
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={addDateField}>
+            <Button type="button" variant="outline" size="sm" onClick={addDateEntry}>
               <Plus size={14} className="mr-1" /> Adicionar data
             </Button>
           </div>
@@ -235,7 +266,7 @@ const ManageMissions = () => {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={!titulo.trim() || !datas.some(d => d.trim())}>
+            <Button onClick={handleSave} disabled={!titulo.trim() || !dateEntries.some(e => e.date.trim())}>
               <Plus size={16} className="mr-1" /> {editingId ? "Salvar" : "Criar"}
             </Button>
             {editingId && (
@@ -250,7 +281,10 @@ const ManageMissions = () => {
         {missions.map(m => {
           const isExpanded = expandedId === m.id;
           const allDates = m.datas?.length ? m.datas : [m.data];
-          const datesStr = allDates.map(formatDateBR).join(", ");
+          const datesDisplay = allDates.map((d, i) => {
+            const t = m.datas_titulos?.[i];
+            return t ? `${formatDateBR(d)} — ${t}` : formatDateBR(d);
+          }).join(", ");
           return (
             <Card key={m.id} className={!m.ativa ? "opacity-60" : ""}>
               <CardContent className="p-4 space-y-2">
@@ -259,7 +293,7 @@ const ManageMissions = () => {
                     <p className="font-semibold text-sm truncate cursor-pointer hover:underline" onClick={() => startEdit(m)}>
                       {m.titulo}
                     </p>
-                    <p className="text-xs text-muted-foreground">📅 {datesStr}</p>
+                    <p className="text-xs text-muted-foreground">📅 {datesDisplay}</p>
                     {m.valor != null && m.valor > 0 && (
                       <p className="text-xs font-medium text-primary">💰 R$ {Number(m.valor).toFixed(2)}</p>
                     )}
@@ -303,7 +337,7 @@ const ManageMissions = () => {
                               {i.email && <p className="text-muted-foreground">✉️ {i.email}</p>}
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
                               {Array.isArray(i.datas_escolhidas) && i.datas_escolhidas.length > 0 && (
-                                <p className="text-muted-foreground">📅 {i.datas_escolhidas.map(formatDateBR).join(", ")}</p>
+                                <p className="text-muted-foreground">📅 {i.datas_escolhidas.map(d => getDateLabel(m, d)).join(", ")}</p>
                               )}
                               {i.acompanhantes > 0 && Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0 ? (
                                 <div className="mt-1">

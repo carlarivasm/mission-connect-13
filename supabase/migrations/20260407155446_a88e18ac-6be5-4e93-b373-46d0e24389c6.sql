@@ -1,0 +1,1 @@
+ALTER TABLE public.missoes ADD COLUMN IF NOT EXISTS datas_titulos text[] NOT NULL DEFAULT '{}';

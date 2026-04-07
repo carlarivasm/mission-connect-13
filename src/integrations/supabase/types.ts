@@ -850,6 +850,7 @@ export type Database = {
           created_by: string | null
           data: string
           datas: string[]
+          datas_titulos: string[]
           descricao: string | null
           id: string
           titulo: string
@@ -861,6 +862,7 @@ export type Database = {
           created_by?: string | null
           data: string
           datas?: string[]
+          datas_titulos?: string[]
           descricao?: string | null
           id?: string
           titulo: string
@@ -872,6 +874,7 @@ export type Database = {
           created_by?: string | null
           data?: string
           datas?: string[]
+          datas_titulos?: string[]
           descricao?: string | null
           id?: string
           titulo?: string

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { todayBrasilia } from "@/lib/dateBrasilia";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Plus, Trash2, ShoppingBag, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Mission {
@@ -18,6 +18,7 @@ interface Mission {
   titulo: string;
   data: string;
   datas?: string[];
+  datas_titulos?: string[];
   descricao: string | null;
   valor?: number | null;
 }
@@ -27,13 +28,25 @@ interface Acompanhante {
   idade: string;
 }
 
+interface ExistingInscricao {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  datas_escolhidas: string[];
+  acompanhantes: number;
+  acompanhantes_detalhes: Acompanhante[];
+  observacoes: string | null;
+}
+
 interface MissionSignupPopupProps {
   externalMission?: Mission | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  editOnOpen?: boolean;
 }
 
-const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange }: MissionSignupPopupProps) => {
+const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange, editOnOpen }: MissionSignupPopupProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -48,6 +61,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [editingInscricaoId, setEditingInscricaoId] = useState<string | null>(null);
 
   const isOpen = externalMission ? (externalOpen ?? false) : internalOpen;
   const setIsOpen = externalMission
@@ -60,7 +74,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
       const todayStr = todayBrasilia();
       const { data: missions } = await supabase
         .from("missoes")
-        .select("id, titulo, data, datas, descricao, valor")
+        .select("id, titulo, data, datas, datas_titulos, descricao, valor")
         .eq("ativa", true)
         .gte("data", todayStr)
         .order("data", { ascending: true })
@@ -106,6 +120,13 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
     if (externalMission) setMission(externalMission);
   }, [externalMission]);
 
+  // Load existing inscription for editing
+  useEffect(() => {
+    if (editOnOpen && isOpen && user && mission) {
+      loadExistingInscricao();
+    }
+  }, [editOnOpen, isOpen]);
+
   const markViewed = async () => {
     if (!user || !mission) return;
     await supabase.from("missao_visualizacoes").upsert(
@@ -117,6 +138,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
   const handleClose = async () => {
     if (autoMode && !showSuccess) await markViewed();
     setShowSuccess(false);
+    setEditingInscricaoId(null);
     setIsOpen(false);
   };
 
@@ -136,6 +158,39 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
     return all.filter(d => d >= todayStr).sort();
   })();
 
+  const getDateLabel = (d: string) => {
+    if (!mission) return formatDateBR(d);
+    const allDates = mission.datas?.length ? mission.datas : [mission.data];
+    const idx = allDates.indexOf(d);
+    const title = mission.datas_titulos?.[idx];
+    return title ? `${formatDateBR(d)} — ${title}` : formatDateBR(d);
+  };
+
+  const loadExistingInscricao = async () => {
+    if (!user || !mission) return;
+    const { data } = await supabase
+      .from("missao_inscricoes")
+      .select("id, nome, email, telefone, datas_escolhidas, acompanhantes, acompanhantes_detalhes, observacoes")
+      .eq("user_id", user.id)
+      .eq("missao_id", mission.id)
+      .maybeSingle();
+    if (!data) {
+      toast.error("Inscrição não encontrada.");
+      return;
+    }
+    const insc = data as unknown as ExistingInscricao;
+    setEditingInscricaoId(insc.id);
+    setNome(insc.nome);
+    setEmail(insc.email || "");
+    setTelefone(insc.telefone || "");
+    setDatasEscolhidas(Array.isArray(insc.datas_escolhidas) ? insc.datas_escolhidas : []);
+    const det = Array.isArray(insc.acompanhantes_detalhes) ? insc.acompanhantes_detalhes : [];
+    setAcompanhantesList(det);
+    setTemAcompanhantes(det.length > 0);
+    setObservacoes(insc.observacoes || "");
+    setIsOpen(true);
+  };
+
   const handleSubmit = async () => {
     if (!user || !mission || !nome.trim()) return;
     if (availableDates.length > 1 && datasEscolhidas.length === 0) {
@@ -147,28 +202,47 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
     const detalhes = temAcompanhantes ? acompanhantesList.filter(a => a.nome.trim()) : [];
     const chosenDates = availableDates.length === 1 ? availableDates : datasEscolhidas.sort();
 
-    const { error } = await supabase.from("missao_inscricoes").insert({
-      user_id: user.id,
-      missao_id: mission.id,
-      nome: nome.trim(),
-      email: email.trim() || null,
-      telefone: telefone.trim() || null,
-      acompanhantes: detalhes.length,
-      acompanhantes_detalhes: detalhes as unknown as import("@/integrations/supabase/types").Json,
-      datas_escolhidas: chosenDates,
-      observacoes: observacoes.trim() || null,
-    } as any);
+    if (editingInscricaoId) {
+      const { error } = await supabase.from("missao_inscricoes").update({
+        nome: nome.trim(),
+        email: email.trim() || null,
+        telefone: telefone.trim() || null,
+        acompanhantes: detalhes.length,
+        acompanhantes_detalhes: detalhes as unknown as import("@/integrations/supabase/types").Json,
+        datas_escolhidas: chosenDates,
+        observacoes: observacoes.trim() || null,
+      } as any).eq("id", editingInscricaoId);
 
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("Você já está inscrito nesta missão.");
+      if (error) {
+        toast.error("Erro ao atualizar inscrição.");
       } else {
-        toast.error("Erro ao inscrever. Tente novamente.");
+        toast.success("Inscrição atualizada! ✅");
+        setShowSuccess(true);
       }
     } else {
-      await markViewed();
-      toast.success("Inscrição realizada com sucesso! 🎉");
-      setShowSuccess(true);
+      const { error } = await supabase.from("missao_inscricoes").insert({
+        user_id: user.id,
+        missao_id: mission.id,
+        nome: nome.trim(),
+        email: email.trim() || null,
+        telefone: telefone.trim() || null,
+        acompanhantes: detalhes.length,
+        acompanhantes_detalhes: detalhes as unknown as import("@/integrations/supabase/types").Json,
+        datas_escolhidas: chosenDates,
+        observacoes: observacoes.trim() || null,
+      } as any);
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("Você já está inscrito nesta missão.");
+        } else {
+          toast.error("Erro ao inscrever. Tente novamente.");
+        }
+      } else {
+        await markViewed();
+        toast.success("Inscrição realizada com sucesso! 🎉");
+        setShowSuccess(true);
+      }
     }
     setSubmitting(false);
   };
@@ -184,13 +258,22 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         {showSuccess ? (
           <div className="text-center space-y-4 py-4">
-            <p className="text-4xl">🎉</p>
-            <h3 className="text-lg font-bold text-foreground">Inscrição confirmada!</h3>
-            <p className="text-sm text-muted-foreground">Você está inscrito em <strong>{activeMission.titulo}</strong>.</p>
+            <p className="text-4xl">{editingInscricaoId ? "✅" : "🎉"}</p>
+            <h3 className="text-lg font-bold text-foreground">
+              {editingInscricaoId ? "Inscrição atualizada!" : "Inscrição confirmada!"}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {editingInscricaoId
+                ? <>Sua inscrição em <strong>{activeMission.titulo}</strong> foi atualizada.</>
+                : <>Você está inscrito em <strong>{activeMission.titulo}</strong>.</>
+              }
+            </p>
             <div className="space-y-2 pt-2">
-              <Button className="w-full" variant="default" onClick={() => { navigate("/loja"); handleClose(); }}>
-                <ShoppingBag size={16} className="mr-2" /> Comprar Kit Missionário
-              </Button>
+              {!editingInscricaoId && (
+                <Button className="w-full" variant="default" onClick={() => { navigate("/loja"); handleClose(); }}>
+                  <ShoppingBag size={16} className="mr-2" /> Comprar Kit Missionário
+                </Button>
+              )}
               <Button className="w-full" variant="outline" onClick={handleClose}>
                 Fechar
               </Button>
@@ -199,10 +282,12 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle className="text-lg">📋 {activeMission.titulo}</DialogTitle>
+              <DialogTitle className="text-lg">
+                {editingInscricaoId ? "✏️" : "📋"} {activeMission.titulo}
+              </DialogTitle>
               <DialogDescription className="text-sm">
                 <span className="font-semibold text-primary">
-                  {availableDates.map(formatDateBR).join(" · ")}
+                  {availableDates.map(getDateLabel).join(" · ")}
                 </span>
                 {activeMission.valor != null && activeMission.valor > 0 && (
                   <span className="block mt-1 font-semibold text-primary">💰 Valor: R$ {Number(activeMission.valor).toFixed(2)}</span>
@@ -237,7 +322,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
                         checked={datasEscolhidas.includes(d)}
                         onCheckedChange={() => toggleDateChoice(d)}
                       />
-                      {formatDateBR(d)}
+                      {getDateLabel(d)}
                     </label>
                   ))}
                 </div>
@@ -284,7 +369,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
               </div>
 
               <Button onClick={handleSubmit} disabled={submitting || !nome.trim()} className="w-full">
-                {submitting ? "Inscrevendo..." : "Confirmar Inscrição"}
+                {submitting ? "Salvando..." : editingInscricaoId ? "Atualizar Inscrição" : "Confirmar Inscrição"}
               </Button>
             </div>
           </>
@@ -294,4 +379,5 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
   );
 };
 
+export { MissionSignupPopup };
 export default MissionSignupPopup;
