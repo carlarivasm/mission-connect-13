@@ -707,6 +707,8 @@ export type Database = {
           acompanhantes: number
           acompanhantes_detalhes: Json
           created_at: string
+          datas_escolhidas: string[]
+          email: string | null
           id: string
           missao_id: string
           nome: string
@@ -719,6 +721,8 @@ export type Database = {
           acompanhantes?: number
           acompanhantes_detalhes?: Json
           created_at?: string
+          datas_escolhidas?: string[]
+          email?: string | null
           id?: string
           missao_id: string
           nome: string
@@ -731,6 +735,8 @@ export type Database = {
           acompanhantes?: number
           acompanhantes_detalhes?: Json
           created_at?: string
+          datas_escolhidas?: string[]
+          email?: string | null
           id?: string
           missao_id?: string
           nome?: string
@@ -843,27 +849,33 @@ export type Database = {
           created_at: string
           created_by: string | null
           data: string
+          datas: string[]
           descricao: string | null
           id: string
           titulo: string
+          valor: number | null
         }
         Insert: {
           ativa?: boolean
           created_at?: string
           created_by?: string | null
           data: string
+          datas?: string[]
           descricao?: string | null
           id?: string
           titulo: string
+          valor?: number | null
         }
         Update: {
           ativa?: boolean
           created_at?: string
           created_by?: string | null
           data?: string
+          datas?: string[]
           descricao?: string | null
           id?: string
           titulo?: string
+          valor?: number | null
         }
         Relationships: []
       }
