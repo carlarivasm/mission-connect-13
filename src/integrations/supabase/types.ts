@@ -702,6 +702,82 @@ export type Database = {
           },
         ]
       }
+      missao_inscricoes: {
+        Row: {
+          acompanhantes: number
+          created_at: string
+          id: string
+          missao_id: string
+          nome: string
+          observacoes: string | null
+          status: string
+          telefone: string | null
+          user_id: string
+        }
+        Insert: {
+          acompanhantes?: number
+          created_at?: string
+          id?: string
+          missao_id: string
+          nome: string
+          observacoes?: string | null
+          status?: string
+          telefone?: string | null
+          user_id: string
+        }
+        Update: {
+          acompanhantes?: number
+          created_at?: string
+          id?: string
+          missao_id?: string
+          nome?: string
+          observacoes?: string | null
+          status?: string
+          telefone?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missao_inscricoes_missao_id_fkey"
+            columns: ["missao_id"]
+            isOneToOne: false
+            referencedRelation: "missoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missao_visualizacoes: {
+        Row: {
+          created_at: string
+          id: string
+          missao_id: string
+          user_id: string
+          visualizou_popup: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          missao_id: string
+          user_id: string
+          visualizou_popup?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          missao_id?: string
+          user_id?: string
+          visualizou_popup?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missao_visualizacoes_missao_id_fkey"
+            columns: ["missao_id"]
+            isOneToOne: false
+            referencedRelation: "missoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_locations: {
         Row: {
           address: string
@@ -757,6 +833,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      missoes: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          created_by: string | null
+          data: string
+          descricao: string | null
+          id: string
+          titulo: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data: string
+          descricao?: string | null
+          id?: string
+          titulo: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          id?: string
+          titulo?: string
+        }
+        Relationships: []
       }
       needs_categories: {
         Row: {
