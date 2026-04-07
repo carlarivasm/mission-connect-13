@@ -15,6 +15,8 @@ import DashboardBanner from "@/components/DashboardBanner";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
 import EventCard, { EventData } from "@/components/events/EventCard";
+import MissionSignupPopup from "@/components/MissionSignupPopup";
+import MissionCard from "@/components/MissionCard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -111,6 +113,9 @@ const Dashboard = () => {
         <PendingCartAlert />
         <PendingSurveyAlert />
 
+        {/* Próxima Missão */}
+        <MissionCard />
+
         {/* Quick Actions */}
         <OnboardingCard />
         <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
@@ -165,6 +170,7 @@ const Dashboard = () => {
         </section>
       </main>
 
+      <MissionSignupPopup />
       <NotificationPopup />
       <BottomNav />
     </div>
