@@ -109,10 +109,13 @@ const ManageMissions = () => {
   const exportCSV = () => {
     if (!inscricoes.length) return;
     const mission = missions.find(m => m.id === expandedId);
-    const header = "Nome,Telefone,Acompanhantes,Observações,Data Inscrição";
-    const rows = inscricoes.map(i =>
-      `"${i.nome}","${i.telefone || ""}",${i.acompanhantes},"${(i.observacoes || "").replace(/"/g, '""')}","${new Date(i.created_at).toLocaleDateString("pt-BR")}"`
-    );
+    const header = "Nome,Telefone,Acompanhantes,Detalhes Acompanhantes,Observações,Data Inscrição";
+    const rows = inscricoes.map(i => {
+      const detalhes = Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0
+        ? (i.acompanhantes_detalhes as AcompanhanteDetalhe[]).map(a => `${a.nome}${a.idade ? ` (${a.idade})` : ""}`).join("; ")
+        : "";
+      return `"${i.nome}","${i.telefone || ""}",${i.acompanhantes},"${detalhes}","${(i.observacoes || "").replace(/"/g, '""')}","${new Date(i.created_at).toLocaleDateString("pt-BR")}"`;
+    });
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
