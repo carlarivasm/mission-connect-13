@@ -62,6 +62,7 @@ const ManageMissions = () => {
   const [valor, setValor] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [pixQrUrl, setPixQrUrl] = useState("");
+  const [uploadingQr, setUploadingQr] = useState(false);
   const [idadeGratuito, setIdadeGratuito] = useState("");
   const [idadeMeia, setIdadeMeia] = useState("");
   const [whatsappResponsavel, setWhatsappResponsavel] = useState("");
@@ -336,8 +337,31 @@ const ManageMissions = () => {
                 <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" />
               </div>
               <div>
-                <Label className="text-sm">URL da imagem QR Code PIX</Label>
-                <Input value={pixQrUrl} onChange={e => setPixQrUrl(e.target.value)} placeholder="https://... (URL da imagem do QR Code)" />
+                <Label className="text-sm">Imagem QR Code PIX</Label>
+                {pixQrUrl && (
+                  <img src={pixQrUrl} alt="QR Code" className="max-w-[120px] rounded border mb-2" />
+                )}
+                <Input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  disabled={uploadingQr}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 5MB)."); return; }
+                    setUploadingQr(true);
+                    const ext = file.name.split(".").pop();
+                    const path = `qr-codes/${Date.now()}.${ext}`;
+                    const { error } = await supabase.storage.from("payment_receipts").upload(path, file, { upsert: true });
+                    if (error) { toast.error("Erro ao enviar imagem."); setUploadingQr(false); return; }
+                    const { data: urlData } = supabase.storage.from("payment_receipts").getPublicUrl(path);
+                    setPixQrUrl(urlData.publicUrl);
+                    setUploadingQr(false);
+                    toast.success("QR Code enviado!");
+                  }}
+                  className="text-sm"
+                />
+                {uploadingQr && <p className="text-xs text-muted-foreground">Enviando...</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

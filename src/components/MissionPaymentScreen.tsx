@@ -4,8 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, Upload, MessageCircle, ShoppingBag, Check } from "lucide-react";
+import { Copy, Upload, Check, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Acompanhante {
   nome: string;
@@ -45,14 +52,14 @@ const MissionPaymentScreen = ({
   const [uploading, setUploading] = useState(false);
   const [comprovanteUrl, setComprovanteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showKitDialog, setShowKitDialog] = useState(false);
 
-  // Calculate total based on age thresholds
   const calculateTotal = () => {
-    let total = valor; // titular always pays full
+    let total = valor;
     for (const a of acompanhantes) {
       const age = parseInt(a.idade);
       if (isNaN(age)) {
-        total += valor; // no age = full price
+        total += valor;
       } else if (idadeGratuito > 0 && age <= idadeGratuito) {
         // free
       } else if (idadeMeia > 0 && age <= idadeMeia) {
@@ -108,20 +115,6 @@ const MissionPaymentScreen = ({
     setUploading(false);
   };
 
-  const handleWhatsApp = () => {
-    if (!whatsappResponsavel) return;
-    const phone = whatsappResponsavel.replace(/\D/g, "");
-    const priceBreakdown = buildPriceBreakdown();
-    const msg = encodeURIComponent(
-      `Olá! Segue meu comprovante de pagamento da missão *${missionTitle}*.\n\n` +
-      `👤 Titular: ${nomeTitular}\n` +
-      `${priceBreakdown}\n` +
-      `💰 *Total: R$ ${totalValue.toFixed(2)}*\n` +
-      (comprovanteUrl ? `\n📎 Comprovante: ${comprovanteUrl}` : "")
-    );
-    window.open(`https://wa.me/55${phone}?text=${msg}`, "_blank");
-  };
-
   const buildPriceBreakdown = () => {
     const lines: string[] = [`  • ${nomeTitular}: R$ ${valor.toFixed(2)} (inteira)`];
     for (const a of acompanhantes) {
@@ -137,6 +130,23 @@ const MissionPaymentScreen = ({
       }
     }
     return lines.join("\n");
+  };
+
+  const handleConfirm = () => {
+    if (whatsappResponsavel) {
+      const phone = whatsappResponsavel.replace(/\D/g, "");
+      const priceBreakdown = buildPriceBreakdown();
+      const msg = encodeURIComponent(
+        `Olá! Segue meu comprovante de pagamento da missão *${missionTitle}*.\n\n` +
+        `👤 Titular: ${nomeTitular}\n` +
+        `${priceBreakdown}\n` +
+        `💰 *Total: R$ ${totalValue.toFixed(2)}*\n` +
+        (comprovanteUrl ? `\n📎 Comprovante: ${comprovanteUrl}` : "")
+      );
+      window.open(`https://wa.me/55${phone}?text=${msg}`, "_blank");
+    }
+    toast.success("Inscrição confirmada! ✅");
+    setShowKitDialog(true);
   };
 
   return (
@@ -221,23 +231,34 @@ const MissionPaymentScreen = ({
         {comprovanteUrl && <p className="text-xs text-green-600 font-medium">✅ Comprovante enviado!</p>}
       </div>
 
-      {/* WhatsApp button */}
-      {whatsappResponsavel && (
-        <Button variant="outline" className="w-full" onClick={handleWhatsApp}>
-          <MessageCircle size={16} className="mr-2 text-green-600" /> Enviar dados pelo WhatsApp
-        </Button>
-      )}
-
-      {/* Store CTA */}
-      {!isEditing && (
-        <Button className="w-full" variant="default" onClick={() => { navigate("/loja"); onClose(); }}>
-          <ShoppingBag size={16} className="mr-2" /> Comprar Kit Missionário
-        </Button>
-      )}
+      {/* Confirm button */}
+      <Button className="w-full" variant="default" onClick={handleConfirm}>
+        <Check size={16} className="mr-2" /> Confirmar Inscrição
+      </Button>
 
       <Button className="w-full" variant="outline" onClick={onClose}>
         Fechar
       </Button>
+
+      {/* Kit dialog */}
+      <Dialog open={showKitDialog} onOpenChange={setShowKitDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>🎒 Kit Missionário</DialogTitle>
+            <DialogDescription>
+              Deseja comprar o kit missionário para esta missão?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-2">
+            <Button onClick={() => { setShowKitDialog(false); navigate("/loja"); onClose(); }}>
+              <ShoppingBag size={16} className="mr-2" /> Ir para a Loja
+            </Button>
+            <Button variant="outline" onClick={() => { setShowKitDialog(false); onClose(); }}>
+              Não, obrigado
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
