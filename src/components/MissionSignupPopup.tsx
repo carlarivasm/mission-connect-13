@@ -46,7 +46,7 @@ interface MissionSignupPopupProps {
   editOnOpen?: boolean;
 }
 
-const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange }: MissionSignupPopupProps) => {
+const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange, editOnOpen }: MissionSignupPopupProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
