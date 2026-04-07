@@ -115,9 +115,13 @@ const Admin = () => {
               <Camera size={16} className="shrink-0" />
               <span className="text-center leading-tight">Galeria</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+             <TabsTrigger value="settings" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
               <Settings size={16} className="shrink-0" />
               <span className="text-center leading-tight">Configurações</span>
+            </TabsTrigger>
+            <TabsTrigger value="missions" className="flex flex-col items-center gap-1 text-[11px] sm:text-xs py-3 h-auto whitespace-normal">
+              <Flag size={16} className="shrink-0" />
+              <span className="text-center leading-tight">Missões</span>
             </TabsTrigger>
           </TabsList>
 
