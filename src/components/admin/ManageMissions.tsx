@@ -21,6 +21,11 @@ interface Mission {
   valor: number | null;
   ativa: boolean;
   created_at: string;
+  pix_key: string | null;
+  pix_qr_url: string | null;
+  idade_gratuito: number | null;
+  idade_meia: number | null;
+  whatsapp_responsavel: string | null;
 }
 
 interface AcompanhanteDetalhe {
@@ -38,6 +43,9 @@ interface Inscricao {
   datas_escolhidas: string[];
   observacoes: string | null;
   created_at: string;
+  pago: boolean | null;
+  valor_total: number | null;
+  comprovante_url: string | null;
 }
 
 interface DateEntry {
@@ -52,6 +60,11 @@ const ManageMissions = () => {
   const [dateEntries, setDateEntries] = useState<DateEntry[]>([{ date: "", title: "" }]);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+  const [pixKey, setPixKey] = useState("");
+  const [pixQrUrl, setPixQrUrl] = useState("");
+  const [idadeGratuito, setIdadeGratuito] = useState("");
+  const [idadeMeia, setIdadeMeia] = useState("");
+  const [whatsappResponsavel, setWhatsappResponsavel] = useState("");
   const [notifyPush, setNotifyPush] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -84,8 +97,6 @@ const ManageMissions = () => {
           link: "/dashboard",
         },
       });
-
-      // Create in-app notifications for all users
       const { data: profiles } = await supabase.from("profiles").select("id");
       if (profiles?.length) {
         const notifications = profiles.map(p => ({
@@ -115,30 +126,31 @@ const ManageMissions = () => {
     const formatDateBRShort = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
     const datesStr = sortedDates.map(formatDateBRShort).join(", ");
 
+    const payload = {
+      titulo: titulo.trim(),
+      data: primaryDate,
+      datas: sortedDates,
+      datas_titulos: sortedTitles,
+      descricao: descricao.trim() || null,
+      valor: valorNum,
+      pix_key: pixKey.trim() || null,
+      pix_qr_url: pixQrUrl.trim() || null,
+      idade_gratuito: idadeGratuito.trim() ? parseInt(idadeGratuito) : 0,
+      idade_meia: idadeMeia.trim() ? parseInt(idadeMeia) : 0,
+      whatsapp_responsavel: whatsappResponsavel.trim() || null,
+    };
+
     if (editingId) {
-      const { error } = await supabase.from("missoes").update({
-        titulo: titulo.trim(),
-        data: primaryDate,
-        datas: sortedDates,
-        datas_titulos: sortedTitles,
-        descricao: descricao.trim() || null,
-        valor: valorNum,
-      } as any).eq("id", editingId);
+      const { error } = await supabase.from("missoes").update(payload as any).eq("id", editingId);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Missão atualizada!");
     } else {
       const { error } = await supabase.from("missoes").insert({
-        titulo: titulo.trim(),
-        data: primaryDate,
-        datas: sortedDates,
-        datas_titulos: sortedTitles,
-        descricao: descricao.trim() || null,
-        valor: valorNum,
+        ...payload,
         created_by: user?.id,
       } as any);
       if (error) { toast.error("Erro ao criar"); return; }
       toast.success("Missão criada!");
-
       if (notifyPush) {
         toast.info("Enviando notificação push...");
         await sendPushNotification(titulo.trim(), datesStr);
@@ -155,6 +167,11 @@ const ManageMissions = () => {
     setDateEntries([{ date: "", title: "" }]);
     setDescricao("");
     setValor("");
+    setPixKey("");
+    setPixQrUrl("");
+    setIdadeGratuito("");
+    setIdadeMeia("");
+    setWhatsappResponsavel("");
     setNotifyPush(false);
     setEditingId(null);
   };
@@ -177,7 +194,7 @@ const ManageMissions = () => {
     setLoadingInscritos(true);
     const { data: insc } = await supabase
       .from("missao_inscricoes")
-      .select("id, nome, email, telefone, acompanhantes, acompanhantes_detalhes, datas_escolhidas, observacoes, created_at")
+      .select("id, nome, email, telefone, acompanhantes, acompanhantes_detalhes, datas_escolhidas, observacoes, created_at, pago, valor_total, comprovante_url")
       .eq("missao_id", id)
       .order("created_at", { ascending: true });
     setInscricoes((insc || []) as unknown as Inscricao[]);
@@ -214,6 +231,9 @@ const ManageMissions = () => {
         row[`Acompanhante ${idx + 1} - Idade`] = a?.idade || "";
       }
       row["Observações"] = i.observacoes || "";
+      row["Valor Total"] = i.valor_total != null ? `R$ ${Number(i.valor_total).toFixed(2)}` : "";
+      row["Pago"] = i.pago ? "Sim" : "Não";
+      row["Comprovante"] = i.comprovante_url || "";
       row["Data Inscrição"] = new Date(i.created_at).toLocaleDateString("pt-BR");
       return row;
     });
@@ -244,12 +264,18 @@ const ManageMissions = () => {
     setDateEntries(allDates.map((d, i) => ({ date: d, title: titles[i] || "" })));
     setDescricao(m.descricao || "");
     setValor(m.valor != null ? String(m.valor) : "");
+    setPixKey(m.pix_key || "");
+    setPixQrUrl(m.pix_qr_url || "");
+    setIdadeGratuito(m.idade_gratuito ? String(m.idade_gratuito) : "");
+    setIdadeMeia(m.idade_meia ? String(m.idade_meia) : "");
+    setWhatsappResponsavel(m.whatsapp_responsavel || "");
     setNotifyPush(false);
   };
 
+  const showPaymentFields = valor.trim() && parseFloat(valor) > 0;
+
   return (
     <div className="space-y-6">
-      {/* Form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{editingId ? "Editar Missão" : "Nova Missão"}</CardTitle>
@@ -260,7 +286,6 @@ const ManageMissions = () => {
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Missão Jardim das Flores" />
           </div>
 
-          {/* Multiple dates with titles */}
           <div className="space-y-2">
             <Label>Datas da Missão *</Label>
             {dateEntries.map((entry, i) => (
@@ -301,12 +326,43 @@ const ManageMissions = () => {
             />
           </div>
 
+          {/* Payment config - shown when valor > 0 */}
+          {showPaymentFields && (
+            <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+              <p className="text-sm font-semibold text-foreground">💳 Configuração de Pagamento</p>
+              
+              <div>
+                <Label className="text-sm">Chave PIX</Label>
+                <Input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+              </div>
+              <div>
+                <Label className="text-sm">URL da imagem QR Code PIX</Label>
+                <Input value={pixQrUrl} onChange={e => setPixQrUrl(e.target.value)} placeholder="https://... (URL da imagem do QR Code)" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-sm">Idade gratuito (até)</Label>
+                  <Input type="number" min="0" value={idadeGratuito} onChange={e => setIdadeGratuito(e.target.value)} placeholder="Ex: 5" />
+                </div>
+                <div>
+                  <Label className="text-sm">Idade meia (até)</Label>
+                  <Input type="number" min="0" value={idadeMeia} onChange={e => setIdadeMeia(e.target.value)} placeholder="Ex: 12" />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm">WhatsApp do responsável</Label>
+                <Input value={whatsappResponsavel} onChange={e => setWhatsappResponsavel(e.target.value)} placeholder="(00) 00000-0000" />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Descrição</Label>
             <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes da missão (suporta parágrafos e emojis)..." rows={3} />
           </div>
 
-          {/* Push notification toggle - only for new missions */}
           {!editingId && (
             <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
               <div className="flex items-center gap-2">
@@ -335,7 +391,6 @@ const ManageMissions = () => {
         </CardContent>
       </Card>
 
-      {/* List */}
       <div className="space-y-3">
         {missions.map(m => {
           const isExpanded = expandedId === m.id;
@@ -349,9 +404,7 @@ const ManageMissions = () => {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
-                      {m.titulo}
-                    </p>
+                    <p className="font-semibold text-sm truncate">{m.titulo}</p>
                     <p className="text-xs text-muted-foreground">📅 {datesDisplay}</p>
                     {m.valor != null && m.valor > 0 && (
                       <p className="text-xs font-medium text-primary">💰 R$ {Number(m.valor).toFixed(2)}</p>
@@ -395,7 +448,14 @@ const ManageMissions = () => {
                         <div className="space-y-1.5 max-h-60 overflow-y-auto">
                           {inscricoes.map(i => (
                             <div key={i.id} className="text-xs bg-muted/50 rounded-lg p-2">
-                              <p className="font-medium">{i.nome}</p>
+                              <div className="flex items-center justify-between">
+                                <p className="font-medium">{i.nome}</p>
+                                {m.valor != null && m.valor > 0 && (
+                                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${i.pago ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>
+                                    {i.pago ? "✅ Pago" : "⏳ Pendente"}
+                                  </span>
+                                )}
+                              </div>
                               {i.email && <p className="text-muted-foreground">✉️ {i.email}</p>}
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
                               {Array.isArray(i.datas_escolhidas) && i.datas_escolhidas.length > 0 && (
@@ -413,6 +473,12 @@ const ManageMissions = () => {
                               ) : i.acompanhantes > 0 ? (
                                 <p className="text-muted-foreground">👥 {i.acompanhantes} acompanhante(s)</p>
                               ) : null}
+                              {i.valor_total != null && i.valor_total > 0 && (
+                                <p className="text-muted-foreground">💰 R$ {Number(i.valor_total).toFixed(2)}</p>
+                              )}
+                              {i.comprovante_url && (
+                                <a href={i.comprovante_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">📎 Ver comprovante</a>
+                              )}
                               {i.observacoes && <p className="text-muted-foreground italic">"{i.observacoes}"</p>}
                             </div>
                           ))}

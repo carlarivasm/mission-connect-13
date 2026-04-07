@@ -12,6 +12,7 @@ import { todayBrasilia } from "@/lib/dateBrasilia";
 import { toast } from "sonner";
 import { Plus, Trash2, ShoppingBag, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MissionPaymentScreen from "./MissionPaymentScreen";
 
 interface Mission {
   id: string;
@@ -21,6 +22,11 @@ interface Mission {
   datas_titulos?: string[];
   descricao: string | null;
   valor?: number | null;
+  pix_key?: string | null;
+  pix_qr_url?: string | null;
+  idade_gratuito?: number | null;
+  idade_meia?: number | null;
+  whatsapp_responsavel?: string | null;
 }
 
 interface Acompanhante {
@@ -61,6 +67,8 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
   const [submitting, setSubmitting] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [inscricaoId, setInscricaoId] = useState<string | null>(null);
   const [editingInscricaoId, setEditingInscricaoId] = useState<string | null>(null);
 
   const isOpen = externalMission ? (externalOpen ?? false) : internalOpen;
@@ -68,13 +76,16 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
     ? (v: boolean) => onOpenChange?.(v)
     : setInternalOpen;
 
+  const formatDateBR = (d: string) =>
+    new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
   useEffect(() => {
     if (externalMission || !user) return;
     const check = async () => {
       const todayStr = todayBrasilia();
       const { data: missions } = await supabase
         .from("missoes")
-        .select("id, titulo, data, datas, datas_titulos, descricao, valor")
+        .select("id, titulo, data, datas, datas_titulos, descricao, valor, pix_key, pix_qr_url, idade_gratuito, idade_meia, whatsapp_responsavel")
         .eq("ativa", true)
         .gte("data", todayStr)
         .order("data", { ascending: true })
@@ -120,7 +131,6 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
     if (externalMission) setMission(externalMission);
   }, [externalMission]);
 
-  // Load existing inscription for editing
   useEffect(() => {
     if (editOnOpen && isOpen && user && mission) {
       loadExistingInscricao();
@@ -136,8 +146,10 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
   };
 
   const handleClose = async () => {
-    if (autoMode && !showSuccess) await markViewed();
+    if (autoMode && !showSuccess && !showPayment) await markViewed();
     setShowSuccess(false);
+    setShowPayment(false);
+    setInscricaoId(null);
     setEditingInscricaoId(null);
     setIsOpen(false);
   };
@@ -191,6 +203,8 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
     setIsOpen(true);
   };
 
+  const missionHasPayment = mission && mission.valor != null && mission.valor > 0;
+
   const handleSubmit = async () => {
     if (!user || !mission || !nome.trim()) return;
     if (availableDates.length > 1 && datasEscolhidas.length === 0) {
@@ -217,10 +231,15 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
         toast.error("Erro ao atualizar inscrição.");
       } else {
         toast.success("Inscrição atualizada! ✅");
-        setShowSuccess(true);
+        if (missionHasPayment) {
+          setInscricaoId(editingInscricaoId);
+          setShowPayment(true);
+        } else {
+          setShowSuccess(true);
+        }
       }
     } else {
-      const { error } = await supabase.from("missao_inscricoes").insert({
+      const { data: insertedData, error } = await supabase.from("missao_inscricoes").insert({
         user_id: user.id,
         missao_id: mission.id,
         nome: nome.trim(),
@@ -230,7 +249,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
         acompanhantes_detalhes: detalhes as unknown as import("@/integrations/supabase/types").Json,
         datas_escolhidas: chosenDates,
         observacoes: observacoes.trim() || null,
-      } as any);
+      } as any).select("id").single();
 
       if (error) {
         if (error.code === "23505") {
@@ -241,7 +260,13 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
       } else {
         await markViewed();
         toast.success("Inscrição realizada com sucesso! 🎉");
-        setShowSuccess(true);
+        const newId = (insertedData as any)?.id;
+        if (missionHasPayment && newId) {
+          setInscricaoId(newId);
+          setShowPayment(true);
+        } else {
+          setShowSuccess(true);
+        }
       }
     }
     setSubmitting(false);
@@ -250,13 +275,25 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
   const activeMission = mission;
   if (!activeMission) return null;
 
-  const formatDateBR = (d: string) =>
-    new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if (!v) handleClose(); else setIsOpen(true); }}>
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
-        {showSuccess ? (
+        {showPayment && inscricaoId && missionHasPayment ? (
+          <MissionPaymentScreen
+            missionTitle={activeMission.titulo}
+            valor={Number(activeMission.valor)}
+            pixKey={activeMission.pix_key || null}
+            pixQrUrl={activeMission.pix_qr_url || null}
+            idadeGratuito={activeMission.idade_gratuito || 0}
+            idadeMeia={activeMission.idade_meia || 0}
+            whatsappResponsavel={activeMission.whatsapp_responsavel || null}
+            acompanhantes={temAcompanhantes ? acompanhantesList.filter(a => a.nome.trim()) : []}
+            nomeTitular={nome}
+            inscricaoId={inscricaoId}
+            isEditing={!!editingInscricaoId}
+            onClose={handleClose}
+          />
+        ) : showSuccess ? (
           <div className="text-center space-y-4 py-4">
             <p className="text-4xl">{editingInscricaoId ? "✅" : "🎉"}</p>
             <h3 className="text-lg font-bold text-foreground">
@@ -312,7 +349,6 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
                 <Input id="mission-tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 00000-0000" />
               </div>
 
-              {/* Date selection */}
               {availableDates.length > 1 && (
                 <div className="space-y-2">
                   <Label>Datas que pretende participar *</Label>
@@ -328,7 +364,6 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
                 </div>
               )}
 
-              {/* Acompanhantes toggle */}
               <div className="flex items-center justify-between">
                 <Label>Levará acompanhantes?</Label>
                 <Switch

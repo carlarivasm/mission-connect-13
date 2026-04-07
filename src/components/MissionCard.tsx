@@ -14,6 +14,11 @@ interface Mission {
   datas_titulos?: string[];
   descricao: string | null;
   valor?: number | null;
+  pix_key?: string | null;
+  pix_qr_url?: string | null;
+  idade_gratuito?: number | null;
+  idade_meia?: number | null;
+  whatsapp_responsavel?: string | null;
 }
 
 const MissionCard = () => {
@@ -31,7 +36,7 @@ const MissionCard = () => {
 
     const { data: missions } = await supabase
       .from("missoes")
-      .select("id, titulo, data, datas, datas_titulos, descricao, valor")
+      .select("id, titulo, data, datas, datas_titulos, descricao, valor, pix_key, pix_qr_url, idade_gratuito, idade_meia, whatsapp_responsavel")
       .eq("ativa", true)
       .gte("data", todayStr)
       .order("data", { ascending: true })

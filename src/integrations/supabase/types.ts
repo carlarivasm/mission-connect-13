@@ -706,6 +706,7 @@ export type Database = {
         Row: {
           acompanhantes: number
           acompanhantes_detalhes: Json
+          comprovante_url: string | null
           created_at: string
           datas_escolhidas: string[]
           email: string | null
@@ -713,13 +714,16 @@ export type Database = {
           missao_id: string
           nome: string
           observacoes: string | null
+          pago: boolean | null
           status: string
           telefone: string | null
           user_id: string
+          valor_total: number | null
         }
         Insert: {
           acompanhantes?: number
           acompanhantes_detalhes?: Json
+          comprovante_url?: string | null
           created_at?: string
           datas_escolhidas?: string[]
           email?: string | null
@@ -727,13 +731,16 @@ export type Database = {
           missao_id: string
           nome: string
           observacoes?: string | null
+          pago?: boolean | null
           status?: string
           telefone?: string | null
           user_id: string
+          valor_total?: number | null
         }
         Update: {
           acompanhantes?: number
           acompanhantes_detalhes?: Json
+          comprovante_url?: string | null
           created_at?: string
           datas_escolhidas?: string[]
           email?: string | null
@@ -741,9 +748,11 @@ export type Database = {
           missao_id?: string
           nome?: string
           observacoes?: string | null
+          pago?: boolean | null
           status?: string
           telefone?: string | null
           user_id?: string
+          valor_total?: number | null
         }
         Relationships: [
           {
@@ -853,8 +862,13 @@ export type Database = {
           datas_titulos: string[]
           descricao: string | null
           id: string
+          idade_gratuito: number | null
+          idade_meia: number | null
+          pix_key: string | null
+          pix_qr_url: string | null
           titulo: string
           valor: number | null
+          whatsapp_responsavel: string | null
         }
         Insert: {
           ativa?: boolean
@@ -865,8 +879,13 @@ export type Database = {
           datas_titulos?: string[]
           descricao?: string | null
           id?: string
+          idade_gratuito?: number | null
+          idade_meia?: number | null
+          pix_key?: string | null
+          pix_qr_url?: string | null
           titulo: string
           valor?: number | null
+          whatsapp_responsavel?: string | null
         }
         Update: {
           ativa?: boolean
@@ -877,8 +896,13 @@ export type Database = {
           datas_titulos?: string[]
           descricao?: string | null
           id?: string
+          idade_gratuito?: number | null
+          idade_meia?: number | null
+          pix_key?: string | null
+          pix_qr_url?: string | null
           titulo?: string
           valor?: number | null
+          whatsapp_responsavel?: string | null
         }
         Relationships: []
       }
