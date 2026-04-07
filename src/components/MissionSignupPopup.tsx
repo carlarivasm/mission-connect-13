@@ -169,7 +169,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
           <DialogDescription className="text-sm">
             <span className="font-semibold text-primary">{formattedDate}</span>
             {activeMission.descricao && (
-              <span className="block mt-1 text-muted-foreground">{activeMission.descricao}</span>
+              <span className="block mt-1 text-muted-foreground whitespace-pre-line">{activeMission.descricao}</span>
             )}
           </DialogDescription>
         </DialogHeader>
