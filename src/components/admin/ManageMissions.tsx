@@ -202,6 +202,14 @@ const ManageMissions = () => {
     setLoadingInscritos(false);
   };
 
+  const deleteInscricao = async (inscricaoId: string, missaoId: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta inscrição?")) return;
+    const { error } = await supabase.from("missao_inscricoes").delete().eq("id", inscricaoId);
+    if (error) { toast.error("Erro ao excluir inscrição"); return; }
+    toast.success("Inscrição excluída");
+    setInscricoes(prev => prev.filter(i => i.id !== inscricaoId));
+  };
+
   const formatDateBR = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
 
   const getDateLabel = (m: Mission, dateStr: string) => {
