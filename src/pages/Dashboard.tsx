@@ -113,6 +113,9 @@ const Dashboard = () => {
         <PendingCartAlert />
         <PendingSurveyAlert />
 
+        {/* Próxima Missão */}
+        <MissionCard />
+
         {/* Quick Actions */}
         <OnboardingCard />
         <section className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
