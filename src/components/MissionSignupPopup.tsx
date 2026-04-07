@@ -43,6 +43,7 @@ interface MissionSignupPopupProps {
   externalMission?: Mission | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  editOnOpen?: boolean;
 }
 
 const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange }: MissionSignupPopupProps) => {
