@@ -1,0 +1,1 @@
+ALTER TABLE public.missao_inscricoes ADD COLUMN acompanhantes_detalhes jsonb NOT NULL DEFAULT '[]'::jsonb;

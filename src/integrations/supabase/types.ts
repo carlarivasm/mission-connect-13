@@ -705,6 +705,7 @@ export type Database = {
       missao_inscricoes: {
         Row: {
           acompanhantes: number
+          acompanhantes_detalhes: Json
           created_at: string
           id: string
           missao_id: string
@@ -716,6 +717,7 @@ export type Database = {
         }
         Insert: {
           acompanhantes?: number
+          acompanhantes_detalhes?: Json
           created_at?: string
           id?: string
           missao_id: string
@@ -727,6 +729,7 @@ export type Database = {
         }
         Update: {
           acompanhantes?: number
+          acompanhantes_detalhes?: Json
           created_at?: string
           id?: string
           missao_id?: string

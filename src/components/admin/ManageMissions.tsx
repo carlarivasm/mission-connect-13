@@ -19,11 +19,17 @@ interface Mission {
   created_at: string;
 }
 
+interface AcompanhanteDetalhe {
+  nome: string;
+  idade: string;
+}
+
 interface Inscricao {
   id: string;
   nome: string;
   telefone: string | null;
   acompanhantes: number;
+  acompanhantes_detalhes: unknown[] | null;
   observacoes: string | null;
   created_at: string;
 }
@@ -93,20 +99,23 @@ const ManageMissions = () => {
     setLoadingInscritos(true);
     const { data: insc } = await supabase
       .from("missao_inscricoes")
-      .select("id, nome, telefone, acompanhantes, observacoes, created_at")
+      .select("id, nome, telefone, acompanhantes, acompanhantes_detalhes, observacoes, created_at")
       .eq("missao_id", id)
       .order("created_at", { ascending: true });
-    setInscricoes(insc || []);
+    setInscricoes((insc || []) as unknown as Inscricao[]);
     setLoadingInscritos(false);
   };
 
   const exportCSV = () => {
     if (!inscricoes.length) return;
     const mission = missions.find(m => m.id === expandedId);
-    const header = "Nome,Telefone,Acompanhantes,Observações,Data Inscrição";
-    const rows = inscricoes.map(i =>
-      `"${i.nome}","${i.telefone || ""}",${i.acompanhantes},"${(i.observacoes || "").replace(/"/g, '""')}","${new Date(i.created_at).toLocaleDateString("pt-BR")}"`
-    );
+    const header = "Nome,Telefone,Acompanhantes,Detalhes Acompanhantes,Observações,Data Inscrição";
+    const rows = inscricoes.map(i => {
+      const detalhes = Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0
+        ? (i.acompanhantes_detalhes as AcompanhanteDetalhe[]).map(a => `${a.nome}${a.idade ? ` (${a.idade})` : ""}`).join("; ")
+        : "";
+      return `"${i.nome}","${i.telefone || ""}",${i.acompanhantes},"${detalhes}","${(i.observacoes || "").replace(/"/g, '""')}","${new Date(i.created_at).toLocaleDateString("pt-BR")}"`;
+    });
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -204,7 +213,18 @@ const ManageMissions = () => {
                             <div key={i.id} className="text-xs bg-muted/50 rounded-lg p-2">
                               <p className="font-medium">{i.nome}</p>
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
-                              <p className="text-muted-foreground">👥 {i.acompanhantes} acompanhante(s)</p>
+                              {i.acompanhantes > 0 && Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0 ? (
+                                <div className="mt-1">
+                                  <p className="text-muted-foreground font-medium">👥 {i.acompanhantes} acompanhante(s):</p>
+                                  <ul className="ml-4 list-disc">
+                                    {(i.acompanhantes_detalhes as AcompanhanteDetalhe[]).map((a, idx) => (
+                                      <li key={idx} className="text-muted-foreground">{a.nome}{a.idade ? ` (${a.idade} anos)` : ""}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : i.acompanhantes > 0 ? (
+                                <p className="text-muted-foreground">👥 {i.acompanhantes} acompanhante(s)</p>
+                              ) : null}
                               {i.observacoes && <p className="text-muted-foreground italic">"{i.observacoes}"</p>}
                             </div>
                           ))}
