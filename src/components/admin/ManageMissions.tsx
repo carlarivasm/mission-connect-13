@@ -29,7 +29,7 @@ interface Inscricao {
   nome: string;
   telefone: string | null;
   acompanhantes: number;
-  acompanhantes_detalhes: AcompanhanteDetalhe[] | null;
+  acompanhantes_detalhes: unknown[] | null;
   observacoes: string | null;
   created_at: string;
 }
