@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronDown, ChevronUp, Download } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Download, FileSpreadsheet } from "lucide-react";
+import { exportToExcel, exportToCsv } from "@/lib/excel";
 
 interface Mission {
   id: string;
