@@ -107,24 +107,46 @@ const ManageMissions = () => {
     setLoadingInscritos(false);
   };
 
-  const exportCSV = () => {
-    if (!inscricoes.length) return;
-    const mission = missions.find(m => m.id === expandedId);
-    const header = "Nome,Telefone,Acompanhantes,Detalhes Acompanhantes,Observações,Data Inscrição";
-    const rows = inscricoes.map(i => {
-      const detalhes = Array.isArray(i.acompanhantes_detalhes) && i.acompanhantes_detalhes.length > 0
-        ? (i.acompanhantes_detalhes as AcompanhanteDetalhe[]).map(a => `${a.nome}${a.idade ? ` (${a.idade})` : ""}`).join("; ")
-        : "";
-      return `"${i.nome}","${i.telefone || ""}",${i.acompanhantes},"${detalhes}","${(i.observacoes || "").replace(/"/g, '""')}","${new Date(i.created_at).toLocaleDateString("pt-BR")}"`;
+  const buildExportData = () => {
+    if (!inscricoes.length) return [];
+    // Find max companions to create dynamic columns
+    const maxAcomp = inscricoes.reduce((max, i) => {
+      const det = Array.isArray(i.acompanhantes_detalhes) ? i.acompanhantes_detalhes.length : 0;
+      return Math.max(max, det);
+    }, 0);
+
+    return inscricoes.map(i => {
+      const row: Record<string, string | number> = {
+        "Nome": i.nome,
+        "Telefone": i.telefone || "",
+      };
+      const detalhes = Array.isArray(i.acompanhantes_detalhes) ? i.acompanhantes_detalhes as AcompanhanteDetalhe[] : [];
+      for (let idx = 0; idx < maxAcomp; idx++) {
+        const a = detalhes[idx];
+        row[`Acompanhante ${idx + 1} - Nome`] = a?.nome || "";
+        row[`Acompanhante ${idx + 1} - Idade`] = a?.idade || "";
+      }
+      row["Observações"] = i.observacoes || "";
+      row["Data Inscrição"] = new Date(i.created_at).toLocaleDateString("pt-BR");
+      return row;
     });
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `inscritos-${mission?.titulo || "missao"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  };
+
+  const missionFileName = () => {
+    const mission = missions.find(m => m.id === expandedId);
+    return `inscritos-${mission?.titulo || "missao"}`;
+  };
+
+  const handleExportCSV = () => {
+    const data = buildExportData();
+    if (!data.length) return;
+    exportToCsv(data, `${missionFileName()}.csv`);
+  };
+
+  const handleExportExcel = async () => {
+    const data = buildExportData();
+    if (!data.length) return;
+    await exportToExcel(data, "Inscritos", `${missionFileName()}.xlsx`);
   };
 
   const startEdit = (m: Mission) => {
