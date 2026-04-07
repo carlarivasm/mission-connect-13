@@ -62,6 +62,7 @@ const ManageMissions = () => {
   const [valor, setValor] = useState("");
   const [pixKey, setPixKey] = useState("");
   const [pixQrUrl, setPixQrUrl] = useState("");
+  const [uploadingQr, setUploadingQr] = useState(false);
   const [idadeGratuito, setIdadeGratuito] = useState("");
   const [idadeMeia, setIdadeMeia] = useState("");
   const [whatsappResponsavel, setWhatsappResponsavel] = useState("");
