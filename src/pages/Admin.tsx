@@ -141,6 +141,7 @@ const Admin = () => {
           <TabsContent value="analytics"><ManageAnalytics /></TabsContent>
           <TabsContent value="gallery"><ManageGallery /></TabsContent>
           <TabsContent value="settings"><ManageAppSettings /></TabsContent>
+          <TabsContent value="missions"><ManageMissions /></TabsContent>
 
         </Tabs>
       </main>
