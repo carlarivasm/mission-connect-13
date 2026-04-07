@@ -99,7 +99,7 @@ const ManageMissions = () => {
     setLoadingInscritos(true);
     const { data: insc } = await supabase
       .from("missao_inscricoes")
-      .select("id, nome, telefone, acompanhantes, observacoes, created_at")
+      .select("id, nome, telefone, acompanhantes, acompanhantes_detalhes, observacoes, created_at")
       .eq("missao_id", id)
       .order("created_at", { ascending: true });
     setInscricoes(insc || []);
