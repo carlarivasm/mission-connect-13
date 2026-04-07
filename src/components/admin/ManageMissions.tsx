@@ -480,13 +480,18 @@ const ManageMissions = () => {
                         <div className="space-y-1.5 max-h-60 overflow-y-auto">
                           {inscricoes.map(i => (
                             <div key={i.id} className="text-xs bg-muted/50 rounded-lg p-2">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between gap-2">
                                 <p className="font-medium">{i.nome}</p>
-                                {m.valor != null && m.valor > 0 && (
-                                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${i.pago ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>
-                                    {i.pago ? "✅ Pago" : "⏳ Pendente"}
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {m.valor != null && m.valor > 0 && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${i.pago ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"}`}>
+                                      {i.pago ? "✅ Pago" : "⏳ Pendente"}
+                                    </span>
+                                  )}
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => deleteInscricao(i.id, m.id)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </div>
                               {i.email && <p className="text-muted-foreground">✉️ {i.email}</p>}
                               {i.telefone && <p className="text-muted-foreground">📞 {i.telefone}</p>}
