@@ -134,7 +134,7 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange 
       nome: nome.trim(),
       telefone: telefone.trim() || null,
       acompanhantes: detalhes.length,
-      acompanhantes_detalhes: detalhes,
+      acompanhantes_detalhes: detalhes as unknown as import("@/integrations/supabase/types").Json,
       observacoes: observacoes.trim() || null,
     });
 

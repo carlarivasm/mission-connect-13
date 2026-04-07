@@ -102,7 +102,7 @@ const ManageMissions = () => {
       .select("id, nome, telefone, acompanhantes, acompanhantes_detalhes, observacoes, created_at")
       .eq("missao_id", id)
       .order("created_at", { ascending: true });
-    setInscricoes(insc || []);
+    setInscricoes((insc || []) as unknown as Inscricao[]);
     setLoadingInscritos(false);
   };
 
