@@ -101,11 +101,15 @@ const MissionSignupPopup = ({ externalMission, open: externalOpen, onOpenChange,
       if (inscricao) return;
       const { data: viz } = await supabase
         .from("missao_visualizacoes")
-        .select("id")
+        .select("id, created_at")
         .eq("user_id", user.id)
         .eq("missao_id", m.id)
         .maybeSingle();
-      if (viz) return;
+      if (viz) {
+        const viewedAt = new Date(viz.created_at).getTime();
+        const hoursSince = (Date.now() - viewedAt) / (1000 * 60 * 60);
+        if (hoursSince < 24) return;
+      }
       setMission(m);
       setAutoMode(true);
       setInternalOpen(true);

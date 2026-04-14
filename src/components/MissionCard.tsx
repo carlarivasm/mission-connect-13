@@ -113,8 +113,8 @@ const MissionCard = () => {
             </Button>
           </div>
         ) : (
-          <Button size="sm" className="w-full mt-1" onClick={() => { setEditMode(false); setPopupOpen(true); }}>
-            Inscrever-se
+          <Button size="sm" className="w-full mt-1 animate-pulse hover:animate-none" onClick={() => { setEditMode(false); setPopupOpen(true); }}>
+            🙋 Inscreva-se agora!
           </Button>
         )}
       </div>
