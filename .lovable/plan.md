@@ -1,33 +1,31 @@
 
 
-## Plano: Corrigir problema de inscrição em missões
+## Plano: Listar todas as missões no dashboard
 
-### Diagnóstico
+### Comportamento atual
+O `MissionCard` mostra apenas **1 missão** (a próxima por data), independente de o usuário estar inscrito ou não.
 
-O banco de dados mostra **7 visualizações** mas apenas **1 inscrição**. As políticas RLS estão corretas. O problema e a causa raiz:
+### Novo comportamento
+O dashboard exibirá **duas seções** de missões, ordenadas por data, ocultando automaticamente as que já passaram:
 
-- Quando o usuário fecha o popup sem se inscrever, o sistema registra uma visualização (`missao_visualizacoes`), e o popup **nunca mais aparece automaticamente**
-- O card "Próxima Missão" no Dashboard tem o botão "Inscrever-se", mas pode não ser visível o suficiente para os usuários
-- Não existe outra forma de acessar a inscrição além do popup automático (primeira vez) ou do card no Dashboard
+1. **"Minhas Inscrições"** — todas as missões futuras em que o usuário **já está inscrito** (em ordem de data, somem conforme a data passa).
+2. **"Missões Disponíveis"** — todas as missões futuras em que o usuário **ainda não se inscreveu** (em ordem de data).
 
-### Correções propostas
-
-**1. Mostrar popup novamente para quem ainda nao se inscreveu**
-- Alterar a lógica no `MissionSignupPopup.tsx`: ao invés de verificar `missao_visualizacoes` para bloquear o popup, permitir que ele reapareça periodicamente (ex: a cada 3 dias) enquanto o usuário não estiver inscrito
-- Alternativa mais simples: ignorar a visualização se já se passaram mais de 24h, mostrando o popup novamente
-
-**2. Tornar o botão de inscrição mais visível no card**
-- No `MissionCard.tsx`, destacar melhor o botão "Inscrever-se" com cor mais chamativa ou tamanho maior
-- Adicionar um texto motivacional como "Vagas abertas! Inscreva-se agora"
+Cada item mantém o mesmo visual atual do `MissionCard`: título, datas, valor, descrição expansível, status de inscrição, e botão "Inscreva-se" ou "Editar".
 
 ### Detalhes técnicos
 
-**Arquivo: `src/components/MissionSignupPopup.tsx`**
-- Modificar o `useEffect` de auto-check: ao invés de `if (viz) return;`, verificar se a visualização tem mais de 24h. Se sim, mostrar o popup novamente
-- Query: selecionar `created_at` da visualização e comparar com a data atual
+**Arquivo: `src/components/MissionCard.tsx`**
+- Refatorar para buscar **todas** as missões ativas com `data >= hoje` (ou que tenham alguma data em `datas` >= hoje), ao invés de `.limit(1)`.
+- Buscar todas as inscrições do usuário (`missao_inscricoes` filtradas por `user_id`) em uma única query.
+- Separar as missões em dois arrays: `inscritas` e `disponiveis`.
+- Renderizar duas seções com títulos: "Minhas Inscrições" e "Missões Disponíveis". Cada seção só aparece se tiver pelo menos 1 item.
+- Manter o mesmo card visual atual (Flag icon, título, datas, valor, descrição expansível, botão Inscrever/Editar) reutilizado dentro de um `.map()`.
+- O `MissionSignupPopup` continua funcionando — apenas é aberto com a missão clicada (estado `selectedMission` controla qual missão está sendo editada/inscrita).
 
-**Arquivo: `src/components/MissionCard.tsx`**  
-- Sem alterações estruturais necessárias, apenas melhorias visuais opcionais no botão
+**Filtro de data**: Considerar a missão "futura" se **qualquer** data em `datas[]` (ou o campo `data`) for >= hoje (Brasília).
 
-**Nenhuma migração de banco necessária** -- a tabela `missao_visualizacoes` já tem `created_at`.
+**Sem mudanças de schema** — todas as queries usam tabelas e colunas já existentes.
+
+**Arquivos não alterados**: `Dashboard.tsx`, `MissionSignupPopup.tsx`, migrações de banco.
 
